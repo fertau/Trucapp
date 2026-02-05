@@ -1,0 +1,287 @@
+import { useState } from 'react';
+import { useUserStore } from '../store/useUserStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { PinInput } from './PinInput';
+
+interface AccountSelectorProps {
+    onLoginSuccess: () => void;
+}
+
+type AuthMode = 'initial' | 'login' | 'create';
+type CreateStep = 'name' | 'pin';
+
+export const AccountSelector = ({ onLoginSuccess }: AccountSelectorProps) => {
+    const { players, addPlayer } = useUserStore();
+    const { rememberedIds, login, removeRememberedAccount } = useAuthStore();
+
+    // Mode State
+    const [mode, setMode] = useState<AuthMode>('initial');
+
+    // Create State
+    const [createStep, setCreateStep] = useState<CreateStep>('name');
+    const [newName, setNewName] = useState('');
+    const [newPin, setNewPin] = useState('');
+
+    // Login State
+    const [selectedUser, setSelectedUser] = useState<{ id: string, name: string } | null>(null);
+    const [loginPin, setLoginPin] = useState('');
+    const [search, setSearch] = useState('');
+
+    // Shared
+    const [error, setError] = useState('');
+    const [shakeError, setShakeError] = useState(false);
+
+    // Helpers
+    const triggerError = (msg: string) => {
+        setError(msg);
+        setShakeError(true);
+        setTimeout(() => setShakeError(false), 500);
+    };
+
+    const handleLoginSubmit = (pinFromInput?: string) => {
+        if (!selectedUser) return;
+
+        const actualPin = typeof pinFromInput === 'string' ? pinFromInput : loginPin;
+
+        console.log('Login attempt:', { selectedUser: selectedUser?.name, pinLength: actualPin.length });
+
+        if (actualPin.length !== 4) {
+            triggerError('El PIN debe tener 4 dígitos');
+            return;
+        }
+
+        const success = login(selectedUser.id, actualPin);
+        if (success) {
+            onLoginSuccess();
+        } else {
+            // Find user to check if default PIN
+            const user = players.find(p => p.id === selectedUser.id);
+            if (user && user.pin === '0000') {
+                triggerError('PIN incorrecto (Probá con 0000)');
+            } else {
+                triggerError('PIN incorrecto');
+            }
+            setLoginPin(''); // Clear PIN on error
+        }
+    };
+
+    const handleCreateNameSubmit = () => {
+        if (!newName.trim()) {
+            triggerError('Ingresá un nombre');
+            return;
+        }
+
+        // Check if exists
+        const existing = players.find(p => p.name.toLowerCase() === newName.trim().toLowerCase());
+        if (existing) {
+            // Auto-switch to login
+            setSelectedUser({ id: existing.id, name: existing.name });
+            setMode('login');
+            setError('¡Te encontramos! Tu usuario ya existe. Ingresá tu PIN.');
+            return;
+        }
+
+        setCreateStep('pin');
+        setError('');
+    };
+
+    const handleCreateComplete = async () => {
+        if (newPin.length !== 4) return;
+        try {
+            const newP = await addPlayer(newName.trim(), newPin);
+            login(newP.id, newPin);
+            onLoginSuccess();
+        } catch (e) {
+            console.error(e);
+            triggerError('Error al crear usuario');
+        }
+    };
+
+    const resetState = () => {
+        setMode('initial');
+        setCreateStep('name');
+        setNewName('');
+        setNewPin('');
+        setSelectedUser(null);
+        setLoginPin('');
+        setError('');
+    };
+
+    // --- RENDERERS ---
+
+    if (mode === 'initial') {
+        const rememberedUsers = players.filter(p => rememberedIds.includes(p.id));
+
+        return (
+            <div className="full-screen bg-[var(--color-bg)] flex flex-col p-6 items-center justify-center">
+                <h1 className="text-4xl font-black tracking-tighter mb-2 text-center text-white italic">TRUCAPP</h1>
+                <p className="text-[var(--color-text-muted)] mb-12 uppercase tracking-widest text-xs font-bold">Bienvenido</p>
+
+                {mode === 'initial' && rememberedUsers.length > 0 && (
+                    <div className="w-full max-w-sm mb-8">
+                        <div className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-2 ml-1">Tu cuenta</div>
+                        {rememberedUsers.slice(0, 1).map(user => (
+                            <button
+                                key={user.id}
+                                onClick={() => { setSelectedUser(user); setMode('login'); }}
+                                className="w-full flex items-center gap-4 bg-[var(--color-surface)] p-4 rounded-2xl border border-[var(--color-border)] active:scale-95 transition-transform"
+                            >
+                                <div className="w-12 h-12 rounded-full bg-[var(--color-accent)] flex items-center justify-center font-black text-white text-xl">
+                                    {user.name.substring(0, 2).toUpperCase()}
+                                </div>
+                                <div className="flex-1 text-left">
+                                    <div className="font-bold text-lg text-white">{user.name}</div>
+                                    <div className="text-xs text-[var(--color-text-muted)]">Tocá para ingresar</div>
+                                </div>
+                                <div
+                                    onClick={(e) => { e.stopPropagation(); removeRememberedAccount(user.id); }}
+                                    className="w-8 h-8 rounded-full bg-[var(--color-bg)] flex items-center justify-center text-[var(--color-text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-colors z-10"
+                                >
+                                    ✕
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                )}
+
+                <div className="flex flex-col gap-4 w-full max-w-sm">
+                    <button
+                        onClick={() => { setSelectedUser(null); setMode('login'); }} // Login generic
+                        className="bg-[var(--color-surface)] border border-[var(--color-border)] py-6 rounded-2xl text-white font-bold text-lg hover:bg-[var(--color-surface-hover)] active:scale-95 transition-all flex flex-col items-center gap-2"
+                    >
+                        <span>👤 Ya tengo cuenta</span>
+                        <span className="text-xs font-normal text-[var(--color-text-muted)]">Buscar mi usuario</span>
+                    </button>
+
+                    <button
+                        onClick={() => { setMode('create'); setCreateStep('name'); }}
+                        className="bg-[var(--color-accent)] py-6 rounded-2xl text-white font-bold text-lg hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-[var(--color-accent)]/20 flex flex-col items-center gap-2"
+                    >
+                        <span>⭐ Soy Nuevo</span>
+                        <span className="text-xs font-normal text-white/80">Crear un usuario</span>
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    if (mode === 'login') {
+        // Step 1: Select User (if not selected)
+        if (!selectedUser) {
+            const allUsers = players; // Potentially unnecessary filter
+
+            // Defensive coding: Filter nulls and ensure name exists
+            const filtered = Array.isArray(allUsers)
+                ? allUsers.filter(u => u && typeof u === 'object' && typeof u.name === 'string' && u.name.toLowerCase().includes(search.toLowerCase()))
+                : [];
+
+            return (
+                <div className="full-screen bg-[var(--color-bg)] flex flex-col p-6">
+                    <button onClick={resetState} className="self-start text-[var(--color-text-muted)] mb-6 font-bold">← Volver</button>
+                    <h2 className="text-2xl font-black text-white mb-6">¿Quién sos?</h2>
+
+                    <input
+                        className="bg-[var(--color-surface)] border border-[var(--color-border)] p-4 rounded-xl text-white mb-6 focus:border-[var(--color-accent)] focus:outline-none"
+                        placeholder="Buscar tu nombre..."
+                        value={search}
+                        autoFocus
+                        onChange={e => setSearch(e.target.value)}
+                    />
+
+                    <div className="flex-1 overflow-y-auto flex flex-col gap-2">
+                        {filtered.map(user => (
+                            <button
+                                key={user.id}
+                                onClick={() => setSelectedUser(user)}
+                                className="flex items-center gap-4 p-4 rounded-xl hover:bg-[var(--color-surface)] text-left border border-transparent hover:border-[var(--color-border)] transition-all"
+                            >
+                                <div className="w-10 h-10 rounded-full bg-[var(--color-surface-hover)] flex items-center justify-center font-bold text-[var(--color-text-secondary)]">
+                                    {(user?.name || '?').substring(0, 2).toUpperCase()}
+                                </div>
+                                <span className="font-bold text-white">{user?.name || 'Sin nombre'}</span>
+                            </button>
+                        ))}
+                        {filtered.length === 0 && (
+                            <div className="text-center text-[var(--color-text-muted)] mt-10">
+                                No encontramos a "{search}". <br />
+                                <button onClick={() => { setMode('create'); setNewName(search); setCreateStep('name'); }} className="text-[var(--color-accent)] font-bold mt-2 underline">Crear cuenta nueva</button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )
+        }
+
+        // Step 2: PIN Entry
+        return (
+            <div className="full-screen bg-[var(--color-bg)] flex flex-col items-center justify-center p-8">
+                <button onClick={() => setSelectedUser(null)} className="absolute top-8 left-8 text-[var(--color-text-muted)] font-bold">← Cambiar usuario</button>
+
+                <div className="w-20 h-20 rounded-full bg-[var(--color-surface)] flex items-center justify-center font-black text-3xl text-white mb-6 border-2 border-[var(--color-border)]">
+                    {selectedUser.name.substring(0, 2).toUpperCase()}
+                </div>
+                <h2 className="text-2xl font-black text-white mb-2">{selectedUser.name}</h2>
+                <p className="text-sm text-[var(--color-text-muted)] mb-8">Ingresá tu PIN para entrar</p>
+
+                <div className={`${shakeError ? 'animate-shake' : ''}`}>
+                    <PinInput
+                        value={loginPin}
+                        onChange={(val) => { setLoginPin(val); setError(''); }}
+                        onComplete={(pin) => handleLoginSubmit(pin)}
+                        autoFocus={true}
+                    />
+                </div>
+
+                {error && <div className={`mt-6 font-bold ${error.includes('encontramos') ? 'text-[var(--color-accent)]' : 'text-red-500'}`}>{error}</div>}
+                {!error && <div className="h-6 mt-6"></div>} {/* Spacer */}
+
+                <button onClick={() => handleLoginSubmit()} className="mt-8 bg-[var(--color-accent)] text-white font-bold py-3 px-8 rounded-xl disabled:opacity-50" disabled={loginPin.length !== 4}>
+                    Ingresar
+                </button>
+            </div>
+        )
+    }
+
+    if (mode === 'create') {
+        return (
+            <div className="full-screen bg-[var(--color-bg)] flex flex-col items-center justify-center p-8">
+                <button onClick={resetState} className="absolute top-8 left-8 text-[var(--color-text-muted)] font-bold">← Cancelar</button>
+
+                {createStep === 'name' ? (
+                    <>
+                        <h2 className="text-2xl font-black text-white mb-2">Crear Cuenta</h2>
+                        <p className="text-sm text-[var(--color-text-muted)] mb-8">¿Cómo querés llamarte?</p>
+                        <input
+                            value={newName}
+                            onChange={e => setNewName(e.target.value)}
+                            className="bg-[var(--color-surface)] border border-[var(--color-border)] p-4 text-center text-xl text-white rounded-xl w-full max-w-xs mb-6 focus:border-[var(--color-accent)] outline-none"
+                            placeholder="Tu Nombre"
+                            autoFocus
+                        />
+                        <button onClick={handleCreateNameSubmit} className="bg-[var(--color-accent)] text-white font-bold py-3 px-8 rounded-xl">
+                            Siguiente
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        <h2 className="text-2xl font-black text-white mb-2">Creá tu PIN</h2>
+                        <p className="text-sm text-[var(--color-text-muted)] mb-8">4 números para entrar</p>
+                        <PinInput
+                            value={newPin}
+                            onChange={setNewPin}
+                            autoFocus
+                            onComplete={() => { /* Wait for button? Or auto? Let's wait for button to confirm visual */ }}
+                        />
+                        <button onClick={handleCreateComplete} disabled={newPin.length !== 4} className="mt-8 bg-[var(--color-accent)] text-white font-bold py-3 px-8 rounded-xl disabled:opacity-50">
+                            Crear y Entrar
+                        </button>
+                    </>
+                )}
+
+                {error && <div className="mt-6 text-red-500 font-bold animate-pulse">{error}</div>}
+            </div>
+        )
+    }
+
+    return null;
+};
