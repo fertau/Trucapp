@@ -56,7 +56,7 @@ export const AccountSelector = ({ onLoginSuccess }: AccountSelectorProps) => {
         } else {
             // Find user to check if default PIN
             const user = players.find(p => p.id === selectedUser.id);
-            if (user && user.pin === '0000') {
+            if (user && (user.pinHash === '0000' || user.pinHash === 'hash_0000')) {
                 triggerError('PIN incorrecto (Probá con 0000)');
             } else {
                 triggerError('PIN incorrecto');
@@ -88,7 +88,9 @@ export const AccountSelector = ({ onLoginSuccess }: AccountSelectorProps) => {
     const handleCreateComplete = async () => {
         if (newPin.length !== 4) return;
         try {
-            const newP = await addPlayer(newName.trim(), newPin);
+            // Store is prepared for pinHash, we pass the raw pin for now (or pre-hash)
+            // useUserStore.addPlayer(name, pinHash)
+            const newP = await addPlayer(newName.trim(), `hash_${newPin}`);
             login(newP.id, newPin);
             onLoginSuccess();
         } catch (e) {
@@ -113,52 +115,57 @@ export const AccountSelector = ({ onLoginSuccess }: AccountSelectorProps) => {
         const rememberedUsers = players.filter(p => rememberedIds.includes(p.id));
 
         return (
-            <div className="full-screen bg-[var(--color-bg)] flex flex-col p-6 items-center justify-center">
+            <div className="full-screen bg-[var(--color-bg)] flex flex-col p-6 items-center justify-center overflow-y-auto">
                 <h1 className="text-4xl font-black tracking-tighter mb-2 text-center text-white italic">TRUCAPP</h1>
-                <p className="text-[var(--color-text-muted)] mb-12 uppercase tracking-widest text-xs font-bold">Bienvenido</p>
+                <p className="text-[var(--color-text-muted)] mb-12 uppercase tracking-widest text-xs font-bold">Seleccioná tu perfil</p>
 
-                {mode === 'initial' && rememberedUsers.length > 0 && (
-                    <div className="w-full max-w-sm mb-8">
-                        <div className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-2 ml-1">Tu cuenta</div>
-                        {rememberedUsers.slice(0, 1).map(user => (
-                            <button
-                                key={user.id}
-                                onClick={() => { setSelectedUser(user); setMode('login'); }}
-                                className="w-full flex items-center gap-4 bg-[var(--color-surface)] p-4 rounded-2xl border border-[var(--color-border)] active:scale-95 transition-transform"
-                            >
-                                <div className="w-12 h-12 rounded-full bg-[var(--color-accent)] flex items-center justify-center font-black text-white text-xl">
-                                    {user.name.substring(0, 2).toUpperCase()}
-                                </div>
-                                <div className="flex-1 text-left">
-                                    <div className="font-bold text-lg text-white">{user.name}</div>
-                                    <div className="text-xs text-[var(--color-text-muted)]">Tocá para ingresar</div>
-                                </div>
-                                <div
+                {rememberedUsers.length > 0 ? (
+                    <div className="w-full max-w-sm grid grid-cols-2 gap-4 mb-12">
+                        {rememberedUsers.map(user => (
+                            <div key={user.id} className="relative group">
+                                <button
+                                    onClick={() => { setSelectedUser(user); setMode('login'); }}
+                                    className="w-full aspect-square flex flex-col items-center justify-center gap-3 bg-[var(--color-surface)] rounded-[2.5rem] border border-[var(--color-border)] active:scale-95 transition-all shadow-xl hover:bg-white/5"
+                                >
+                                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[var(--color-accent)] to-[#1d4ed8] flex items-center justify-center font-black text-white text-2xl shadow-lg">
+                                        {user.avatar || user.name.substring(0, 1).toUpperCase()}
+                                    </div>
+                                    <div className="font-black text-xs text-white uppercase tracking-tight truncate w-full px-4 text-center">
+                                        {user.nickname || user.name}
+                                    </div>
+                                </button>
+                                <button
                                     onClick={(e) => { e.stopPropagation(); removeRememberedAccount(user.id); }}
-                                    className="w-8 h-8 rounded-full bg-[var(--color-bg)] flex items-center justify-center text-[var(--color-text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-colors z-10"
+                                    className="absolute -top-1 -right-1 w-8 h-8 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 hover:text-red-400 hover:border-red-400/30 transition-all z-10 text-[10px]"
+                                    title="Quitar de este dispositivo"
                                 >
                                     ✕
-                                </div>
-                            </button>
+                                </button>
+                            </div>
                         ))}
+                    </div>
+                ) : (
+                    <div className="mb-12 p-8 text-center bg-white/5 rounded-[2.5rem] border border-dashed border-white/10 w-full max-w-sm">
+                        <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest leading-relaxed">
+                            No hay cuentas recordadas en este dispositivo
+                        </p>
                     </div>
                 )}
 
                 <div className="flex flex-col gap-4 w-full max-w-sm">
                     <button
-                        onClick={() => { setSelectedUser(null); setMode('login'); }} // Login generic
-                        className="bg-[var(--color-surface)] border border-[var(--color-border)] py-6 rounded-2xl text-white font-bold text-lg hover:bg-[var(--color-surface-hover)] active:scale-95 transition-all flex flex-col items-center gap-2"
+                        onClick={() => { setMode('create'); setCreateStep('name'); }}
+                        className="bg-white text-black py-5 rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] hover:brightness-110 active:scale-95 transition-all shadow-2xl flex items-center justify-center gap-3"
                     >
-                        <span>👤 Ya tengo cuenta</span>
-                        <span className="text-xs font-normal text-[var(--color-text-muted)]">Buscar mi usuario</span>
+                        <span>Crear Perfil</span>
+                        <span className="text-[10px] opacity-40">→</span>
                     </button>
 
                     <button
-                        onClick={() => { setMode('create'); setCreateStep('name'); }}
-                        className="bg-[var(--color-accent)] py-6 rounded-2xl text-white font-bold text-lg hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-[var(--color-accent)]/20 flex flex-col items-center gap-2"
+                        onClick={() => { setSelectedUser(null); setMode('login'); }}
+                        className="bg-white/5 border border-white/10 py-4 rounded-[1.5rem] text-white/40 font-bold text-[10px] uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all text-center"
                     >
-                        <span>⭐ Soy Nuevo</span>
-                        <span className="text-xs font-normal text-white/80">Crear un usuario</span>
+                        Ya tengo cuenta / Buscar
                     </button>
                 </div>
             </div>

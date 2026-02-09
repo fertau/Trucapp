@@ -27,8 +27,8 @@ export const TeamConfiguration = ({ players, onStartMatch }: TeamConfigurationPr
     const [ellosPairName, setEllosPairName] = useState('');
     const [isEditingNosotrosPair, setIsEditingNosotrosPair] = useState(false);
     const [isEditingEllosPair, setIsEditingEllosPair] = useState(false);
-    const [nosotrosTeamName, setNosotrosTeamName] = useState('Nosotros');
-    const [ellosTeamName, setEllosTeamName] = useState('Ellos');
+    const [nosotrosTeamName, setNosotrosTeamName] = useState('Equipo 1');
+    const [ellosTeamName, setEllosTeamName] = useState('Equipo 2');
     const [isEditingNosotrosTeam, setIsEditingNosotrosTeam] = useState(false);
     const [isEditingEllosTeam, setIsEditingEllosTeam] = useState(false);
 
@@ -39,17 +39,28 @@ export const TeamConfiguration = ({ players, onStartMatch }: TeamConfigurationPr
         setEllos([]);
     }, [players]);
 
-    // Pairs sync
+    // Names Sync Logic
     useEffect(() => {
+        // Auto-update team name if it's 1v1
+        if (nosotros.length === 1 && !isEditingNosotrosTeam) {
+            setNosotrosTeamName(nosotros[0].name);
+        }
+        if (ellos.length === 1 && !isEditingEllosTeam) {
+            setEllosTeamName(ellos[0].name);
+        }
+
+        // Pairs sync for 2v2
         if (nosotros.length === 2) {
             const pair = getOrCreatePair([nosotros[0].id, nosotros[1].id] as [string, string], `${nosotros[0].name} + ${nosotros[1].name}`);
             setNosotrosPairName(pair.name);
+            if (!isEditingNosotrosTeam) setNosotrosTeamName(pair.name);
         }
         if (ellos.length === 2) {
             const pair = getOrCreatePair([ellos[0].id, ellos[1].id] as [string, string], `${ellos[0].name} + ${ellos[1].name}`);
             setEllosPairName(pair.name);
+            if (!isEditingEllosTeam) setEllosTeamName(pair.name);
         }
-    }, [nosotros, ellos, getOrCreatePair]);
+    }, [nosotros, ellos, getOrCreatePair, isEditingNosotrosTeam, isEditingEllosTeam]);
 
     const handlePairNameSave = (team: TeamId, name: string) => {
         if (team === 'nosotros' && nosotros.length === 2) {

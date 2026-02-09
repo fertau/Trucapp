@@ -75,15 +75,15 @@ export const FaltaEnvidoModal = ({ onClose }: FaltaEnvidoModalProps) => {
                 <div className="flex gap-4 w-full max-w-sm">
                     <button
                         onClick={() => setSelectedTeam('nosotros')}
-                        className="flex-1 bg-[var(--color-nosotros)] text-black py-8 rounded-3xl text-2xl font-black shadow-2xl shadow-green-900/40 active:scale-95 transition-all"
+                        className="flex-1 bg-[var(--color-nosotros)] text-black py-8 rounded-3xl text-xl font-black shadow-2xl shadow-green-900/40 active:scale-95 transition-all truncate px-2"
                     >
-                        NOSOTROS
+                        {teams.nosotros.name.toUpperCase()}
                     </button>
                     <button
                         onClick={() => setSelectedTeam('ellos')}
-                        className="flex-1 bg-[var(--color-ellos)] text-black py-8 rounded-3xl text-2xl font-black shadow-2xl shadow-amber-900/40 active:scale-95 transition-all"
+                        className="flex-1 bg-[var(--color-ellos)] text-black py-8 rounded-3xl text-xl font-black shadow-2xl shadow-amber-900/40 active:scale-95 transition-all truncate px-2"
                     >
-                        ELLOS
+                        {teams.ellos.name.toUpperCase()}
                     </button>
                 </div>
                 <button
@@ -103,9 +103,9 @@ export const FaltaEnvidoModal = ({ onClose }: FaltaEnvidoModalProps) => {
             <h2 className="text-2xl font-black mb-8 text-white tracking-[0.3em] italic">FALTA ENVIDO</h2>
 
             <div className="bg-[var(--color-surface)] p-6 rounded w-full mb-6 border border-[var(--color-border)]">
-                <div className="flex justify-between mb-2 text-[var(--color-text-muted)] text-sm uppercase font-bold">
-                    <span>Nosotros inv.</span>
-                    <span>Ellos inv.</span>
+                <div className="flex justify-between mb-2 text-[var(--color-text-muted)] text-[10px] uppercase font-black tracking-widest">
+                    <span className="truncate max-w-[120px]">{teams.nosotros.name}</span>
+                    <span className="truncate max-w-[120px]">{teams.ellos.name}</span>
                 </div>
                 <div className="flex justify-between text-2xl font-bold">
                     <span className="text-[var(--color-text-primary)]">{teams.nosotros.score}</span>
@@ -114,7 +114,7 @@ export const FaltaEnvidoModal = ({ onClose }: FaltaEnvidoModalProps) => {
             </div>
 
             <div className="text-center mb-8">
-                <div className="text-[var(--color-text-muted)] text-sm mb-2 uppercase tracking-wider">Sugerencia para {selectedTeam.toUpperCase()}</div>
+                <div className="text-[var(--color-text-muted)] text-[10px] mb-2 uppercase tracking-widest font-black">Sugerencia para {selectedTeam === 'nosotros' ? teams.nosotros.name : teams.ellos.name}</div>
                 {isManual ? (
                     <input
                         type="number"

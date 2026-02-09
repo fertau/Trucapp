@@ -6,12 +6,26 @@ export interface Player {
     id: string;
     name: string;
     nickname?: string; // Short name for display
-    avatar?: string;
-    pin?: string;
+    avatar?: string; // Emoji or Icon ID
+    pinHash?: string; // Replaces plain text PIN
     visibility: 'PUBLIC' | 'PRIVATE';
     friends: string[]; // List of friend player IDs
+    createdAt: number;
+    updatedAt: number;
+    lastActiveAt?: number;
     wins?: number;
     matchesPlayed?: number;
+}
+
+export type FriendRequestStatus = 'pending' | 'accepted' | 'rejected';
+
+export interface FriendRequest {
+    id: string;
+    fromUserId: string;
+    toUserId: string;
+    status: FriendRequestStatus;
+    createdAt: number;
+    updatedAt: number;
 }
 
 export interface Team {

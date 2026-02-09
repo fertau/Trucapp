@@ -8,7 +8,6 @@ import { AccountSelector } from './components/AccountSelector';
 import { HomeScreen } from './components/HomeScreen';
 import { PicaPicaSetup } from './components/PicaPicaSetup';
 import { PicaPicaHub } from './components/PicaPicaHub';
-import { PairHeadToHead } from './components/PairHeadToHead';
 import { Leaderboard } from './components/Leaderboard';
 
 import { useMatchStore } from './store/useMatchStore';
@@ -28,7 +27,7 @@ import './index.css';
 // 5. Returns to PicaHub -> Home
 
 type AppStep = 'AUTH' | 'HOME' | 'SETUP_PLAYERS_COUNT' | 'SETUP_PLAYERS_SELECT' | 'SETUP_TEAMS' |
-  'MATCH' | 'HISTORY' | 'STATS' | 'LEADERBOARD' | 'SOCIAL' |
+  'MATCH' | 'HISTORY' | 'LEADERBOARD' | 'SOCIAL' |
   'PICAPICA_SETUP' | 'PICAPICA_HUB';
 
 // ... (imports remain same)
@@ -36,7 +35,6 @@ import { SocialHub } from './components/SocialHub'; // Assuming I add this impor
 
 function App() {
   const currentUserId = useAuthStore(state => state.currentUserId);
-  const logout = useAuthStore(state => state.logout);
 
   const [step, setStep] = useState<AppStep>(() => {
     const savedStep = localStorage.getItem('trucapp-app-step');
@@ -48,10 +46,8 @@ function App() {
     step === 'HOME' && <HomeScreen
       onNewMatch={() => setStep('SETUP_PLAYERS_COUNT')}
       onHistory={() => setStep('HISTORY')}
-      onStats={() => setStep('STATS')}
       onLeaderboard={() => setStep('LEADERBOARD')}
       onSocial={() => setStep('SOCIAL')}
-      onLogout={logout}
     />
   }
 
@@ -218,10 +214,6 @@ function App() {
     return <HistoryScreen onBack={() => setStep('HOME')} />;
   }
 
-  if (step === 'STATS') {
-    return <PairHeadToHead onBack={() => setStep('HOME')} />;
-  }
-
   if (step === 'LEADERBOARD') {
     return <Leaderboard onBack={() => setStep('HOME')} />;
   }
@@ -319,10 +311,8 @@ function App() {
     <HomeScreen
       onNewMatch={() => setStep('SETUP_PLAYERS_COUNT')}
       onHistory={() => setStep('HISTORY')}
-      onStats={() => setStep('STATS')}
       onLeaderboard={() => setStep('LEADERBOARD')}
       onSocial={() => setStep('SOCIAL')}
-      onLogout={logout}
     />
   );
 }

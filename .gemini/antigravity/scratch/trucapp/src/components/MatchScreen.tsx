@@ -226,13 +226,13 @@ const WinnerCelebration = ({ winner, teams, onFinish }: { winner: TeamId, teams:
                 </h1>
 
                 <div className="flex items-center gap-6 mb-12 bg-white/5 py-6 px-10 rounded-3xl border border-white/10">
-                    <div className="flex flex-col items-center">
-                        <span className="text-[10px] font-black uppercase text-[var(--color-nosotros)]/60 mb-2">Nosotros</span>
+                    <div className="flex flex-col items-center flex-1 min-w-[100px]">
+                        <span className="text-[8px] font-black uppercase text-[var(--color-nosotros)]/60 mb-2 truncate max-w-[80px]">{teams.nosotros.name}</span>
                         <span className="text-5xl font-black tabular-nums">{teams.nosotros.score}</span>
                     </div>
                     <div className="w-[1px] h-12 bg-white/10"></div>
-                    <div className="flex flex-col items-center">
-                        <span className="text-[10px] font-black uppercase text-[var(--color-ellos)]/60 mb-2">Ellos</span>
+                    <div className="flex flex-col items-center flex-1 min-w-[100px]">
+                        <span className="text-[8px] font-black uppercase text-[var(--color-ellos)]/60 mb-2 truncate max-w-[80px]">{teams.ellos.name}</span>
                         <span className="text-5xl font-black tabular-nums">{teams.ellos.score}</span>
                     </div>
                 </div>

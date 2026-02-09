@@ -1,77 +1,37 @@
-import { useHistoryStore } from '../store/useHistoryStore';
-import type { MatchState } from '../types';
+import { HeadToHead } from './HeadToHead';
+import { HistoryList } from './HistoryList';
 
 interface HistoryScreenProps {
     onBack: () => void;
 }
 
 export const HistoryScreen = ({ onBack }: HistoryScreenProps) => {
-    const matches = useHistoryStore(state => state.matches);
-
-    // Grouping by Date/Location could be complex. 
-    // Wireframe: "Hoy - Nordelta", "Ayer - Casa Yoel".
-    // For MVP V2, let's just reverse chronological list with Location Header logic.
-
-    const sortedMatches = [...matches].sort((a, b) => b.startDate - a.startDate);
-
     return (
-        <div className="full-screen bg-[var(--color-bg)] flex flex-col p-4 overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-                <button onClick={onBack} className="text-[var(--color-text-muted)] font-bold">← VOLVER</button>
-                <h2 className="text-xl font-bold">HISTORIAL</h2>
-                <div className="w-8"></div>
+        <div className="full-screen bg-[var(--color-bg)] flex flex-col p-5 overflow-hidden">
+            <div className="flex items-center justify-between mb-8">
+                <button onClick={onBack} className="text-[var(--color-text-muted)] font-black text-xs uppercase tracking-[0.3em] bg-white/5 py-2 px-4 rounded-full active:scale-95 transition-all">
+                    ← VOLVER
+                </button>
+                <div className="bg-[var(--color-accent)]/10 text-[var(--color-accent)] px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border border-[var(--color-accent)]/20">
+                    Estadísticas
+                </div>
             </div>
 
-            <div className="flex flex-col gap-4">
-                {sortedMatches.map(match => (
-                    <MatchHistoryCard key={match.id} match={match} />
-                ))}
+            <div className="flex-1 overflow-y-auto pb-12 custom-scrollbar pr-1">
+                <div className="flex flex-col gap-10">
+                    <section>
+                        <HeadToHead />
+                    </section>
 
-                {matches.length === 0 && (
-                    <div className="text-center text-[var(--color-text-muted)] mt-12">
-                        No hay partidos jugados aún.
-                    </div>
-                )}
+                    <section className="flex flex-col gap-4">
+                        <div className="flex items-center gap-4 pl-2">
+                            <h3 className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">Historial Completo</h3>
+                            <div className="h-[1px] flex-1 bg-white/5"></div>
+                        </div>
+                        <HistoryList />
+                    </section>
+                </div>
             </div>
         </div>
     );
 };
-
-const MatchHistoryCard = ({ match }: { match: MatchState }) => {
-    const date = new Date(match.metadata?.customDate || match.startDate);
-    const dateStr = date.toLocaleDateString();
-    const location = match.metadata?.location || 'Sin ubicación';
-
-    // Wireframe Style: "Fernando+Julian 15 - 12 Yoel+Alex"
-    // Use Pair names if available, else standard names.
-    // Or just "Nosotros vs Ellos" if names generic.
-    // Assuming team names are set or players are known.
-    // In V1 we didn't force Team Names updates.
-    // In V2, we might want to display Pair Names or Team Names.
-
-    return (
-        <div className="bg-[var(--color-surface)] p-4 rounded border border-[var(--color-border)] shadow-sm">
-            <div className="flex justify-between text-[10px] text-[var(--color-text-muted)] font-bold uppercase mb-2">
-                <span>{dateStr} • {location}</span>
-            </div>
-
-            <div className="flex justify-between items-center">
-                <div className="flex-1 text-right">
-                    <div className={`font-bold ${match.winner === 'nosotros' ? 'text-[var(--color-nosotros)]' : 'text-[var(--color-text-primary)]'}`}>
-                        {match.teams.nosotros.name}
-                    </div>
-                </div>
-
-                <div className="px-4 font-black text-xl whitespace-nowrap">
-                    {match.teams.nosotros.score} <span className="text-[var(--color-text-muted)] text-sm px-1">—</span> {match.teams.ellos.score}
-                </div>
-
-                <div className="flex-1 text-left">
-                    <div className={`font-bold ${match.winner === 'ellos' ? 'text-[var(--color-ellos)]' : 'text-[var(--color-text-primary)]'}`}>
-                        {match.teams.ellos.name}
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-}

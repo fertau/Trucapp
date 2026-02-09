@@ -21,8 +21,11 @@ export const useAuthStore = create<AuthStore>()(
                 const user = useUserStore.getState().players.find(p => p.id === id);
                 if (!user) return false;
 
-                // Simple PIN check if user has one
-                if (user.pin && user.pin !== pinInput) {
+                // Simple PIN check (simulated hashing for now)
+                // In a real app, we'd hash pinInput and compare with user.pinHash
+                const isMatch = user.pinHash === pinInput || user.pinHash === `hash_${pinInput}`;
+
+                if (!isMatch) {
                     return false;
                 }
 
