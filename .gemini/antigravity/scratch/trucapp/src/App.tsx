@@ -30,8 +30,7 @@ type AppStep = 'AUTH' | 'HOME' | 'SETUP_PLAYERS_COUNT' | 'SETUP_PLAYERS_SELECT' 
   'MATCH' | 'HISTORY' | 'LEADERBOARD' | 'SOCIAL' |
   'PICAPICA_SETUP' | 'PICAPICA_HUB';
 
-// ... (imports remain same)
-import { SocialHub } from './components/SocialHub'; // Assuming I add this import
+import { SocialHub } from './components/SocialHub';
 
 function App() {
   const currentUserId = useAuthStore(state => state.currentUserId);
