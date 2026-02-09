@@ -28,14 +28,39 @@ import './index.css';
 // 5. Returns to PicaHub -> Home
 
 type AppStep = 'AUTH' | 'HOME' | 'SETUP_PLAYERS_COUNT' | 'SETUP_PLAYERS_SELECT' | 'SETUP_TEAMS' |
-  'MATCH' | 'HISTORY' | 'STATS' | 'LEADERBOARD' |
+  'MATCH' | 'HISTORY' | 'STATS' | 'LEADERBOARD' | 'SOCIAL' |
   'PICAPICA_SETUP' | 'PICAPICA_HUB';
+
+// ... (imports remain same)
+import { SocialHub } from './components/SocialHub'; // Assuming I add this import
 
 function App() {
   const currentUserId = useAuthStore(state => state.currentUserId);
   const logout = useAuthStore(state => state.logout);
 
-  const [step, setStep] = useState<AppStep>('HOME');
+  const [step, setStep] = useState<AppStep>(() => {
+    const savedStep = localStorage.getItem('trucapp-app-step');
+    if (savedStep === 'MATCH' && !useMatchStore.getState().id) return 'HOME';
+    return (savedStep as AppStep) || 'HOME';
+  });
+  // ... 
+  {
+    step === 'HOME' && <HomeScreen
+      onNewMatch={() => setStep('SETUP_PLAYERS_COUNT')}
+      onHistory={() => setStep('HISTORY')}
+      onStats={() => setStep('STATS')}
+      onLeaderboard={() => setStep('LEADERBOARD')}
+      onSocial={() => setStep('SOCIAL')}
+      onLogout={logout}
+    />
+  }
+
+  { step === 'SOCIAL' && <SocialHub onBack={() => setStep('HOME')} /> }
+
+  useEffect(() => {
+    localStorage.setItem('trucapp-app-step', step);
+  }, [step]);
+
   const [showSplash, setShowSplash] = useState(true); // Initial splash state
 
   const [playerCount, setPlayerCount] = useState<number>(2);
@@ -94,15 +119,21 @@ function App() {
       setStep('PICAPICA_SETUP');
     } else {
       // Standard Match
+      // Important: Reset match state FIRST, then set players/teams
       resetMatch(playerCount === 2 ? '1v1' : '2v2');
 
       // Set Custom Target Score if provided
       if (targetScore) {
-        setTargetScore(targetScore);
+        useMatchStore.getState().setTargetScore(targetScore);
       }
 
-      const nosotrosName = metadata?.teamNames?.nosotros || 'Nosotros';
-      const ellosName = metadata?.teamNames?.ellos || 'Ellos';
+      const generateTeamName = (players: Player[]) => {
+        if (players.length === 0) return 'Equipo';
+        return players.map(p => p.name).join(' / ');
+      };
+
+      const nosotrosName = metadata?.teamNames?.nosotros || generateTeamName(teams.nosotros);
+      const ellosName = metadata?.teamNames?.ellos || generateTeamName(teams.ellos);
 
       useMatchStore.getState().setTeamName('nosotros', nosotrosName);
       useMatchStore.getState().setTeamName('ellos', ellosName);
@@ -290,6 +321,7 @@ function App() {
       onHistory={() => setStep('HISTORY')}
       onStats={() => setStep('STATS')}
       onLeaderboard={() => setStep('LEADERBOARD')}
+      onSocial={() => setStep('SOCIAL')}
       onLogout={logout}
     />
   );

@@ -10,14 +10,17 @@ interface UserStore {
     fetchPlayers: () => Promise<void>;
     addPlayer: (name: string, pin: string) => Promise<Player>;
     removePlayer: (id: string) => Promise<void>;
-    updatePlayerStats: (id: string, won: boolean) => void;
+    addFriend: (currentUserId: string, friendId: string) => Promise<void>;
+    removeFriend: (currentUserId: string, friendId: string) => Promise<void>;
+    updateVisibility: (playerId: string, visibility: 'PUBLIC' | 'PRIVATE') => Promise<void>;
+    updateNickname: (playerId: string, nickname: string) => Promise<void>;
     isUsernameUnique: (name: string) => boolean;
     clearAllUsers: () => Promise<void>;
 }
 
 export const useUserStore = create<UserStore>()(
     persist(
-        (set) => ({
+        (set, get) => ({
             players: [],
             isLoading: false,
 
@@ -38,14 +41,24 @@ export const useUserStore = create<UserStore>()(
 
             addPlayer: async (name, pin) => {
                 const id = crypto.randomUUID();
-                const newPlayer: Player = { id, name, pin };
+                const newPlayer: Player = {
+                    id,
+                    name,
+                    pin,
+                    visibility: 'PUBLIC',
+                    friends: []
+                };
 
                 // Optimistic local update
                 set((state) => ({ players: [...state.players, newPlayer] }));
 
                 try {
-                    // We use the generated UUID as Firestore doc ID for consistency
-                    await setDoc(doc(db, 'players', id), { name, pin });
+                    await setDoc(doc(db, 'players', id), {
+                        name,
+                        pin,
+                        visibility: 'PUBLIC',
+                        friends: []
+                    });
                 } catch (err) {
                     console.error("Error saving player to Firestore:", err);
                 }
@@ -61,8 +74,50 @@ export const useUserStore = create<UserStore>()(
                 }
             },
 
-            updatePlayerStats: (id, won) => {
-                console.log('Update stats for:', id, won);
+            addFriend: async (currentUserId, friendId) => {
+                set((state) => ({
+                    players: state.players.map(p => {
+                        if (p.id === currentUserId && !p.friends.includes(friendId)) {
+                            return { ...p, friends: [...p.friends, friendId] };
+                        }
+                        return p;
+                    })
+                }));
+
+                const user = get().players.find(p => p.id === currentUserId);
+                if (user) {
+                    await setDoc(doc(db, 'players', currentUserId), { friends: user.friends }, { merge: true });
+                }
+            },
+
+            removeFriend: async (currentUserId, friendId) => {
+                set((state) => ({
+                    players: state.players.map(p => {
+                        if (p.id === currentUserId) {
+                            return { ...p, friends: p.friends.filter(fId => fId !== friendId) };
+                        }
+                        return p;
+                    })
+                }));
+
+                const user = get().players.find(p => p.id === currentUserId);
+                if (user) {
+                    await setDoc(doc(db, 'players', currentUserId), { friends: user.friends }, { merge: true });
+                }
+            },
+
+            updateVisibility: async (id, visibility) => {
+                set((state) => ({
+                    players: state.players.map(p => p.id === id ? { ...p, visibility } : p)
+                }));
+                await setDoc(doc(db, 'players', id), { visibility }, { merge: true });
+            },
+
+            updateNickname: async (id, nickname) => {
+                set((state) => ({
+                    players: state.players.map(p => p.id === id ? { ...p, nickname } : p)
+                }));
+                await setDoc(doc(db, 'players', id), { nickname }, { merge: true });
             },
 
             isUsernameUnique: (name: string): boolean => {

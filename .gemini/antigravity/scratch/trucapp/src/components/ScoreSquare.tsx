@@ -10,8 +10,8 @@ export const ScoreSquare = ({ points }: ScoreSquareProps) => {
     const strokeWidth = 3;
 
     // Dimensions
-    const size = 32;
-    const padding = 4;
+    const size = 48;
+    const padding = 6;
 
     // Points:
     // 1: Top

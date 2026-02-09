@@ -98,45 +98,79 @@ const ManualScoreModal = ({ nosotros, ellos, onClose, onConfirm }: {
 }) => {
     const [scoreNos, setScoreNos] = useState(nosotros.score);
     const [scoreEll, setScoreEll] = useState(ellos.score);
+    const [location, setLocation] = useState(useMatchStore.getState().metadata?.location || '');
+    const [date, setDate] = useState(() => {
+        const d = useMatchStore.getState().metadata?.date || Date.now();
+        return new Date(d).toISOString().split('T')[0];
+    });
+
+    const handleConfirm = () => {
+        const selectedDate = new Date(date).getTime();
+        useMatchStore.getState().setMetadata(location, selectedDate);
+        onConfirm(scoreNos, scoreEll);
+    };
 
     return (
-        <div className="fixed inset-0 z-[100] bg-black/80 flex flex-col items-center justify-center p-6 backdrop-blur-sm">
-            <div className="bg-[var(--color-surface)] border border-[var(--color-border)] p-8 rounded-3xl w-full max-w-sm shadow-2xl animate-in zoom-in duration-300">
+        <div className="fixed inset-0 z-[100] bg-black/80 flex flex-col items-center justify-center p-6 backdrop-blur-sm overflow-y-auto">
+            <div className="bg-[var(--color-surface)] border border-[var(--color-border)] p-6 rounded-3xl w-full max-w-sm shadow-2xl animate-in zoom-in duration-300 my-8">
                 <h2 className="text-xl font-black mb-1 uppercase tracking-tighter">RESULTADO FINAL</h2>
-                <p className="text-xs font-bold text-[var(--color-text-muted)] mb-8 uppercase tracking-widest">Ingreso manual rápido</p>
+                <p className="text-xs font-bold text-[var(--color-text-muted)] mb-6 uppercase tracking-widest">Ingreso manual detallado</p>
 
-                <div className="flex flex-col gap-6 mb-10">
-                    <div className="flex flex-col gap-2">
-                        <label className="text-[10px] font-black uppercase text-[var(--color-nosotros)] tracking-[0.2em]">{nosotros.name}</label>
+                <div className="flex flex-col gap-4 mb-8">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-1">
+                            <label className="text-[10px] font-black uppercase text-[var(--color-nosotros)] tracking-widest">{nosotros.name}</label>
+                            <input
+                                type="number"
+                                className="bg-[var(--color-bg)] border border-[var(--color-border)] p-3 rounded-xl text-2xl font-black w-full text-center tabular-nums focus:border-[var(--color-nosotros)] outline-none"
+                                value={scoreNos}
+                                onChange={(e) => setScoreNos(Number(e.target.value))}
+                            />
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                            <label className="text-[10px] font-black uppercase text-[var(--color-ellos)] tracking-widest">{ellos.name}</label>
+                            <input
+                                type="number"
+                                className="bg-[var(--color-bg)] border border-[var(--color-border)] p-3 rounded-xl text-2xl font-black w-full text-center tabular-nums focus:border-[var(--color-ellos)] outline-none"
+                                value={scoreEll}
+                                onChange={(e) => setScoreEll(Number(e.target.value))}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">Ubicación (Sede)</label>
                         <input
-                            type="number"
-                            className="bg-[var(--color-bg)] border border-[var(--color-border)] p-5 rounded-2xl text-3xl font-black w-full text-center tabular-nums focus:border-[var(--color-nosotros)] outline-none"
-                            value={scoreNos}
-                            onChange={(e) => setScoreNos(Number(e.target.value))}
+                            type="text"
+                            placeholder="Ej: Club Social"
+                            className="bg-[var(--color-bg)] border border-[var(--color-border)] p-3 rounded-xl text-sm font-bold w-full focus:border-[var(--color-accent)] outline-none"
+                            value={location}
+                            onChange={(e) => setLocation(e.target.value)}
                         />
                     </div>
 
-                    <div className="flex flex-col gap-2">
-                        <label className="text-[10px] font-black uppercase text-[var(--color-ellos)] tracking-[0.2em]">{ellos.name}</label>
+                    <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">Fecha</label>
                         <input
-                            type="number"
-                            className="bg-[var(--color-bg)] border border-[var(--color-border)] p-5 rounded-2xl text-3xl font-black w-full text-center tabular-nums focus:border-[var(--color-ellos)] outline-none"
-                            value={scoreEll}
-                            onChange={(e) => setScoreEll(Number(e.target.value))}
+                            type="date"
+                            className="bg-[var(--color-bg)] border border-[var(--color-border)] p-3 rounded-xl text-sm font-bold w-full focus:border-[var(--color-accent)] outline-none"
+                            value={date}
+                            onChange={(e) => setDate(e.target.value)}
                         />
                     </div>
                 </div>
 
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2">
                     <button
-                        onClick={() => onConfirm(scoreNos, scoreEll)}
-                        className="w-full bg-[var(--color-accent)] text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-green-900/20 active:scale-95 transition-all"
+                        onClick={handleConfirm}
+                        className="w-full bg-[var(--color-accent)] text-white py-4 rounded-xl font-black text-lg shadow-xl shadow-green-900/20 active:scale-95 transition-all"
                     >
                         GUARDAR Y FINALIZAR
                     </button>
                     <button
                         onClick={onClose}
-                        className="w-full text-[var(--color-text-muted)] py-3 font-bold uppercase text-xs tracking-widest"
+                        className="w-full text-[var(--color-text-muted)] py-2 font-bold uppercase text-[10px] tracking-widest"
                     >
                         VOLVER
                     </button>

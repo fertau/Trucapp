@@ -20,7 +20,7 @@ export const TeamConfiguration = ({ players, onStartMatch }: TeamConfigurationPr
     const [targetScore, setTargetScore] = useState<number>(30);
 
     const [location, setLocation] = useState('');
-    const [customDate, setCustomDate] = useState<string>(new Date().toISOString().slice(0, 16));
+    const [customDate, setCustomDate] = useState<string>(new Date().toISOString().slice(0, 10));
 
     const { getOrCreatePair, updatePairName } = usePairStore();
     const [nosotrosPairName, setNosotrosPairName] = useState('');
@@ -316,9 +316,9 @@ export const TeamConfiguration = ({ players, onStartMatch }: TeamConfigurationPr
                         />
                     </div>
                     <div className="flex flex-col gap-1.5">
-                        <label className="text-[9px] font-black uppercase text-[var(--color-text-muted)] ml-2">Fecha y Hora</label>
+                        <label className="text-[9px] font-black uppercase text-[var(--color-text-muted)] ml-2">Fecha (Opcional)</label>
                         <input
-                            type="datetime-local"
+                            type="date"
                             className="bg-[var(--color-surface)] border border-[var(--color-border)] p-4 rounded-2xl w-full font-bold text-sm outline-none focus:border-[var(--color-accent)]"
                             value={customDate}
                             onChange={(e) => setCustomDate(e.target.value)}
@@ -331,23 +331,33 @@ export const TeamConfiguration = ({ players, onStartMatch }: TeamConfigurationPr
                 className="w-full bg-[var(--color-accent)] text-white py-5 rounded-3xl font-black text-xl disabled:opacity-30 mt-auto shadow-2xl shadow-green-900/40 active:scale-95 transition-all"
                 disabled={!isValid}
                 onClick={() => {
-                    const dateTs = new Date(customDate).getTime();
-                    let pIds: { nosotros?: string, ellos?: string } = {};
-                    if (is2v2) {
-                        const pN = getOrCreatePair([nosotros[0].id, nosotros[1].id] as [string, string]);
-                        const pE = getOrCreatePair([ellos[0].id, ellos[1].id] as [string, string]);
-                        pIds = { nosotros: pN.id, ellos: pE.id };
+                    try {
+                        let dateTs = Date.now();
+                        if (customDate) {
+                            const parsed = new Date(customDate + 'T00:00:00').getTime();
+                            if (!isNaN(parsed)) dateTs = parsed;
+                        }
+
+                        let pIds: { nosotros?: string, ellos?: string } = {};
+                        if (is2v2) {
+                            const pN = getOrCreatePair([nosotros[0].id, nosotros[1].id] as [string, string]);
+                            const pE = getOrCreatePair([ellos[0].id, ellos[1].id] as [string, string]);
+                            pIds = { nosotros: pN.id, ellos: pE.id };
+                        }
+                        onStartMatch(
+                            { nosotros, ellos },
+                            {
+                                location: location || 'Sin ubicación',
+                                date: dateTs,
+                                teamNames: { nosotros: nosotrosTeamName, ellos: ellosTeamName }
+                            },
+                            pIds,
+                            targetScore
+                        );
+                    } catch (e) {
+                        alert("Error al iniciar partido: " + JSON.stringify(e));
+                        console.error(e);
                     }
-                    onStartMatch(
-                        { nosotros, ellos },
-                        {
-                            location,
-                            date: dateTs,
-                            teamNames: { nosotros: nosotrosTeamName, ellos: ellosTeamName }
-                        },
-                        pIds,
-                        targetScore
-                    );
                 }}
             >
                 COMENZAR PARTIDO

@@ -5,8 +5,11 @@ export type PointType = 'envido' | 'real_envido' | 'falta_envido' | 'truco' | 'r
 export interface Player {
     id: string;
     name: string;
+    nickname?: string; // Short name for display
     avatar?: string;
     pin?: string;
+    visibility: 'PUBLIC' | 'PRIVATE';
+    friends: string[]; // List of friend player IDs
     wins?: number;
     matchesPlayed?: number;
 }
@@ -38,9 +41,9 @@ export interface Pair {
 }
 
 export interface MatchMetadata {
-    location?: string;
-    date?: number;
-    customDate?: number; // If user edits the date
+    location?: string | null;
+    date?: number | null;
+    customDate?: number | null; // If user edits the date
 }
 
 export interface MatchState {
@@ -59,11 +62,11 @@ export interface MatchState {
 
     // V2 Pairs
     pairs?: {
-        nosotros?: string; // PairId
-        ellos?: string;    // PairId
-    };
+        nosotros?: string | null; // PairId
+        ellos?: string | null;    // PairId
+    } | null;
 
     history: GameAction[];
     isFinished: boolean;
-    winner?: TeamId;
+    winner?: TeamId | null;
 }

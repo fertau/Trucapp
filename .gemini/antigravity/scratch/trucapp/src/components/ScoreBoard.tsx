@@ -37,7 +37,7 @@ const ShortcutButton = ({
             className={`
                 px-1 py-1.5 rounded flex flex-col items-center justify-center gap-0.5
                 border border-[var(--color-border)] active:scale-95 transition-all
-                min-h-[56px] relative overflow-hidden group
+                min-h-[64px] relative overflow-hidden group
                 ${teamId === 'nosotros' ? 'bg-[var(--color-nosotros)]/10 text-[var(--color-nosotros)] border-[var(--color-nosotros)]/30 active:bg-[var(--color-nosotros)]/20 shadow-[0_0_15px_rgba(74,222,128,0.1)]' : 'bg-[var(--color-ellos)]/10 text-[var(--color-ellos)] border-[var(--color-ellos)]/30 active:bg-[var(--color-ellos)]/20 shadow-[0_0_15px_rgba(251,191,36,0.1)]'}
             `}
             onClick={(e) => {
@@ -45,8 +45,8 @@ const ShortcutButton = ({
                 onAction();
             }}
         >
-            <div className="text-[8px] font-black uppercase tracking-tighter leading-none text-center group-active:scale-90 transition-transform">{label}</div>
-            <div className="text-[10px] font-black opacity-60 leading-none">
+            <div className="text-[10px] font-black uppercase tracking-tighter leading-none text-center group-active:scale-90 transition-transform">{label}</div>
+            <div className="text-[12px] font-black opacity-60 leading-none">
                 {typeof points === 'number' ? `+${points}` : points}
             </div>
             {/* Visual feedback for interaction */}
@@ -81,8 +81,8 @@ export const ScoreBoard = () => {
     }
 
     // We need separate hook instances for each button
-    const longPressNosotros = useLongPress(() => handleLongPress('nosotros'), 600);
-    const longPressEllos = useLongPress(() => handleLongPress('ellos'), 600);
+    const longPressNosotros = useLongPress(() => handleLongPress('nosotros'), 800);
+    const longPressEllos = useLongPress(() => handleLongPress('ellos'), 800);
 
     // Handle click - only add point if long-press wasn't triggered
     const handleColumnClick = (teamId: TeamId) => {
@@ -123,12 +123,16 @@ export const ScoreBoard = () => {
 
                 {/* Headers */}
                 <div className="flex w-full mb-4">
-                    <div className="flex-1 text-center">
-                        <h2 className="text-sm font-black uppercase tracking-[0.2em] text-[var(--color-nosotros)]">NOSOTROS</h2>
+                    <div className="flex-1 text-center px-2">
+                        <h2 className="text-sm font-black uppercase tracking-[0.1em] text-[var(--color-nosotros)] truncate">
+                            {teams.nosotros.name}
+                        </h2>
                     </div>
                     <div className="w-[1px]"></div> {/* Spacer for grid alignment */}
-                    <div className="flex-1 text-center">
-                        <h2 className="text-sm font-black uppercase tracking-[0.2em] text-[var(--color-ellos)]">ELLOS</h2>
+                    <div className="flex-1 text-center px-2">
+                        <h2 className="text-sm font-black uppercase tracking-[0.1em] text-[var(--color-ellos)] truncate">
+                            {teams.ellos.name}
+                        </h2>
                     </div>
                 </div>
 

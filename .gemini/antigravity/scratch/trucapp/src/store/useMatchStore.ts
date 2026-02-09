@@ -36,6 +36,20 @@ const INITIAL_STATE: Omit<MatchState, 'id' | 'startDate'> = {
     isFinished: false,
 };
 
+// Helper to extract only data from the store for persistence
+const getMatchData = (state: MatchStore) => ({
+    id: state.id,
+    startDate: state.startDate,
+    mode: state.mode,
+    targetScore: state.targetScore,
+    teams: state.teams,
+    history: state.history,
+    isFinished: state.isFinished,
+    winner: state.winner ?? null,
+    metadata: state.metadata ?? null,
+    pairs: state.pairs ?? null
+});
+
 export const useMatchStore = create<MatchStore>()(
     persist(
         (set, get) => ({
@@ -55,17 +69,44 @@ export const useMatchStore = create<MatchStore>()(
                 const unsub = onSnapshot(doc(db, 'matches', matchId), (doc) => {
                     if (doc.exists()) {
                         const data = doc.data() as MatchState;
-                        // Basic validation to avoid overwriting with empty data if something is wrong
-                        if (data.teams && data.teams.nosotros) {
+                        const currentState = get();
+
+                        // Basic validation
+                        if (!data.teams || !data.teams.nosotros) return;
+
+                        // ONLY update if:
+                        // 1. Cloud history is longer (more actions occurred)
+                        // 2. Or if we don't have this match loaded locally yet (id mismatch)
+                        // 3. Or if cloud history is the same length but content might differ (e.g. sync repair)
+                        //    but we prioritize local history length to avoid "jumping back"
+
+                        const isNewer = (data.history?.length || 0) > (currentState.history?.length || 0);
+                        const isDifferentMatch = currentState.id !== matchId;
+
+                        if (isNewer || isDifferentMatch) {
+                            console.log('Syncing from cloud (data is newer or different match)');
                             set({
                                 ...data,
                                 isCloudSynced: true,
-                                // Preserve local non-persisted state if needed, but here we want full sync
                             });
+                        } else {
+                            // If history is same length, we could still update if there are specific changes (like names)
+                            // But for scores, history length is the primary driver.
+                            // Let's at least update metadata/names if they changed?
+                            // Actually, simpler is better for now: only overwrite if cloud is ahead.
+                            if (JSON.stringify(data.teams.nosotros.name) !== JSON.stringify(currentState.teams.nosotros.name) ||
+                                JSON.stringify(data.teams.ellos.name) !== JSON.stringify(currentState.teams.ellos.name)) {
+                                set({
+                                    teams: data.teams,
+                                    isCloudSynced: true
+                                });
+                            }
                         }
                     } else {
                         console.log('Match document does not exist (yet)');
                     }
+                }, (error) => {
+                    console.error("onSnapshot error:", error);
                 });
 
                 set({ unsubscribe: unsub, id: matchId, isCloudSynced: true });
@@ -106,7 +147,7 @@ export const useMatchStore = create<MatchStore>()(
                         teams: newTeams,
                         history: newHistory,
                         isFinished: isWin,
-                        winner: isWin ? teamId : undefined
+                        winner: isWin ? teamId : null
                     };
 
                     // Cloud Write
@@ -117,10 +158,10 @@ export const useMatchStore = create<MatchStore>()(
                         // For now we assume listeners are set up explicitly, 
                         // but let's auto-create if we are in "Cloud Mode" intended.
                         // Actually, let's just write if we have an ID.
+                        const matchData = getMatchData(state);
                         setDoc(doc(db, 'matches', state.id), {
-                            ...state,
+                            ...matchData,
                             ...newState, // Apply updates
-                            id: state.id // Ensure ID is present
                         }, { merge: true }).catch(err => console.error("Cloud init failed", err));
                     }
 
@@ -147,7 +188,8 @@ export const useMatchStore = create<MatchStore>()(
                     if (state.id) {
                         updateDoc(doc(db, 'matches', state.id), newState).catch(() => {
                             // If doc doesn't exist, create it (optimistic)
-                            setDoc(doc(db, 'matches', state.id), { ...state, ...newState }, { merge: true });
+                            const matchData = getMatchData(state);
+                            setDoc(doc(db, 'matches', state.id), { ...matchData, ...newState }, { merge: true });
                         });
                     }
 
@@ -176,7 +218,7 @@ export const useMatchStore = create<MatchStore>()(
                     history: newHistory,
                     teams: newTeams,
                     isFinished: false,
-                    winner: undefined
+                    winner: null
                 };
 
                 // Cloud Write
@@ -199,6 +241,8 @@ export const useMatchStore = create<MatchStore>()(
                     startDate: Date.now(),
                     ...INITIAL_STATE,
                     mode,
+                    winner: null, // Ensure reset
+                    isFinished: false,
                     isCloudSynced: false // Start local until shared/synced
                 });
             },
@@ -211,7 +255,8 @@ export const useMatchStore = create<MatchStore>()(
                 const newState = { teams: newTeams };
 
                 if (state.id) {
-                    setDoc(doc(db, 'matches', state.id), { ...state, ...newState }, { merge: true });
+                    const matchData = getMatchData(state);
+                    setDoc(doc(db, 'matches', state.id), { ...matchData, ...newState }, { merge: true });
                 }
 
                 return newState;

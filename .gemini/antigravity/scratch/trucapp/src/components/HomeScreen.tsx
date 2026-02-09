@@ -7,10 +7,11 @@ interface HomeScreenProps {
     onHistory: () => void;
     onStats: () => void;
     onLeaderboard: () => void;
+    onSocial: () => void;
     onLogout: () => void;
 }
 
-export const HomeScreen = ({ onNewMatch, onHistory, onStats, onLeaderboard, onLogout }: HomeScreenProps) => {
+export const HomeScreen = ({ onNewMatch, onHistory, onStats, onLeaderboard, onSocial, onLogout }: HomeScreenProps) => {
     const currentUserId = useAuthStore(state => state.currentUserId);
     const players = useUserStore(state => state.players);
     const matches = useHistoryStore(state => state.matches);
@@ -54,12 +55,20 @@ export const HomeScreen = ({ onNewMatch, onHistory, onStats, onLeaderboard, onLo
                     </button>
                 </div>
 
-                <button
-                    onClick={onLeaderboard}
-                    className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] py-4 rounded-lg font-bold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
-                >
-                    🏆 RANKING GLOBAL
-                </button>
+                <div className="grid grid-cols-2 gap-4">
+                    <button
+                        onClick={onLeaderboard}
+                        className="bg-[var(--color-surface)] border border-[var(--color-border)] py-4 rounded-lg font-bold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
+                    >
+                        🏆 RANKING
+                    </button>
+                    <button
+                        onClick={onSocial}
+                        className="bg-[var(--color-surface)] border border-[var(--color-border)] py-4 rounded-lg font-bold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
+                    >
+                        👥 SOCIAL
+                    </button>
+                </div>
             </div>
 
             <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-4 tracking-wider border-b border-[var(--color-border)] pb-2">
