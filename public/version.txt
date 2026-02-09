@@ -1,1 +1,1 @@
-Version: HOOK-FIX-V1
+Version: 1.0.0-final

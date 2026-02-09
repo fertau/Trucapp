@@ -39,7 +39,6 @@ function App() {
 
   const [step, setStep] = useState<AppStep>(() => {
     const savedStep = localStorage.getItem('trucapp-app-step');
-    console.log('App: Initializing step from localStorage:', savedStep);
     if (savedStep === 'MATCH' && !useMatchStore.getState().id) return 'HOME';
     if (savedStep === 'STATS') return 'HOME'; // Migration: STATS is now part of HISTORY
     return (savedStep as AppStep) || 'HOME';
@@ -49,9 +48,6 @@ function App() {
   const [playerCount, setPlayerCount] = useState<number>(2);
   const [selectedPlayers, setSelectedPlayers] = useState<Player[]>([]);
   const [teamsConfig, setTeamsConfig] = useState<{ nosotros: Player[], ellos: Player[] } | null>(null);
-  const [activeSubMatchId, setActiveSubMatchId] = useState<string | null>(null);
-
-  console.log('App: Render state', { currentUserId, step, showSplash });
 
   // --- HOOKS (Must be at top level) ---
 
@@ -68,7 +64,6 @@ function App() {
     const params = new URLSearchParams(window.location.search);
     const sharedMatchId = params.get('matchId');
     if (sharedMatchId) {
-      console.log("Found Shared Match ID:", sharedMatchId);
       useMatchStore.getState().listenToMatch(sharedMatchId);
       setStep('MATCH');
     }
@@ -171,14 +166,11 @@ function App() {
   // --- RENDERERS ---
 
   if (showSplash) {
-    console.log('App: Rendering SplashScreen');
     return <SplashScreen onFinish={handleSplashFinish} />;
   }
 
-  console.log('App: Post-Splash render', { currentUserId, step });
 
   if (!currentUserId) {
-    console.log('App: Rendering AccountSelector');
     return <AccountSelector onLoginSuccess={() => setStep('HOME')} />;
   }
 
