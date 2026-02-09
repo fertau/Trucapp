@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Trucapp Icon Generator</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        #container {
+            text-align: center;
+        }
+
+        canvas {
+            border: 2px solid #333;
+            image-rendering: crisp-edges;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container">
+        <canvas id="icon" width="512" height="512"></canvas>
+    </div>
+    <script>
+        const canvas = document.getElementById('icon');
+        const ctx = canvas.getContext('2d');
+
+        // Background
+        ctx.fillStyle = '#0a0e1a';
+        ctx.fillRect(0, 0, 512, 512);
+
+        // Line settings
+        ctx.lineWidth = 40;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        // White square with hand-drawn imperfections
+        ctx.strokeStyle = '#ffffff';
+        ctx.beginPath();
+
+        // Top line (overshoots on both ends, slightly tilted)
+        ctx.moveTo(82, 102);
+        ctx.lineTo(430, 100);
+
+        // Right line (overshoots, slightly curved inward)
+        ctx.moveTo(410, 82);
+        ctx.lineTo(408, 430);
+
+        // Bottom line (overshoots, slight angle)
+        ctx.moveTo(430, 410);
+        ctx.lineTo(82, 408);
+
+        // Left line (overshoots, slight wobble)
+        ctx.moveTo(100, 430);
+        ctx.lineTo(104, 82);
+
+        ctx.stroke();
+
+        // Diagonal line (El Gancho) in neon green
+        ctx.strokeStyle = '#4ade80';
+        ctx.beginPath();
+        ctx.moveTo(100, 410);
+        ctx.lineTo(412, 100);
+        ctx.stroke();
+    </script>
+</body>
+
+</html>
