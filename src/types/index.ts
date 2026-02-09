@@ -8,6 +8,7 @@ export interface Player {
     nickname?: string; // Short name for display
     avatar?: string; // Emoji or Icon ID
     pinHash?: string; // Replaces plain text PIN
+    pin?: string; // Legacy PIN support
     visibility: 'PUBLIC' | 'PRIVATE';
     friends: string[]; // List of friend player IDs
     createdAt: number;

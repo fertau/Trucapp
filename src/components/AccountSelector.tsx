@@ -56,7 +56,8 @@ export const AccountSelector = ({ onLoginSuccess }: AccountSelectorProps) => {
         } else {
             // Find user to check if default PIN
             const user = players.find(p => p.id === selectedUser.id);
-            if (user && (user.pinHash === '0000' || user.pinHash === 'hash_0000')) {
+            const storedPin = user?.pinHash || user?.pin;
+            if (user && (storedPin === '0000' || storedPin === 'hash_0000')) {
                 triggerError('PIN incorrecto (Probá con 0000)');
             } else {
                 triggerError('PIN incorrecto');

@@ -23,7 +23,8 @@ export const useAuthStore = create<AuthStore>()(
 
                 // Simple PIN check (simulated hashing for now)
                 // In a real app, we'd hash pinInput and compare with user.pinHash
-                const isMatch = user.pinHash === pinInput || user.pinHash === `hash_${pinInput}`;
+                const storedPin = user.pinHash || user.pin;
+                const isMatch = storedPin === pinInput || storedPin === `hash_${pinInput}`;
 
                 if (!isMatch) {
                     return false;

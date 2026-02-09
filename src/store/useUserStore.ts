@@ -35,7 +35,13 @@ export const useUserStore = create<UserStore>()(
                     const querySnapshot = await getDocs(collection(db, 'players'));
                     const loadedPlayers: Player[] = [];
                     querySnapshot.forEach((d) => {
-                        loadedPlayers.push({ id: d.id, ...d.data() } as Player);
+                        const data = d.data();
+                        const p = { id: d.id, ...data } as Player;
+                        // Normalization: move legacy pin to pinHash if necessary
+                        if (p.pin && !p.pinHash) {
+                            p.pinHash = p.pin;
+                        }
+                        loadedPlayers.push(p);
                     });
                     set({ players: loadedPlayers, isLoading: false });
                 } catch (err) {
