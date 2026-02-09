@@ -8,6 +8,7 @@ const rootElement = document.getElementById('root');
 console.log('main.tsx: Root element found:', !!rootElement);
 
 if (rootElement) {
+  rootElement.innerHTML = '<div style="background:purple;color:white;padding:20px;position:fixed;top:0;left:0;z-index:9999">STUNT CONTENT: main.tsx is running</div>';
   createRoot(rootElement).render(
     <App />
   );

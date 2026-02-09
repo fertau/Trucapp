@@ -203,7 +203,13 @@ function App() {
   }, [currentUserId, step]);
 
   if (!currentUserId) {
-    return <AccountSelector onLoginSuccess={() => setStep('HOME')} />;
+    console.log('App: Rendering AccountSelector branch');
+    return (
+      <div id="debug-root-empty" style={{ background: 'red', color: 'white', padding: '20px', zIndex: 10000, position: 'fixed', bottom: 0, left: 0, width: '100%', fontSize: '20px', fontWeight: 'bold' }}>
+        RENDERED: NO USER BRANCH (AccountSelector)
+        <AccountSelector onLoginSuccess={() => setStep('HOME')} />
+      </div>
+    );
   }
 
   if (step === 'MATCH') {
