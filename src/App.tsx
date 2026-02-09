@@ -38,17 +38,17 @@ function App() {
 
   const [step, setStep] = useState<AppStep>(() => {
     const savedStep = localStorage.getItem('trucapp-app-step');
+    console.log('App: Initializing step from localStorage:', savedStep);
     if (savedStep === 'MATCH' && !useMatchStore.getState().id) return 'HOME';
     if (savedStep === 'STATS') return 'HOME'; // Migration: STATS is now part of HISTORY
     return (savedStep as AppStep) || 'HOME';
   });
-  // ... 
 
+  const [showSplash, setShowSplash] = useState(true); // Initial splash state
+  console.log('App: Render state', { currentUserId, step, showSplash });
   useEffect(() => {
     localStorage.setItem('trucapp-app-step', step);
   }, [step]);
-
-  const [showSplash, setShowSplash] = useState(true); // Initial splash state
 
   const [playerCount, setPlayerCount] = useState<number>(2);
   const [selectedPlayers, setSelectedPlayers] = useState<Player[]>([]);
@@ -189,8 +189,11 @@ function App() {
 
   // Splash Screen
   if (showSplash) {
+    console.log('App: Rendering SplashScreen');
     return <SplashScreen onFinish={handleSplashFinish} />;
   }
+
+  console.log('App: Post-Splash render', { currentUserId, step });
 
   // Auth Guard
   useEffect(() => {
