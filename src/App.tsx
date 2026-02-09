@@ -5,7 +5,7 @@ import { SplashScreen } from './components/SplashScreen';
 import { PlayerSelection } from './components/PlayerSelection';
 import { TeamConfiguration } from './components/TeamConfiguration';
 import { HistoryScreen } from './components/HistoryScreen';
-import { AccountSelector } from './components/AccountSelector';
+// import { AccountSelector } from './components/AccountSelector';
 import { HomeScreen } from './components/HomeScreen';
 import { PicaPicaSetup } from './components/PicaPicaSetup';
 import { PicaPicaHub } from './components/PicaPicaHub';
@@ -32,6 +32,12 @@ type AppStep = 'AUTH' | 'HOME' | 'SETUP_PLAYERS_COUNT' | 'SETUP_PLAYERS_SELECT' 
   'PICAPICA_SETUP' | 'PICAPICA_HUB';
 
 import { SocialHub } from './components/SocialHub';
+
+const DummyAccountSelector = () => (
+  <div style={{ background: 'green', color: 'white', padding: '50px', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <h1 style={{ fontSize: '40px' }}>DUMMY ACCOUNT SELECTOR: IF YOU SEE THIS, THE ISSUE IS IN THE REAL COMPONENT</h1>
+  </div>
+);
 
 function App() {
   const currentUserId = useAuthStore(state => state.currentUserId);
@@ -203,13 +209,8 @@ function App() {
   }, [currentUserId, step]);
 
   if (!currentUserId) {
-    console.log('App: Rendering AccountSelector branch');
-    return (
-      <div id="debug-root-empty" style={{ background: 'red', color: 'white', padding: '20px', zIndex: 10000, position: 'fixed', bottom: 0, left: 0, width: '100%', fontSize: '20px', fontWeight: 'bold' }}>
-        RENDERED: NO USER BRANCH (AccountSelector)
-        <AccountSelector onLoginSuccess={() => setStep('HOME')} />
-      </div>
-    );
+    console.log('App: Rendering DummyAccountSelector');
+    return <DummyAccountSelector />;
   }
 
   if (step === 'MATCH') {
