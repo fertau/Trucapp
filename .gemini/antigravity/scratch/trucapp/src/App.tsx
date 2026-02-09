@@ -42,16 +42,6 @@ function App() {
     return (savedStep as AppStep) || 'HOME';
   });
   // ... 
-  {
-    step === 'HOME' && <HomeScreen
-      onNewMatch={() => setStep('SETUP_PLAYERS_COUNT')}
-      onHistory={() => setStep('HISTORY')}
-      onLeaderboard={() => setStep('LEADERBOARD')}
-      onSocial={() => setStep('SOCIAL')}
-    />
-  }
-
-  { step === 'SOCIAL' && <SocialHub onBack={() => setStep('HOME')} /> }
 
   useEffect(() => {
     localStorage.setItem('trucapp-app-step', step);
@@ -202,6 +192,12 @@ function App() {
   }
 
   // Auth Guard
+  useEffect(() => {
+    if (!currentUserId && (step !== 'AUTH' && step !== 'HOME')) {
+      setStep('AUTH');
+    }
+  }, [currentUserId, step]);
+
   if (!currentUserId) {
     return <AccountSelector onLoginSuccess={() => setStep('HOME')} />;
   }
@@ -216,6 +212,10 @@ function App() {
 
   if (step === 'LEADERBOARD') {
     return <Leaderboard onBack={() => setStep('HOME')} />;
+  }
+
+  if (step === 'SOCIAL') {
+    return <SocialHub onBack={() => setStep('HOME')} />;
   }
 
   if (step === 'SETUP_TEAMS') {

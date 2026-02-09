@@ -29,8 +29,8 @@ const INITIAL_STATE: Omit<MatchState, 'id' | 'startDate'> = {
     mode: '2v2',
     targetScore: 30,
     teams: {
-        nosotros: { id: 'nosotros', name: 'Nosotros', players: [], score: 0 },
-        ellos: { id: 'ellos', name: 'Ellos', players: [], score: 0 },
+        nosotros: { id: 'nosotros', name: 'Equipo 1', players: [], score: 0 },
+        ellos: { id: 'ellos', name: 'Equipo 2', players: [], score: 0 },
     },
     history: [],
     isFinished: false,

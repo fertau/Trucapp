@@ -65,13 +65,13 @@ export const SocialHub = ({ onBack }: SocialHubProps) => {
         updatePlayer(currentUser.id, { avatar });
     };
 
-    const friendsList = players.filter(p => currentUser.friends.includes(p.id));
+    const friendsList = players.filter(p => (currentUser?.friends || []).includes(p.id));
 
     // Discovery: Public players who are not friends AND don't have a pending request
     const discoveryResults = players.filter(p =>
         p.id !== currentUserId &&
         p.visibility === 'PUBLIC' &&
-        !currentUser.friends.includes(p.id) &&
+        !(currentUser?.friends || []).includes(p.id) &&
         (p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.nickname?.toLowerCase().includes(searchQuery.toLowerCase()))
     ).slice(0, 10);
 
@@ -147,7 +147,7 @@ export const SocialHub = ({ onBack }: SocialHubProps) => {
                                 </button>
                                 <div className="flex flex-col items-center p-4 bg-white/5 rounded-3xl border border-white/5">
                                     <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Amigos</span>
-                                    <span className="text-xl font-black text-white">{currentUser.friends.length}</span>
+                                    <span className="text-xl font-black text-white">{currentUser.friends?.length || 0}</span>
                                 </div>
                             </div>
                         </div>
