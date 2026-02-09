@@ -13,6 +13,7 @@ type CreateStep = 'name' | 'pin';
 export const AccountSelector = ({ onLoginSuccess }: AccountSelectorProps) => {
     const { players, addPlayer } = useUserStore();
     const { rememberedIds, login, removeRememberedAccount } = useAuthStore();
+    console.log('AccountSelector: Render start', { playersCount: players?.length, rememberedCount: rememberedIds?.length });
 
     // Mode State
     const [mode, setMode] = useState<AuthMode>('initial');
@@ -110,6 +111,7 @@ export const AccountSelector = ({ onLoginSuccess }: AccountSelectorProps) => {
     };
 
     // --- RENDERERS ---
+    console.log('AccountSelector: Rendering mode', mode);
 
     if (mode === 'initial') {
         const rememberedUsers = players.filter(p => rememberedIds.includes(p.id));
