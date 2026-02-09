@@ -48,6 +48,7 @@ function App() {
   const [playerCount, setPlayerCount] = useState<number>(2);
   const [selectedPlayers, setSelectedPlayers] = useState<Player[]>([]);
   const [teamsConfig, setTeamsConfig] = useState<{ nosotros: Player[], ellos: Player[] } | null>(null);
+  const [activeSubMatchId, setActiveSubMatchId] = useState<string | null>(null);
 
   // --- HOOKS (Must be at top level) ---
 
