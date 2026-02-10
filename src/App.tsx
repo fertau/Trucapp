@@ -5,6 +5,7 @@ import { SplashScreen } from './components/SplashScreen';
 import { PlayerSelection } from './components/PlayerSelection';
 import { TeamConfiguration } from './components/TeamConfiguration';
 import { HistoryScreen } from './components/HistoryScreen';
+import { ProfileScreen } from './components/ProfileScreen';
 // import { AccountSelector } from './components/AccountSelector';
 import { HomeScreen } from './components/HomeScreen';
 import { PicaPicaSetup } from './components/PicaPicaSetup';
@@ -28,7 +29,7 @@ import './index.css';
 // 5. Returns to PicaHub -> Home
 
 type AppStep = 'AUTH' | 'HOME' | 'SETUP_PLAYERS_COUNT' | 'SETUP_PLAYERS_SELECT' | 'SETUP_TEAMS' |
-  'MATCH' | 'HISTORY' | 'LEADERBOARD' | 'SOCIAL' |
+  'MATCH' | 'HISTORY' | 'LEADERBOARD' | 'SOCIAL' | 'PROFILE' |
   'PICAPICA_SETUP' | 'PICAPICA_HUB';
 
 import { SocialHub } from './components/SocialHub';
@@ -191,6 +192,10 @@ function App() {
     return <SocialHub onBack={() => setStep('HOME')} />;
   }
 
+  if (step === 'PROFILE') {
+    return <ProfileScreen onBack={() => setStep('HOME')} />;
+  }
+
   if (step === 'SETUP_TEAMS') {
     return <TeamConfiguration players={selectedPlayers} onStartMatch={startMatch} />;
   }
@@ -286,6 +291,7 @@ function App() {
       onHistory={() => setStep('HISTORY')}
       onLeaderboard={() => setStep('LEADERBOARD')}
       onSocial={() => setStep('SOCIAL')}
+      onProfile={() => setStep('PROFILE')}
     />
   );
 }

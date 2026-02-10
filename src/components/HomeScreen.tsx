@@ -7,9 +7,10 @@ interface HomeScreenProps {
     onHistory: () => void;
     onLeaderboard: () => void;
     onSocial: () => void;
+    onProfile: () => void;
 }
 
-export const HomeScreen = ({ onNewMatch, onHistory, onLeaderboard, onSocial }: HomeScreenProps) => {
+export const HomeScreen = ({ onNewMatch, onHistory, onLeaderboard, onSocial, onProfile }: HomeScreenProps) => {
     const currentUserId = useAuthStore(state => state.currentUserId);
     const players = useUserStore(state => state.players);
     const matches = useHistoryStore(state => state.matches);
@@ -22,7 +23,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onLeaderboard, onSocial }: H
         <div className="full-screen bg-[var(--color-bg)] flex flex-col p-6">
             <div className="flex justify-between items-center mb-8">
                 <h1 className="text-2xl font-black tracking-tighter">TRUCAPP</h1>
-                <div className="flex items-center gap-2" onClick={onSocial}>
+                <div className="flex items-center gap-2" onClick={onProfile}>
                     <div className="w-8 h-8 rounded-full bg-[var(--color-surface)] flex items-center justify-center text-xs font-bold border border-[var(--color-border)] cursor-pointer active:scale-95 transition-all">
                         {user?.avatar || user?.name?.substring(0, 2).toUpperCase()}
                     </div>
