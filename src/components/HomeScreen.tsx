@@ -71,31 +71,50 @@ export const HomeScreen = ({ onNewMatch, onHistory, onLeaderboard, onSocial, onP
             <div className="flex flex-col gap-2">
                 {recentMatches.length === 0 && <p className="text-[var(--color-text-muted)]">No hay partidos recientes.</p>}
 
-                {recentMatches.map(m => (
-                    <div key={m.id} className="flex justify-between items-center bg-[var(--color-surface)] p-4 rounded-[1.5rem] border border-[var(--color-border)] shadow-sm">
-                        <div className="flex flex-col gap-1 flex-1 overflow-hidden">
-                            <div className="flex justify-between items-center pr-4">
-                                <span className={`text-xs font-bold truncate max-w-[120px] ${m.winner === 'nosotros' ? 'text-[var(--color-nosotros)]' : 'text-white/60'}`}>
-                                    {m.teams.nosotros.name}
-                                </span>
-                                <span className={`text-xs font-black ${m.winner === 'nosotros' ? 'text-[var(--color-nosotros)]' : 'text-white/40'}`}>
-                                    {m.teams.nosotros.score}
-                                </span>
+                {recentMatches.map(m => {
+                    const getPlayerNames = (playerIds: string[]) => {
+                        return playerIds.map(id => players.find(p => p.id === id)?.name || '?').join(', ');
+                    };
+
+                    return (
+                        <div key={m.id} className="flex justify-between items-start bg-[var(--color-surface)] p-4 rounded-[1.5rem] border border-[var(--color-border)] shadow-sm">
+                            <div className="flex flex-col gap-3 flex-1 overflow-hidden">
+                                {/* Nosotros Team */}
+                                <div className="flex justify-between items-start pr-4">
+                                    <div className="flex flex-col gap-0.5 flex-1">
+                                        <span className={`text-sm font-black uppercase truncate ${m.winner === 'nosotros' ? 'text-[var(--color-nosotros)]' : 'text-white/60'}`}>
+                                            {m.teams.nosotros.name}
+                                        </span>
+                                        <span className="text-[10px] font-medium text-white/40 truncate">
+                                            {getPlayerNames(m.teams.nosotros.players)}
+                                        </span>
+                                    </div>
+                                    <span className={`text-lg font-black ml-2 ${m.winner === 'nosotros' ? 'text-[var(--color-nosotros)]' : 'text-white/40'}`}>
+                                        {m.teams.nosotros.score}
+                                    </span>
+                                </div>
+
+                                {/* Ellos Team */}
+                                <div className="flex justify-between items-start pr-4">
+                                    <div className="flex flex-col gap-0.5 flex-1">
+                                        <span className={`text-sm font-black uppercase truncate ${m.winner === 'ellos' ? 'text-[var(--color-ellos)]' : 'text-white/60'}`}>
+                                            {m.teams.ellos.name}
+                                        </span>
+                                        <span className="text-[10px] font-medium text-white/40 truncate">
+                                            {getPlayerNames(m.teams.ellos.players)}
+                                        </span>
+                                    </div>
+                                    <span className={`text-lg font-black ml-2 ${m.winner === 'ellos' ? 'text-[var(--color-ellos)]' : 'text-white/40'}`}>
+                                        {m.teams.ellos.score}
+                                    </span>
+                                </div>
                             </div>
-                            <div className="flex justify-between items-center pr-4">
-                                <span className={`text-xs font-bold truncate max-w-[120px] ${m.winner === 'ellos' ? 'text-[var(--color-ellos)]' : 'text-white/60'}`}>
-                                    {m.teams.ellos.name}
-                                </span>
-                                <span className={`text-xs font-black ${m.winner === 'ellos' ? 'text-[var(--color-ellos)]' : 'text-white/40'}`}>
-                                    {m.teams.ellos.score}
-                                </span>
+                            <div className="text-[8px] font-black text-white/20 uppercase tracking-widest pl-2 border-l border-white/5">
+                                {new Date(m.startDate).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' })}
                             </div>
                         </div>
-                        <div className="text-[8px] font-black text-white/20 uppercase tracking-widest pl-2 border-l border-white/5">
-                            {new Date(m.startDate).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' })}
-                        </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );
