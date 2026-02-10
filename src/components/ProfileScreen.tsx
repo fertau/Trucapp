@@ -21,10 +21,15 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
 
     if (!currentUser) {
         return (
-            <div className="full-screen bg-[#1c1c1e] flex items-center justify-center p-8">
-                <div className="text-center">
-                    <p className="text-white text-xl font-black uppercase tracking-widest mb-4">No hay sesión activa</p>
-                    <button onClick={onBack} className="text-white/60 font-black text-sm uppercase tracking-widest bg-white/5 py-3 px-6 rounded-full active:scale-95 transition-all">
+            <div className="full-screen flex items-center justify-center p-8" style={{ backgroundColor: 'var(--color-bg)' }}>
+                <div style={{ textAlign: 'center' }}>
+                    <p style={{ color: '#ffffff', fontSize: '20px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '16px' }}>
+                        No hay sesión activa
+                    </p>
+                    <button
+                        onClick={onBack}
+                        style={{ color: 'rgba(255,255,255,0.6)', fontWeight: 900, fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.1em', background: 'rgba(255,255,255,0.05)', padding: '12px 24px', borderRadius: '9999px', border: 'none', cursor: 'pointer' }}
+                    >
                         ← Volver
                     </button>
                 </div>
@@ -44,7 +49,7 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
             setShowPinChange(false);
             setNewPin('');
             setPinError('');
-        } catch (e) {
+        } catch (_e) {
             setPinError('Error al cambiar PIN');
         }
     };
@@ -58,76 +63,160 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
         onBack();
     };
 
+    const handleClearAllData = async () => {
+        if (confirm('¿Estás seguro? Esto eliminará TODOS los usuarios y partidos. Esta acción no se puede deshacer.')) {
+            const { clearAllUsers } = useUserStore.getState();
+            const { clearAllMatches } = useHistoryStore.getState();
+            await clearAllUsers();
+            await clearAllMatches();
+            logout();
+            onBack();
+        }
+    };
+
     const avatars = ['⚽', '🃏', '🍺', '🍖', '🏆', '🧉', '🦁', '🦉', '🦊', '🐻'];
 
+    // Using inline styles to guarantee visibility (Tailwind was not generating arbitrary value classes)
+    const s = {
+        bg: 'var(--color-bg)',
+        surface: 'var(--color-surface)',
+        border: 'var(--color-border)',
+        accent: 'var(--color-accent)',
+        white: '#ffffff',
+        whiteFaint: 'rgba(255,255,255,0.2)',
+        whiteMuted: 'rgba(255,255,255,0.4)',
+        whiteSoft: 'rgba(255,255,255,0.6)',
+        whiteBg: 'rgba(255,255,255,0.05)',
+        whiteBgHover: 'rgba(255,255,255,0.1)',
+        green: 'var(--color-nosotros)',
+        gold: 'var(--color-ellos)',
+        red: '#ff453a',
+        redBg: 'rgba(255,69,58,0.1)',
+        redBorder: 'rgba(255,69,58,0.2)',
+    };
+
+    const cardStyle: React.CSSProperties = {
+        backgroundColor: s.surface,
+        borderRadius: '2.5rem',
+        padding: '24px',
+        border: `1px solid ${s.border}`,
+    };
+
+    const labelStyle: React.CSSProperties = {
+        fontSize: '10px',
+        fontWeight: 900,
+        textTransform: 'uppercase' as const,
+        letterSpacing: '0.3em',
+        color: s.whiteMuted,
+        marginBottom: '16px',
+    };
+
+    const btnStyle: React.CSSProperties = {
+        border: 'none',
+        cursor: 'pointer',
+        fontWeight: 900,
+        textTransform: 'uppercase' as const,
+        transition: 'all 0.2s',
+    };
+
     return (
-        <div className="full-screen bg-[#1c1c1e] flex flex-col p-5 overflow-hidden">
-            <div className="flex items-center justify-between mb-6">
-                <button onClick={onBack} className="text-white/60 font-black text-[10px] uppercase tracking-[0.3em] bg-white/5 py-2 px-4 rounded-full active:scale-95 transition-all">
+        <div className="full-screen" style={{ backgroundColor: s.bg, display: 'flex', flexDirection: 'column', padding: '20px', overflow: 'hidden' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+                <button
+                    onClick={onBack}
+                    style={{ ...btnStyle, color: s.whiteSoft, fontSize: '10px', letterSpacing: '0.3em', background: s.whiteBg, padding: '8px 16px', borderRadius: '9999px' }}
+                >
                     ← VOLVER
                 </button>
-                <div className="bg-[#4ade80]/10 text-[#4ade80] px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border border-[#4ade80]/20">
+                <div style={{ background: 'rgba(74,222,128,0.1)', color: s.accent, padding: '4px 12px', borderRadius: '9999px', fontSize: '8px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', border: '1px solid rgba(74,222,128,0.2)' }}>
                     Mi Perfil
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto pb-12 custom-scrollbar pr-1">
-                <div className="flex flex-col gap-6 animate-in slide-in-from-bottom-4 duration-300">
+            {/* Scrollable Content */}
+            <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '48px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
                     {/* Profile Card */}
-                    <div className="bg-[#2c2c2e] rounded-[2.5rem] p-8 border border-[#38383a] shadow-2xl relative overflow-hidden">
-                        <div className="flex flex-col items-center">
-                            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#4ade80] to-[#1d4ed8] flex items-center justify-center text-4xl font-black text-white shadow-2xl mb-4 border-4 border-white/5">
+                    <div style={{ ...cardStyle, padding: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <div style={{
+                                width: '96px', height: '96px', borderRadius: '50%',
+                                background: `linear-gradient(135deg, ${s.accent}, #1d4ed8)`,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: '36px', fontWeight: 900, color: s.white,
+                                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+                                marginBottom: '16px', border: '4px solid rgba(255,255,255,0.05)'
+                            }}>
                                 {currentUser.avatar || currentUser.name[0].toUpperCase()}
                             </div>
 
                             {editingNickname ? (
-                                <div className="flex flex-col items-center gap-2 w-full">
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '100%' }}>
                                     <input
                                         type="text"
-                                        className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-center font-black uppercase text-xl text-white outline-none focus:border-[#4ade80] w-full"
+                                        style={{
+                                            background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)',
+                                            borderRadius: '12px', padding: '8px 16px', textAlign: 'center',
+                                            fontWeight: 900, textTransform: 'uppercase', fontSize: '20px', color: s.white,
+                                            outline: 'none', width: '100%'
+                                        }}
                                         value={tempNickname}
                                         onChange={(e) => setTempNickname(e.target.value)}
                                         autoFocus
                                     />
-                                    <div className="flex gap-2">
-                                        <button onClick={handleUpdateNickname} className="text-[10px] font-black uppercase bg-[#4ade80] text-white px-4 py-1.5 rounded-full">Guardar</button>
-                                        <button onClick={() => setEditingNickname(false)} className="text-[10px] font-black uppercase bg-white/10 text-white/40 px-4 py-1.5 rounded-full">Cancelar</button>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <button onClick={handleUpdateNickname} style={{ ...btnStyle, fontSize: '10px', background: s.accent, color: s.white, padding: '6px 16px', borderRadius: '9999px' }}>Guardar</button>
+                                        <button onClick={() => setEditingNickname(false)} style={{ ...btnStyle, fontSize: '10px', background: s.whiteBgHover, color: s.whiteMuted, padding: '6px 16px', borderRadius: '9999px' }}>Cancelar</button>
                                     </div>
                                 </div>
                             ) : (
-                                <div className="flex flex-col items-center" onClick={() => { setTempNickname(currentUser.nickname || ''); setEditingNickname(true); }}>
-                                    <h2 className="text-2xl font-black uppercase tracking-tighter text-white">{currentUser.nickname || currentUser.name}</h2>
-                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] mt-1">{currentUser.name} • Toca para editar</span>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }} onClick={() => { setTempNickname(currentUser.nickname || ''); setEditingNickname(true); }}>
+                                    <h2 style={{ fontSize: '24px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.05em', color: s.white, margin: 0 }}>
+                                        {currentUser.nickname || currentUser.name}
+                                    </h2>
+                                    <span style={{ fontSize: '10px', fontWeight: 900, color: s.whiteFaint, textTransform: 'uppercase', letterSpacing: '0.3em', marginTop: '4px' }}>
+                                        {currentUser.name} • Toca para editar
+                                    </span>
                                 </div>
                             )}
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3 mt-8">
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '32px' }}>
                             <button
                                 onClick={() => updateVisibility(currentUser.id, currentUser.visibility === 'PUBLIC' ? 'PRIVATE' : 'PUBLIC')}
-                                className="flex flex-col items-center p-4 bg-white/5 rounded-3xl border border-white/5 group active:scale-95 transition-all"
+                                style={{ ...btnStyle, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px', background: s.whiteBg, borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.05)' }}
                             >
-                                <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1 group-hover:text-white/40">Visibilidad</span>
-                                <span className={`text-[10px] font-black uppercase ${currentUser.visibility === 'PUBLIC' ? 'text-[#4ade80]' : 'text-[#fbbf24]'}`}>
+                                <span style={{ fontSize: '8px', color: s.whiteFaint, letterSpacing: '0.1em', marginBottom: '4px' }}>VISIBILIDAD</span>
+                                <span style={{ fontSize: '10px', color: currentUser.visibility === 'PUBLIC' ? s.green : s.gold }}>
                                     {currentUser.visibility}
                                 </span>
                             </button>
-                            <div className="flex flex-col items-center p-4 bg-white/5 rounded-3xl border border-white/5">
-                                <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Amigos</span>
-                                <span className="text-xl font-black text-white">{currentUser.friends?.length || 0}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px', background: s.whiteBg, borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                <span style={{ fontSize: '8px', fontWeight: 900, color: s.whiteFaint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '4px' }}>AMIGOS</span>
+                                <span style={{ fontSize: '20px', fontWeight: 900, color: s.white }}>{currentUser.friends?.length || 0}</span>
                             </div>
                         </div>
                     </div>
 
                     {/* Avatar Selection */}
-                    <div className="bg-[#2c2c2e] rounded-[2.5rem] p-6 border border-[#38383a]">
-                        <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em] mb-4">Seleccionar Avatar</h3>
-                        <div className="grid grid-cols-5 gap-3">
+                    <div style={cardStyle}>
+                        <h3 style={labelStyle}>Seleccionar Avatar</h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px' }}>
                             {avatars.map(av => (
                                 <button
                                     key={av}
                                     onClick={() => handleAvatarChange(av)}
-                                    className={`aspect-square rounded-2xl flex items-center justify-center text-2xl transition-all border-2 ${currentUser.avatar === av ? 'bg-[#4ade80]/20 border-[#4ade80] scale-110' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+                                    style={{
+                                        ...btnStyle,
+                                        aspectRatio: '1', borderRadius: '1rem',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontSize: '24px',
+                                        background: currentUser.avatar === av ? 'rgba(74,222,128,0.2)' : s.whiteBg,
+                                        border: currentUser.avatar === av ? '2px solid var(--color-accent)' : '2px solid rgba(255,255,255,0.05)',
+                                        transform: currentUser.avatar === av ? 'scale(1.1)' : 'scale(1)',
+                                    }}
                                 >
                                     {av}
                                 </button>
@@ -136,47 +225,33 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
                     </div>
 
                     {/* PIN Change */}
-                    <div className="bg-[#2c2c2e] rounded-[2.5rem] p-6 border border-[#38383a]">
-                        <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em] mb-4">Cambiar PIN</h3>
+                    <div style={cardStyle}>
+                        <h3 style={labelStyle}>Cambiar PIN</h3>
                         {!showPinChange ? (
                             <button
                                 onClick={() => setShowPinChange(true)}
-                                className="w-full bg-white/5 border border-white/10 py-4 rounded-2xl text-white/60 font-black text-sm uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all"
+                                style={{ ...btnStyle, width: '100%', background: s.whiteBg, border: `1px solid ${s.whiteBgHover}`, padding: '16px', borderRadius: '1rem', color: s.whiteSoft, fontSize: '14px', letterSpacing: '0.15em' }}
                             >
                                 Modificar PIN
                             </button>
                         ) : (
-                            <div className="flex flex-col gap-4">
-                                <PinInput
-                                    value={newPin}
-                                    onChange={setNewPin}
-                                    onComplete={handleUpdatePin}
-                                    autoFocus
-                                />
-                                {pinError && <p className="text-red-500 text-xs font-bold text-center">{pinError}</p>}
-                                <div className="flex gap-2">
-                                    <button onClick={handleUpdatePin} disabled={newPin.length !== 4} className="flex-1 bg-[#4ade80] text-white font-black py-3 rounded-xl disabled:opacity-50">Guardar</button>
-                                    <button onClick={() => { setShowPinChange(false); setNewPin(''); setPinError(''); }} className="flex-1 bg-white/10 text-white/40 font-black py-3 rounded-xl">Cancelar</button>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                <PinInput value={newPin} onChange={setNewPin} onComplete={handleUpdatePin} autoFocus />
+                                {pinError && <p style={{ color: s.red, fontSize: '12px', fontWeight: 700, textAlign: 'center' }}>{pinError}</p>}
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <button onClick={handleUpdatePin} disabled={newPin.length !== 4} style={{ ...btnStyle, flex: 1, background: s.accent, color: s.white, padding: '12px', borderRadius: '12px', opacity: newPin.length !== 4 ? 0.5 : 1 }}>Guardar</button>
+                                    <button onClick={() => { setShowPinChange(false); setNewPin(''); setPinError(''); }} style={{ ...btnStyle, flex: 1, background: s.whiteBgHover, color: s.whiteMuted, padding: '12px', borderRadius: '12px' }}>Cancelar</button>
                                 </div>
                             </div>
                         )}
                     </div>
 
                     {/* Danger Zone */}
-                    <div className="bg-red-500/5 rounded-[2.5rem] p-6 border border-red-500/20">
-                        <h3 className="text-[10px] font-black text-red-400/60 uppercase tracking-[0.3em] mb-4">Zona de Peligro</h3>
+                    <div style={{ ...cardStyle, background: s.redBg, border: `1px solid ${s.redBorder}` }}>
+                        <h3 style={{ ...labelStyle, color: 'rgba(255,69,58,0.6)' }}>Zona de Peligro</h3>
                         <button
-                            onClick={async () => {
-                                if (confirm('¿Estás seguro? Esto eliminará TODOS los usuarios y partidos. Esta acción no se puede deshacer.')) {
-                                    const { clearAllUsers } = useUserStore.getState();
-                                    const { clearAllMatches } = useHistoryStore.getState();
-                                    await clearAllUsers();
-                                    await clearAllMatches();
-                                    logout();
-                                    onBack();
-                                }
-                            }}
-                            className="w-full bg-red-500/10 border border-red-500/30 text-red-400 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-red-500/20 active:scale-95 transition-all"
+                            onClick={handleClearAllData}
+                            style={{ ...btnStyle, width: '100%', background: s.redBg, border: `1px solid rgba(255,69,58,0.3)`, color: s.red, padding: '16px', borderRadius: '1rem', fontSize: '14px', letterSpacing: '0.15em' }}
                         >
                             🗑️ Borrar Todos los Datos
                         </button>
@@ -185,7 +260,7 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
                     {/* Logout */}
                     <button
                         onClick={handleLogout}
-                        className="bg-red-500/10 border border-red-500/20 text-red-400 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-red-500/20 active:scale-95 transition-all"
+                        style={{ ...btnStyle, background: s.redBg, border: `1px solid ${s.redBorder}`, color: s.red, padding: '16px', borderRadius: '1rem', fontSize: '14px', letterSpacing: '0.15em' }}
                     >
                         Cerrar Sesión
                     </button>

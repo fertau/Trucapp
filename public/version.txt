@@ -1,1 +1,1 @@
-Version: 1.0.6-profile-loading-fix
+Version: 1.0.7-profile-inline-styles
