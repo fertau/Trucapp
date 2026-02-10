@@ -1,1 +1,1 @@
-Version: 1.0.4-data-cleanup
+Version: 1.0.5-profile-visibility-fix

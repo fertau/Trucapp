@@ -50,12 +50,12 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
     const avatars = ['⚽', '🃏', '🍺', '🍖', '🏆', '🧉', '🦁', '🦉', '🦊', '🐻'];
 
     return (
-        <div className="full-screen bg-[var(--color-bg)] flex flex-col p-5 overflow-hidden">
+        <div className="full-screen bg-[#1c1c1e] flex flex-col p-5 overflow-hidden">
             <div className="flex items-center justify-between mb-6">
-                <button onClick={onBack} className="text-[var(--color-text-muted)] font-black text-[10px] uppercase tracking-[0.3em] bg-white/5 py-2 px-4 rounded-full active:scale-95 transition-all">
+                <button onClick={onBack} className="text-white/60 font-black text-[10px] uppercase tracking-[0.3em] bg-white/5 py-2 px-4 rounded-full active:scale-95 transition-all">
                     ← VOLVER
                 </button>
-                <div className="bg-[var(--color-accent)]/10 text-[var(--color-accent)] px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border border-[var(--color-accent)]/20">
+                <div className="bg-[#4ade80]/10 text-[#4ade80] px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border border-[#4ade80]/20">
                     Mi Perfil
                 </div>
             </div>
@@ -63,9 +63,9 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
             <div className="flex-1 overflow-y-auto pb-12 custom-scrollbar pr-1">
                 <div className="flex flex-col gap-6 animate-in slide-in-from-bottom-4 duration-300">
                     {/* Profile Card */}
-                    <div className="bg-[var(--color-surface)] rounded-[2.5rem] p-8 border border-[var(--color-border)] shadow-2xl relative overflow-hidden">
+                    <div className="bg-[#2c2c2e] rounded-[2.5rem] p-8 border border-[#38383a] shadow-2xl relative overflow-hidden">
                         <div className="flex flex-col items-center">
-                            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[var(--color-accent)] to-[#1d4ed8] flex items-center justify-center text-4xl font-black text-white shadow-2xl mb-4 border-4 border-white/5">
+                            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#4ade80] to-[#1d4ed8] flex items-center justify-center text-4xl font-black text-white shadow-2xl mb-4 border-4 border-white/5">
                                 {currentUser.avatar || currentUser.name[0].toUpperCase()}
                             </div>
 
@@ -73,13 +73,13 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
                                 <div className="flex flex-col items-center gap-2 w-full">
                                     <input
                                         type="text"
-                                        className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-center font-black uppercase text-xl text-white outline-none focus:border-[var(--color-accent)] w-full"
+                                        className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-center font-black uppercase text-xl text-white outline-none focus:border-[#4ade80] w-full"
                                         value={tempNickname}
                                         onChange={(e) => setTempNickname(e.target.value)}
                                         autoFocus
                                     />
                                     <div className="flex gap-2">
-                                        <button onClick={handleUpdateNickname} className="text-[10px] font-black uppercase bg-[var(--color-accent)] text-white px-4 py-1.5 rounded-full">Guardar</button>
+                                        <button onClick={handleUpdateNickname} className="text-[10px] font-black uppercase bg-[#4ade80] text-white px-4 py-1.5 rounded-full">Guardar</button>
                                         <button onClick={() => setEditingNickname(false)} className="text-[10px] font-black uppercase bg-white/10 text-white/40 px-4 py-1.5 rounded-full">Cancelar</button>
                                     </div>
                                 </div>
@@ -97,7 +97,7 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
                                 className="flex flex-col items-center p-4 bg-white/5 rounded-3xl border border-white/5 group active:scale-95 transition-all"
                             >
                                 <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1 group-hover:text-white/40">Visibilidad</span>
-                                <span className={`text-[10px] font-black uppercase ${currentUser.visibility === 'PUBLIC' ? 'text-[var(--color-nosotros)]' : 'text-[var(--color-ellos)]'}`}>
+                                <span className={`text-[10px] font-black uppercase ${currentUser.visibility === 'PUBLIC' ? 'text-[#4ade80]' : 'text-[#fbbf24]'}`}>
                                     {currentUser.visibility}
                                 </span>
                             </button>
@@ -109,14 +109,14 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
                     </div>
 
                     {/* Avatar Selection */}
-                    <div className="bg-[var(--color-surface)] rounded-[2.5rem] p-6 border border-[var(--color-border)]">
+                    <div className="bg-[#2c2c2e] rounded-[2.5rem] p-6 border border-[#38383a]">
                         <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em] mb-4">Seleccionar Avatar</h3>
                         <div className="grid grid-cols-5 gap-3">
                             {avatars.map(av => (
                                 <button
                                     key={av}
                                     onClick={() => handleAvatarChange(av)}
-                                    className={`aspect-square rounded-2xl flex items-center justify-center text-2xl transition-all border-2 ${currentUser.avatar === av ? 'bg-[var(--color-accent)]/20 border-[var(--color-accent)] scale-110' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+                                    className={`aspect-square rounded-2xl flex items-center justify-center text-2xl transition-all border-2 ${currentUser.avatar === av ? 'bg-[#4ade80]/20 border-[#4ade80] scale-110' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
                                 >
                                     {av}
                                 </button>
@@ -125,7 +125,7 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
                     </div>
 
                     {/* PIN Change */}
-                    <div className="bg-[var(--color-surface)] rounded-[2.5rem] p-6 border border-[var(--color-border)]">
+                    <div className="bg-[#2c2c2e] rounded-[2.5rem] p-6 border border-[#38383a]">
                         <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em] mb-4">Cambiar PIN</h3>
                         {!showPinChange ? (
                             <button
@@ -144,7 +144,7 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
                                 />
                                 {pinError && <p className="text-red-500 text-xs font-bold text-center">{pinError}</p>}
                                 <div className="flex gap-2">
-                                    <button onClick={handleUpdatePin} disabled={newPin.length !== 4} className="flex-1 bg-[var(--color-accent)] text-white font-black py-3 rounded-xl disabled:opacity-50">Guardar</button>
+                                    <button onClick={handleUpdatePin} disabled={newPin.length !== 4} className="flex-1 bg-[#4ade80] text-white font-black py-3 rounded-xl disabled:opacity-50">Guardar</button>
                                     <button onClick={() => { setShowPinChange(false); setNewPin(''); setPinError(''); }} className="flex-1 bg-white/10 text-white/40 font-black py-3 rounded-xl">Cancelar</button>
                                 </div>
                             </div>
