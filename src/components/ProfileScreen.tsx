@@ -19,7 +19,18 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
     const [newPin, setNewPin] = useState('');
     const [pinError, setPinError] = useState('');
 
-    if (!currentUser) return <div className="p-8 text-center text-white/20 uppercase font-black tracking-widest">No hay sesión activa</div>;
+    if (!currentUser) {
+        return (
+            <div className="full-screen bg-[#1c1c1e] flex items-center justify-center p-8">
+                <div className="text-center">
+                    <p className="text-white text-xl font-black uppercase tracking-widest mb-4">No hay sesión activa</p>
+                    <button onClick={onBack} className="text-white/60 font-black text-sm uppercase tracking-widest bg-white/5 py-3 px-6 rounded-full active:scale-95 transition-all">
+                        ← Volver
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     const handleUpdateNickname = async () => {
         await updateNickname(currentUser.id, tempNickname);
