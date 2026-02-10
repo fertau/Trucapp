@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { collection, addDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy, limit, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { MatchState } from '../types';
 
@@ -11,7 +11,8 @@ interface HistoryStore {
     // Actions
     fetchMatches: () => Promise<void>;
     addMatch: (match: MatchState) => Promise<void>;
-    clearHistory: () => void; // Optional: Clear local or delete from cloud? Let's just clear local for now or deprecate.
+    clearAllMatches: () => Promise<void>;
+    clearHistory: () => void; // Deprecated: use clearAllMatches
 }
 
 export const useHistoryStore = create<HistoryStore>((set) => ({
@@ -55,6 +56,19 @@ export const useHistoryStore = create<HistoryStore>((set) => ({
             console.error("Error saving match to cloud:", err);
             // Rollback or show error?
             // For now, just log.
+        }
+    },
+
+    clearAllMatches: async () => {
+        set({ isLoading: true });
+        try {
+            const querySnapshot = await getDocs(collection(db, 'matches'));
+            const deletePromises = querySnapshot.docs.map(d => deleteDoc(doc(db, 'matches', d.id)));
+            await Promise.all(deletePromises);
+            set({ matches: [], isLoading: false });
+        } catch (err) {
+            console.error("Error clearing matches:", err);
+            set({ isLoading: false });
         }
     },
 

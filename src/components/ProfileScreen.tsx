@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useUserStore } from '../store/useUserStore';
 import { useAuthStore } from '../store/useAuthStore';
+import { useHistoryStore } from '../store/useHistoryStore';
 import { PinInput } from './PinInput';
 
 interface ProfileScreenProps {
@@ -148,6 +149,26 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
                                 </div>
                             </div>
                         )}
+                    </div>
+
+                    {/* Danger Zone */}
+                    <div className="bg-red-500/5 rounded-[2.5rem] p-6 border border-red-500/20">
+                        <h3 className="text-[10px] font-black text-red-400/60 uppercase tracking-[0.3em] mb-4">Zona de Peligro</h3>
+                        <button
+                            onClick={async () => {
+                                if (confirm('¿Estás seguro? Esto eliminará TODOS los usuarios y partidos. Esta acción no se puede deshacer.')) {
+                                    const { clearAllUsers } = useUserStore.getState();
+                                    const { clearAllMatches } = useHistoryStore.getState();
+                                    await clearAllUsers();
+                                    await clearAllMatches();
+                                    logout();
+                                    onBack();
+                                }
+                            }}
+                            className="w-full bg-red-500/10 border border-red-500/30 text-red-400 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-red-500/20 active:scale-95 transition-all"
+                        >
+                            🗑️ Borrar Todos los Datos
+                        </button>
                     </div>
 
                     {/* Logout */}
