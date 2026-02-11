@@ -1,0 +1,8 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs><linearGradient id="g" x1="24" y1="24" x2="232" y2="232" gradientUnits="userSpaceOnUse"><stop stop-color="#8892A5"/><stop offset="1" stop-color="#1A2233"/></linearGradient></defs>
+  <circle cx="128" cy="128" r="120" fill="url(#g)"/>
+  <circle cx="128" cy="128" r="92" fill="rgba(255,255,255,.12)"/>
+  <circle cx="128" cy="128" r="44" fill="#fff"/>
+  <polygon points="128,98 142,108 137,124 119,124 114,108" fill="#1A2233"/>
+  <path d="M114 108L98 104M142 108L158 104M119 124L110 140M137 124L146 140" stroke="#1A2233" stroke-width="4" stroke-linecap="round"/>
+</svg>

@@ -3,6 +3,7 @@ import { useUserStore } from '../store/useUserStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { PinInput } from './PinInput';
 import { hashPin } from '../utils/pinSecurity';
+import { AvatarBadge, avatarOptions } from './AvatarBadge';
 
 interface SocialHubProps {
     onBack: () => void;
@@ -74,8 +75,6 @@ export const SocialHub = ({ onBack }: SocialHubProps) => {
         (p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.nickname?.toLowerCase().includes(searchQuery.toLowerCase()))
     ).slice(0, 10);
 
-    const avatars = ['⚽', '🃏', '🍺', '🍖', '🏆', '🧉', '🦁', '🦉', '🦊', '🐻'];
-
     const qrUrl = `https://chart.googleapis.com/chart?cht=qr&chs=256x256&chl=trucapp:addfriend:${currentUserId}`;
 
     return (
@@ -108,9 +107,7 @@ export const SocialHub = ({ onBack }: SocialHubProps) => {
                         {/* Profile Card */}
                         <div className="bg-[var(--color-surface)] rounded-[2.5rem] p-8 border border-[var(--color-border)] shadow-2xl relative overflow-hidden">
                             <div className="flex flex-col items-center">
-                                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[var(--color-accent)] to-[#1d4ed8] flex items-center justify-center text-4xl font-black text-white shadow-2xl mb-4 border-4 border-white/5">
-                                    {currentUser.avatar || currentUser.name[0].toUpperCase()}
-                                </div>
+                                <AvatarBadge avatar={currentUser.avatar} name={currentUser.nickname || currentUser.name} size={96} className="mb-4 border-4 border-white/5" />
 
                                 {editingNickname ? (
                                     <div className="flex flex-col items-center gap-2 w-full">
@@ -154,14 +151,15 @@ export const SocialHub = ({ onBack }: SocialHubProps) => {
                         {/* Avatar Picker */}
                         <div className="bg-[var(--color-surface)] rounded-[2.5rem] p-6 border border-[var(--color-border)]">
                             <h3 className="text-[10px] font-black uppercase text-white/20 tracking-[0.2em] mb-4 ml-2">Elegí tu Avatar</h3>
-                            <div className="grid grid-cols-5 gap-3">
-                                {avatars.map(a => (
+                            <div className="grid grid-cols-4 gap-3">
+                                {avatarOptions.map((a) => (
                                     <button
-                                        key={a}
-                                        onClick={() => handleAvatarChange(a)}
-                                        className={`w-12 h-12 flex items-center justify-center text-xl bg-white/5 rounded-2xl border transition-all ${currentUser.avatar === a ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/10' : 'border-white/5'}`}
+                                        key={a.id}
+                                        onClick={() => handleAvatarChange(a.id)}
+                                        className={`min-h-14 flex items-center justify-center bg-white/5 rounded-2xl border transition-all ${currentUser.avatar === a.id ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/10' : 'border-white/5'}`}
+                                        title={a.label}
                                     >
-                                        {a}
+                                        <AvatarBadge avatar={a.id} name={a.label} size={42} />
                                     </button>
                                 ))}
                             </div>
@@ -227,9 +225,7 @@ export const SocialHub = ({ onBack }: SocialHubProps) => {
                                     return (
                                         <div key={req.id} className="bg-[var(--color-accent)]/10 p-5 rounded-[2rem] border border-[var(--color-accent)]/20 flex justify-between items-center animate-pulse">
                                             <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-sm">
-                                                    {sender?.avatar || sender?.name[0].toUpperCase()}
-                                                </div>
+                                                <AvatarBadge avatar={sender?.avatar} name={sender?.nickname || sender?.name} size={40} />
                                                 <div className="flex flex-col">
                                                     <span className="font-black uppercase text-sm tracking-tight text-white">{sender?.nickname || sender?.name}</span>
                                                     <span className="text-[8px] font-black text-[var(--color-accent)] uppercase tracking-widest">Quiere ser tu amigo</span>
@@ -267,9 +263,7 @@ export const SocialHub = ({ onBack }: SocialHubProps) => {
                                 friendsList.map(p => (
                                     <div key={p.id} className="bg-[var(--color-surface)] p-5 rounded-[2rem] border border-[var(--color-border)] flex justify-between items-center group shadow-lg">
                                         <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center text-xl font-black text-white/40">
-                                                {p.avatar || p.name[0]}
-                                            </div>
+                                            <AvatarBadge avatar={p.avatar} name={p.nickname || p.name} size={48} />
                                             <div className="flex flex-col">
                                                 <span className="font-black uppercase text-sm tracking-tight">{p.nickname || p.name}</span>
                                                 <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Socio Activo</span>
@@ -311,9 +305,7 @@ export const SocialHub = ({ onBack }: SocialHubProps) => {
                                 discoveryResults.map(p => (
                                     <div key={p.id} className="bg-[var(--color-surface)] p-5 rounded-[2rem] border border-[var(--color-border)] flex justify-between items-center group">
                                         <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-lg">
-                                                {p.avatar || p.name[0].toUpperCase()}
-                                            </div>
+                                            <AvatarBadge avatar={p.avatar} name={p.nickname || p.name} size={40} />
                                             <div className="flex flex-col">
                                                 <span className="font-black uppercase text-sm">{p.nickname || p.name}</span>
                                                 <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{p.name}</span>
