@@ -1,15 +1,7 @@
 // Trucapp - Build Trigger edcb59c
-import { useState, useEffect, useRef } from 'react';
-import { MatchScreen } from './components/MatchScreen';
+import { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { SplashScreen } from './components/SplashScreen';
-import { PlayerSelection } from './components/PlayerSelection';
-import { TeamConfiguration } from './components/TeamConfiguration';
-import { HistoryScreen } from './components/HistoryScreen';
-import { ProfileScreen } from './components/ProfileScreen';
-// import { AccountSelector } from './components/AccountSelector';
 import { HomeScreen } from './components/HomeScreen';
-import { PicaPicaSetup } from './components/PicaPicaSetup';
-import { PicaPicaHub } from './components/PicaPicaHub';
 
 import { useMatchStore } from './store/useMatchStore';
 import { useHistoryStore } from './store/useHistoryStore';
@@ -33,6 +25,22 @@ type AppStep = 'AUTH' | 'HOME' | 'SETUP_PLAYERS_COUNT' | 'SETUP_PLAYERS_SELECT' 
 type HistoryTab = 'SUMMARY' | 'MATCHES' | 'H2H' | 'RANKING';
 
 import { AccountSelector } from './components/AccountSelector';
+
+const MatchScreen = lazy(() => import('./components/MatchScreen').then(m => ({ default: m.MatchScreen })));
+const PlayerSelection = lazy(() => import('./components/PlayerSelection').then(m => ({ default: m.PlayerSelection })));
+const TeamConfiguration = lazy(() => import('./components/TeamConfiguration').then(m => ({ default: m.TeamConfiguration })));
+const HistoryScreen = lazy(() => import('./components/HistoryScreen').then(m => ({ default: m.HistoryScreen })));
+const ProfileScreen = lazy(() => import('./components/ProfileScreen').then(m => ({ default: m.ProfileScreen })));
+const PicaPicaSetup = lazy(() => import('./components/PicaPicaSetup').then(m => ({ default: m.PicaPicaSetup })));
+const PicaPicaHub = lazy(() => import('./components/PicaPicaHub').then(m => ({ default: m.PicaPicaHub })));
+
+const ScreenLoader = () => (
+  <div className="full-screen bg-[var(--color-bg)] flex items-center justify-center">
+    <div className="text-[11px] font-black uppercase tracking-[0.3em] text-[var(--color-text-muted)]">
+      Cargando...
+    </div>
+  </div>
+);
 
 function App() {
   const currentUserId = useAuthStore(state => state.currentUserId);
@@ -218,66 +226,88 @@ function App() {
   const effectiveStep: AppStep = !currentUserId && step !== 'HOME' ? 'AUTH' : step;
 
   if (effectiveStep === 'MATCH') {
-    return <MatchScreen onFinish={handleFinishMatch} />;
+    return (
+      <Suspense fallback={<ScreenLoader />}>
+        <MatchScreen onFinish={handleFinishMatch} />
+      </Suspense>
+    );
   }
 
   if (effectiveStep === 'HISTORY') {
-    return <HistoryScreen onBack={() => setStep('HOME')} initialTab={historyInitialTab} />;
+    return (
+      <Suspense fallback={<ScreenLoader />}>
+        <HistoryScreen onBack={() => setStep('HOME')} initialTab={historyInitialTab} />
+      </Suspense>
+    );
   }
 
   if (effectiveStep === 'PROFILE') {
-    return <ProfileScreen onBack={() => setStep('HOME')} />;
+    return (
+      <Suspense fallback={<ScreenLoader />}>
+        <ProfileScreen onBack={() => setStep('HOME')} />
+      </Suspense>
+    );
   }
 
   if (effectiveStep === 'SETUP_TEAMS') {
-    return <TeamConfiguration players={selectedPlayers} onStartMatch={startMatch} />;
+    return (
+      <Suspense fallback={<ScreenLoader />}>
+        <TeamConfiguration players={selectedPlayers} onStartMatch={startMatch} />
+      </Suspense>
+    );
   }
 
   if (effectiveStep === 'PICAPICA_SETUP' && teamsConfig) {
     return (
-      <PicaPicaSetup
-        nosotros={teamsConfig.nosotros}
-        ellos={teamsConfig.ellos}
-        onStart={() => setStep('PICAPICA_HUB')}
-      />
+      <Suspense fallback={<ScreenLoader />}>
+        <PicaPicaSetup
+          nosotros={teamsConfig.nosotros}
+          ellos={teamsConfig.ellos}
+          onStart={() => setStep('PICAPICA_HUB')}
+        />
+      </Suspense>
     );
   }
 
   if (effectiveStep === 'PICAPICA_HUB') {
     return (
-      <PicaPicaHub
-        onPlayMatch={(id) => {
-          setActiveSubMatchId(id);
-          const subMatch = picaPicaMatches.find(m => m.id === id);
-          if (subMatch) {
-            // Init ScoreBoard for this match
-            const target = usePicaPicaStore.getState().targetScore;
+      <Suspense fallback={<ScreenLoader />}>
+        <PicaPicaHub
+          onPlayMatch={(id) => {
+            setActiveSubMatchId(id);
+            const subMatch = picaPicaMatches.find(m => m.id === id);
+            if (subMatch) {
+              // Init ScoreBoard for this match
+              const target = usePicaPicaStore.getState().targetScore;
 
-            resetMatch('1v1');
-            setTargetScore(target);
+              resetMatch('1v1');
+              setTargetScore(target);
 
-            setPlayers('nosotros', [subMatch.playerNosotrosId]);
-            setPlayers('ellos', [subMatch.playerEllosId]);
-            setStep('MATCH');
-          }
-        }}
-        onFinishPicaPica={() => {
-          picaPicaReset();
-          setStep('HOME');
-        }}
-      />
+              setPlayers('nosotros', [subMatch.playerNosotrosId]);
+              setPlayers('ellos', [subMatch.playerEllosId]);
+              setStep('MATCH');
+            }
+          }}
+          onFinishPicaPica={() => {
+            picaPicaReset();
+            setStep('HOME');
+          }}
+        />
+      </Suspense>
     );
   }
 
   if (effectiveStep === 'SETUP_PLAYERS_SELECT') {
     return (
-      <PlayerSelection
-        requiredCount={playerCount}
-        onSelect={(players) => {
-          setSelectedPlayers(players);
-          setStep('SETUP_TEAMS');
-        }}
-      />
+      <Suspense fallback={<ScreenLoader />}>
+        <PlayerSelection
+          requiredCount={playerCount}
+          onSelect={(players) => {
+            setSelectedPlayers(players);
+            setStep('SETUP_TEAMS');
+          }}
+        />
+      </Suspense>
     );
   }
 

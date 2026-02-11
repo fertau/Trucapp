@@ -41,7 +41,10 @@ const TAB_META: Record<HistoryTab, { title: string; hint: string }> = {
 export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenProps) => {
     const matches = useHistoryStore(state => state.matches);
     const updateMatch = useHistoryStore(state => state.updateMatch);
+    const loadMoreMatches = useHistoryStore(state => state.loadMoreMatches);
     const isLoading = useHistoryStore(state => state.isLoading);
+    const isLoadingMore = useHistoryStore(state => state.isLoadingMore);
+    const hasMore = useHistoryStore(state => state.hasMore);
     const currentUserId = useAuthStore(state => state.currentUserId);
     const players = useUserStore(state => state.players);
 
@@ -526,6 +529,15 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                                 </button>
                             );
                         })}
+                        {filteredMatches.length > 0 && hasMore && (
+                            <button
+                                onClick={() => void loadMoreMatches()}
+                                disabled={isLoadingMore}
+                                className="w-full mt-2 py-3 rounded-xl border border-white/15 bg-white/5 text-xs font-black uppercase tracking-widest disabled:opacity-50"
+                            >
+                                {isLoadingMore ? 'Cargando...' : 'Cargar mas'}
+                            </button>
+                        )}
                     </div>
                 )}
 
