@@ -3,6 +3,15 @@ import { usePairStore } from '../store/usePairStore';
 import { useHistoryStore } from '../store/useHistoryStore';
 import { calculateHeadToHead, getGroupId } from '../services/statisticsService';
 
+const toPlayerId = (player: unknown): string => {
+    if (typeof player === 'string') return player;
+    if (player && typeof player === 'object' && 'id' in player) {
+        const value = (player as { id?: unknown }).id;
+        return typeof value === 'string' ? value : '';
+    }
+    return '';
+};
+
 export const PairHeadToHead = ({ onBack }: { onBack: () => void }) => {
     const pairs = usePairStore(state => state.pairs);
     const matches = useHistoryStore(state => state.matches);
@@ -157,8 +166,8 @@ export const PairHeadToHead = ({ onBack }: { onBack: () => void }) => {
                     <div className="flex flex-col items-center gap-3 mt-2">
                         <div className="flex gap-1.5">
                             {recentMatches.map((m, i) => {
-                                const isWinA = (m.winner === 'nosotros' && getGroupId(m.teams.nosotros.players.map((p: any) => p.id)) === getGroupId(pairA!.playerIds)) ||
-                                    (m.winner === 'ellos' && getGroupId(m.teams.ellos.players.map((p: any) => p.id)) === getGroupId(pairA!.playerIds));
+                                const isWinA = (m.winner === 'nosotros' && getGroupId(m.teams.nosotros.players.map(toPlayerId)) === getGroupId(pairA!.playerIds)) ||
+                                    (m.winner === 'ellos' && getGroupId(m.teams.ellos.players.map(toPlayerId)) === getGroupId(pairA!.playerIds));
                                 return (
                                     <div
                                         key={i}
@@ -188,8 +197,8 @@ export const PairHeadToHead = ({ onBack }: { onBack: () => void }) => {
                     recentMatches.map(m => {
                         const date = new Date(m.metadata?.date || m.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' });
                         const loc = m.metadata?.location || 'Sede';
-                        const isWinA = (m.winner === 'nosotros' && getGroupId(m.teams.nosotros.players.map((p: any) => p.id)) === getGroupId(pairA!.playerIds)) ||
-                            (m.winner === 'ellos' && getGroupId(m.teams.ellos.players.map((p: any) => p.id)) === getGroupId(pairA!.playerIds));
+                        const isWinA = (m.winner === 'nosotros' && getGroupId(m.teams.nosotros.players.map(toPlayerId)) === getGroupId(pairA!.playerIds)) ||
+                            (m.winner === 'ellos' && getGroupId(m.teams.ellos.players.map(toPlayerId)) === getGroupId(pairA!.playerIds));
 
                         return (
                             <div key={m.id} className="bg-[var(--color-surface)] p-5 rounded-3xl border border-[var(--color-border)] flex justify-between items-center shadow-lg active:scale-[0.98] transition-all">

@@ -1,5 +1,5 @@
 // Trucapp - Build Trigger edcb59c
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { MatchScreen } from './components/MatchScreen';
 import { SplashScreen } from './components/SplashScreen';
 import { PlayerSelection } from './components/PlayerSelection';
@@ -31,6 +31,7 @@ import './index.css';
 type AppStep = 'AUTH' | 'HOME' | 'SETUP_PLAYERS_COUNT' | 'SETUP_PLAYERS_SELECT' | 'SETUP_TEAMS' |
   'MATCH' | 'HISTORY' | 'LEADERBOARD' | 'SOCIAL' | 'PROFILE' |
   'PICAPICA_SETUP' | 'PICAPICA_HUB';
+type HistoryTab = 'SUMMARY' | 'MATCHES' | 'H2H' | 'RANKING';
 
 import { SocialHub } from './components/SocialHub';
 import { AccountSelector } from './components/AccountSelector';
@@ -39,17 +40,23 @@ function App() {
   const currentUserId = useAuthStore(state => state.currentUserId);
 
   const [step, setStep] = useState<AppStep>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sharedMatchId = params.get('matchId');
+    if (sharedMatchId) return 'MATCH';
+
     const savedStep = localStorage.getItem('trucapp-app-step');
     if (savedStep === 'MATCH' && !useMatchStore.getState().id) return 'HOME';
     if (savedStep === 'STATS') return 'HOME'; // Migration: STATS is now part of HISTORY
     return (savedStep as AppStep) || 'HOME';
   });
 
-  const [showSplash, setShowSplash] = useState(true); // Initial splash state
+  const [showSplash, setShowSplash] = useState(() => !sessionStorage.getItem('trucapp-splash-seen'));
   const [playerCount, setPlayerCount] = useState<number>(2);
   const [selectedPlayers, setSelectedPlayers] = useState<Player[]>([]);
   const [teamsConfig, setTeamsConfig] = useState<{ nosotros: Player[], ellos: Player[] } | null>(null);
   const [activeSubMatchId, setActiveSubMatchId] = useState<string | null>(null);
+  const [historyInitialTab, setHistoryInitialTab] = useState<HistoryTab>('SUMMARY');
+  const isFinishingMatchRef = useRef(false);
 
   // --- HOOKS (Must be at top level) ---
 
@@ -67,22 +74,8 @@ function App() {
     const sharedMatchId = params.get('matchId');
     if (sharedMatchId) {
       useMatchStore.getState().listenToMatch(sharedMatchId);
-      setStep('MATCH');
     }
   }, []);
-
-  useEffect(() => {
-    const hasSeenSplash = sessionStorage.getItem('trucapp-splash-seen');
-    if (hasSeenSplash) {
-      setShowSplash(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!currentUserId && (step !== 'AUTH' && step !== 'HOME')) {
-      setStep('AUTH');
-    }
-  }, [currentUserId, step]);
 
   // --- ACTIONS ---
 
@@ -140,28 +133,36 @@ function App() {
     setShowSplash(false);
   };
 
-  const handleFinishMatch = () => {
+  const handleFinishMatch = async (next: 'home' | 'rematch' = 'home') => {
+    if (isFinishingMatchRef.current) return;
+    isFinishingMatchRef.current = true;
+
     const matchState = useMatchStore.getState();
-    if (!activeSubMatchId) {
-      addMatchToHistory(matchState);
-    }
-    if (activeSubMatchId && picaPicaActive) {
-      if (matchState.winner) {
-        picaPicaUpdate(activeSubMatchId, matchState.winner, matchState.teams.nosotros.score, matchState.teams.ellos.score);
-        addMatchToHistory(matchState);
+    try {
+      if (!activeSubMatchId) {
+        await addMatchToHistory(matchState);
       }
-      setActiveSubMatchId(null);
-      setStep('PICAPICA_HUB');
-    } else {
-      if (matchState.pairs) {
-        if (matchState.pairs.nosotros && matchState.winner) {
-          recordPairResult(matchState.pairs.nosotros, matchState.winner === 'nosotros');
+
+      if (activeSubMatchId && picaPicaActive) {
+        if (matchState.winner) {
+          picaPicaUpdate(activeSubMatchId, matchState.winner, matchState.teams.nosotros.score, matchState.teams.ellos.score);
+          await addMatchToHistory(matchState);
         }
-        if (matchState.pairs.ellos && matchState.winner) {
-          recordPairResult(matchState.pairs.ellos, matchState.winner === 'ellos');
+        setActiveSubMatchId(null);
+        setStep('PICAPICA_HUB');
+      } else {
+        if (matchState.pairs) {
+          if (matchState.pairs.nosotros && matchState.winner) {
+            recordPairResult(matchState.pairs.nosotros, matchState.winner === 'nosotros');
+          }
+          if (matchState.pairs.ellos && matchState.winner) {
+            recordPairResult(matchState.pairs.ellos, matchState.winner === 'ellos');
+          }
         }
+        setStep(next === 'rematch' ? 'SETUP_PLAYERS_COUNT' : 'HOME');
       }
-      setStep('HOME');
+    } finally {
+      isFinishingMatchRef.current = false;
     }
   };
 
@@ -176,31 +177,33 @@ function App() {
     return <AccountSelector onLoginSuccess={() => setStep('HOME')} />;
   }
 
-  if (step === 'MATCH') {
+  const effectiveStep: AppStep = !currentUserId && step !== 'HOME' ? 'AUTH' : step;
+
+  if (effectiveStep === 'MATCH') {
     return <MatchScreen onFinish={handleFinishMatch} />;
   }
 
-  if (step === 'HISTORY') {
-    return <HistoryScreen onBack={() => setStep('HOME')} />;
+  if (effectiveStep === 'HISTORY') {
+    return <HistoryScreen onBack={() => setStep('HOME')} initialTab={historyInitialTab} />;
   }
 
-  if (step === 'LEADERBOARD') {
+  if (effectiveStep === 'LEADERBOARD') {
     return <Leaderboard onBack={() => setStep('HOME')} />;
   }
 
-  if (step === 'SOCIAL') {
+  if (effectiveStep === 'SOCIAL') {
     return <SocialHub onBack={() => setStep('HOME')} />;
   }
 
-  if (step === 'PROFILE') {
+  if (effectiveStep === 'PROFILE') {
     return <ProfileScreen onBack={() => setStep('HOME')} />;
   }
 
-  if (step === 'SETUP_TEAMS') {
+  if (effectiveStep === 'SETUP_TEAMS') {
     return <TeamConfiguration players={selectedPlayers} onStartMatch={startMatch} />;
   }
 
-  if (step === 'PICAPICA_SETUP' && teamsConfig) {
+  if (effectiveStep === 'PICAPICA_SETUP' && teamsConfig) {
     return (
       <PicaPicaSetup
         nosotros={teamsConfig.nosotros}
@@ -210,7 +213,7 @@ function App() {
     );
   }
 
-  if (step === 'PICAPICA_HUB') {
+  if (effectiveStep === 'PICAPICA_HUB') {
     return (
       <PicaPicaHub
         onPlayMatch={(id) => {
@@ -236,7 +239,7 @@ function App() {
     );
   }
 
-  if (step === 'SETUP_PLAYERS_SELECT') {
+  if (effectiveStep === 'SETUP_PLAYERS_SELECT') {
     return (
       <PlayerSelection
         requiredCount={playerCount}
@@ -248,7 +251,7 @@ function App() {
     );
   }
 
-  if (step === 'SETUP_PLAYERS_COUNT') {
+  if (effectiveStep === 'SETUP_PLAYERS_COUNT') {
     return (
       <div className="flex flex-col h-full bg-[var(--color-bg)] p-8 justify-center items-center relative">
         <h2 className="text-2xl font-bold mb-8">¿Cuántos juegan?</h2>
@@ -288,8 +291,8 @@ function App() {
   return (
     <HomeScreen
       onNewMatch={() => setStep('SETUP_PLAYERS_COUNT')}
-      onHistory={() => setStep('HISTORY')}
-      onLeaderboard={() => setStep('LEADERBOARD')}
+      onHistory={() => { setHistoryInitialTab('SUMMARY'); setStep('HISTORY'); }}
+      onLeaderboard={() => { setHistoryInitialTab('RANKING'); setStep('HISTORY'); }}
       onSocial={() => setStep('SOCIAL')}
       onProfile={() => setStep('PROFILE')}
     />

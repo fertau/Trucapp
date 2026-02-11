@@ -3,6 +3,8 @@ import { useUserStore } from '../store/useUserStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useHistoryStore } from '../store/useHistoryStore';
 import { PinInput } from './PinInput';
+import { hashPin } from '../utils/pinSecurity';
+import { isSuperAdmin } from '../utils/authz';
 
 interface ProfileScreenProps {
     onBack: () => void;
@@ -12,6 +14,7 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
     const { players, updateVisibility, updateNickname, updatePlayer } = useUserStore();
     const { currentUserId, logout } = useAuthStore();
     const currentUser = players.find(p => p.id === currentUserId);
+    const canClearAllData = isSuperAdmin(currentUser);
 
     const [editingNickname, setEditingNickname] = useState(false);
     const [tempNickname, setTempNickname] = useState(currentUser?.nickname || '');
@@ -45,11 +48,11 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
     const handleUpdatePin = async () => {
         if (newPin.length !== 4) return;
         try {
-            await updatePlayer(currentUser.id, { pinHash: `hash_${newPin}` });
+            await updatePlayer(currentUser.id, { pinHash: await hashPin(newPin) });
             setShowPinChange(false);
             setNewPin('');
             setPinError('');
-        } catch (_e) {
+        } catch {
             setPinError('Error al cambiar PIN');
         }
     };
@@ -64,6 +67,11 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
     };
 
     const handleClearAllData = async () => {
+        if (!canClearAllData) {
+            alert('Solo el superadmin puede borrar todos los datos.');
+            return;
+        }
+
         if (confirm('¿Estás seguro? Esto eliminará TODOS los usuarios y partidos. Esta acción no se puede deshacer.')) {
             const { clearAllUsers } = useUserStore.getState();
             const { clearAllMatches } = useHistoryStore.getState();
@@ -247,15 +255,17 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
                     </div>
 
                     {/* Danger Zone */}
-                    <div style={{ ...cardStyle, background: s.redBg, border: `1px solid ${s.redBorder}` }}>
-                        <h3 style={{ ...labelStyle, color: 'rgba(255,69,58,0.6)' }}>Zona de Peligro</h3>
-                        <button
-                            onClick={handleClearAllData}
-                            style={{ ...btnStyle, width: '100%', background: s.redBg, border: `1px solid rgba(255,69,58,0.3)`, color: s.red, padding: '16px', borderRadius: '1rem', fontSize: '14px', letterSpacing: '0.15em' }}
-                        >
-                            🗑️ Borrar Todos los Datos
-                        </button>
-                    </div>
+                    {canClearAllData && (
+                        <div style={{ ...cardStyle, background: s.redBg, border: `1px solid ${s.redBorder}` }}>
+                            <h3 style={{ ...labelStyle, color: 'rgba(255,69,58,0.6)' }}>Zona de Peligro</h3>
+                            <button
+                                onClick={handleClearAllData}
+                                style={{ ...btnStyle, width: '100%', background: s.redBg, border: `1px solid rgba(255,69,58,0.3)`, color: s.red, padding: '16px', borderRadius: '1rem', fontSize: '14px', letterSpacing: '0.15em' }}
+                            >
+                                🗑️ Borrar Todos los Datos
+                            </button>
+                        </div>
+                    )}
 
                     {/* Logout */}
                     <button

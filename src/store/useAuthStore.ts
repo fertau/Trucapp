@@ -1,11 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { useUserStore } from './useUserStore';
+import { verifyPin } from '../utils/pinSecurity';
 
 interface AuthStore {
     rememberedIds: string[];
     currentUserId: string | null;
-    login: (id: string, pin?: string) => boolean; // Returns success
+    login: (id: string, pin?: string) => Promise<boolean>; // Returns success
     logout: () => void;
     addRememberedAccount: (id: string) => void;
     removeRememberedAccount: (id: string) => void;
@@ -17,14 +18,12 @@ export const useAuthStore = create<AuthStore>()(
             rememberedIds: [],
             currentUserId: null,
 
-            login: (id, pinInput) => {
+            login: async (id, pinInput) => {
                 const user = useUserStore.getState().players.find(p => p.id === id);
                 if (!user) return false;
 
-                // Simple PIN check (simulated hashing for now)
-                // In a real app, we'd hash pinInput and compare with user.pinHash
                 const storedPin = user.pinHash || user.pin;
-                const isMatch = storedPin === pinInput || storedPin === `hash_${pinInput}`;
+                const isMatch = await verifyPin(pinInput ?? '', storedPin);
 
                 if (!isMatch) {
                     return false;

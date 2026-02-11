@@ -30,11 +30,20 @@ export interface HeadToHeadStats {
     recentMatches: MatchState[];
 }
 
+const toPlayerId = (player: unknown): string => {
+    if (typeof player === 'string') return player;
+    if (player && typeof player === 'object' && 'id' in player) {
+        const value = (player as { id?: unknown }).id;
+        return typeof value === 'string' ? value : '';
+    }
+    return '';
+};
+
 export const calculatePlayerStats = (playerId: string, matches: MatchState[], mode?: MatchMode): PlayerStats => {
     const relevantMatches = matches.filter(m => {
         const hasMode = mode ? m.mode === mode : true;
-        const hasPlayer = m.teams.nosotros.players.some(p => (p as any).id === playerId) ||
-            m.teams.ellos.players.some(p => (p as any).id === playerId);
+        const hasPlayer = m.teams.nosotros.players.some(p => toPlayerId(p) === playerId) ||
+            m.teams.ellos.players.some(p => toPlayerId(p) === playerId);
         return hasMode && hasPlayer;
     });
 
@@ -44,13 +53,13 @@ export const calculatePlayerStats = (playerId: string, matches: MatchState[], mo
     let pointsAgainst = 0;
     let currentStreak = 0;
     let bestStreak = 0;
-    let recentForm: ('W' | 'L')[] = [];
+    const recentForm: ('W' | 'L')[] = [];
 
     // Assuming matches are sorted by date desc, we reverse to calculate streaks
     const sortedMatches = [...relevantMatches].sort((a, b) => a.startDate - b.startDate);
 
     sortedMatches.forEach(m => {
-        const teamId = m.teams.nosotros.players.some(p => (p as any).id === playerId) ? 'nosotros' : 'ellos';
+        const teamId = m.teams.nosotros.players.some(p => toPlayerId(p) === playerId) ? 'nosotros' : 'ellos';
         const opponentId: TeamId = teamId === 'nosotros' ? 'ellos' : 'nosotros';
 
         const isWin = m.winner === teamId;
@@ -94,8 +103,8 @@ export const calculateGroupStats = (playerIds: string[], matches: MatchState[], 
     const groupId = getGroupId(playerIds);
     const relevantMatches = matches.filter(m => {
         const hasMode = mode ? m.mode === mode : true;
-        const nosIds = m.teams.nosotros.players.map(p => (p as any).id);
-        const ellIds = m.teams.ellos.players.map(p => (p as any).id);
+        const nosIds = m.teams.nosotros.players.map(toPlayerId);
+        const ellIds = m.teams.ellos.players.map(toPlayerId);
         const hasGroup = getGroupId(nosIds) === groupId || getGroupId(ellIds) === groupId;
         return hasMode && hasGroup;
     });
@@ -106,12 +115,12 @@ export const calculateGroupStats = (playerIds: string[], matches: MatchState[], 
     let pointsAgainst = 0;
     let currentStreak = 0;
     let bestStreak = 0;
-    let recentForm: ('W' | 'L')[] = [];
+    const recentForm: ('W' | 'L')[] = [];
 
     const sortedMatches = [...relevantMatches].sort((a, b) => a.startDate - b.startDate);
 
     sortedMatches.forEach(m => {
-        const nosIds = m.teams.nosotros.players.map(p => (p as any).id);
+        const nosIds = m.teams.nosotros.players.map(toPlayerId);
         const teamId: TeamId = getGroupId(nosIds) === groupId ? 'nosotros' : 'ellos';
         const opponentId: TeamId = teamId === 'nosotros' ? 'ellos' : 'nosotros';
 
@@ -152,8 +161,8 @@ export const calculateHeadToHead = (sideAIds: string[], sideBIds: string[], matc
     const idB = getGroupId(sideBIds);
 
     const h2hMatches = matches.filter(m => {
-        const nosIds = getGroupId(m.teams.nosotros.players.map(p => (p as any).id));
-        const ellIds = getGroupId(m.teams.ellos.players.map(p => (p as any).id));
+        const nosIds = getGroupId(m.teams.nosotros.players.map(toPlayerId));
+        const ellIds = getGroupId(m.teams.ellos.players.map(toPlayerId));
         return (nosIds === idA && ellIds === idB) || (nosIds === idB && ellIds === idA);
     });
 
@@ -162,9 +171,10 @@ export const calculateHeadToHead = (sideAIds: string[], sideBIds: string[], matc
     let pointDiff = 0;
 
     h2hMatches.forEach(m => {
-        const nosIds = getGroupId(m.teams.nosotros.players.map(p => (p as any).id));
-        const teamAId: TeamId | null = nosIds === idA ? 'nosotros' : (getGroupId(m.teams.ellos.players.map(p => (p as any).id)) === idA ? 'ellos' : null);
-        const teamBId: TeamId | null = nosIds === idB ? 'nosotros' : (getGroupId(m.teams.ellos.players.map(p => (p as any).id)) === idB ? 'ellos' : null);
+        const nosIds = getGroupId(m.teams.nosotros.players.map(toPlayerId));
+        const ellIds = getGroupId(m.teams.ellos.players.map(toPlayerId));
+        const teamAId: TeamId | null = nosIds === idA ? 'nosotros' : (ellIds === idA ? 'ellos' : null);
+        const teamBId: TeamId | null = nosIds === idB ? 'nosotros' : (ellIds === idB ? 'ellos' : null);
 
         if (teamAId && teamBId) {
             if (m.winner === teamAId) sideAWins++;

@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { useMatchStore } from '../store/useMatchStore';
 import { ScoreBoard } from './ScoreBoard';
 import { FaltaEnvidoModal } from './FaltaEnvidoModal';
-import type { TeamId } from '../types';
+import type { MatchState, TeamId } from '../types';
 
 interface MatchScreenProps {
-    onFinish: () => void;
+    onFinish: (next?: 'home' | 'rematch') => void;
 }
 
 export const MatchScreen = ({ onFinish }: MatchScreenProps) => {
@@ -179,12 +179,26 @@ const ManualScoreModal = ({ nosotros, ellos, onClose, onConfirm }: {
         </div>
     );
 };
-const WinnerCelebration = ({ winner, teams, onFinish }: { winner: TeamId, teams: any, onFinish: () => void }) => {
+type ConfettiPiece = { left: string; top: string; animationDelay: string };
+
+const createConfettiPieces = (count: number): ConfettiPiece[] =>
+    Array.from({ length: count }, () => ({
+        left: `${Math.random() * 100}%`,
+        top: `${Math.random() * 100}%`,
+        animationDelay: `${Math.random() * 2}s`,
+    }));
+
+const WinnerCelebration = ({ winner, teams, onFinish }: { winner: TeamId, teams: MatchState['teams'], onFinish: (next?: 'home' | 'rematch') => void }) => {
     const winnerData = teams[winner];
     const matchId = useMatchStore(state => state.id);
+    const [confettiPieces] = useState<ConfettiPiece[]>(() => createConfettiPieces(20));
 
-    const handleNewMatch = () => {
-        onFinish();
+    const handleRematch = () => {
+        onFinish('rematch');
+    };
+
+    const handleGoHome = () => {
+        onFinish('home');
     };
 
     const copyShareLink = () => {
@@ -197,16 +211,16 @@ const WinnerCelebration = ({ winner, teams, onFinish }: { winner: TeamId, teams:
         <div className="full-screen bg-black flex flex-col items-center justify-center p-8 relative overflow-hidden z-[100]">
             {/* Simple confetti background */}
             <div className="absolute inset-0 z-0 opacity-30">
-                {[...Array(20)].map((_, i) => (
+                {confettiPieces.map((piece, i) => (
                     <div
                         key={i}
                         className="absolute w-2 h-2 rounded-full"
                         style={{
-                            left: `${Math.random() * 100}%`,
-                            top: `${Math.random() * 100}%`,
+                            left: piece.left,
+                            top: piece.top,
                             backgroundColor: i % 2 === 0 ? 'var(--color-nosotros)' : 'var(--color-ellos)',
                             animation: 'bounce 2s infinite',
-                            animationDelay: `${Math.random() * 2}s`,
+                            animationDelay: piece.animationDelay,
                         }}
                     ></div>
                 ))}
@@ -239,13 +253,13 @@ const WinnerCelebration = ({ winner, teams, onFinish }: { winner: TeamId, teams:
 
                 <div className="flex flex-col gap-4 w-full relative z-20">
                     <button
-                        onClick={handleNewMatch}
+                        onClick={handleRematch}
                         className={`w-full bg-[var(--color-${winner})] text-black py-4 rounded-xl font-black text-xl shadow-lg active:scale-95 transition-transform`}
                     >
-                        NUEVO PARTIDO
+                        REVANCHA
                     </button>
                     <button
-                        onClick={() => window.location.reload()}
+                        onClick={handleGoHome}
                         className="text-[var(--color-text-muted)] font-bold uppercase tracking-widest text-xs py-4 active:text-white transition-colors"
                     >
                         Volver al Inicio

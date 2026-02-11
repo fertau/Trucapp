@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { usePairStore } from '../store/usePairStore';
 import type { Player, TeamId } from '../types';
 
@@ -14,7 +14,7 @@ interface TeamConfigurationProps {
 
 export const TeamConfiguration = ({ players, onStartMatch }: TeamConfigurationProps) => {
     // We use a pool for unassigned players
-    const [pool, setPool] = useState<Player[]>([]);
+    const [pool, setPool] = useState<Player[]>(() => players);
     const [nosotros, setNosotros] = useState<Player[]>([]);
     const [ellos, setEllos] = useState<Player[]>([]);
     const [targetScore, setTargetScore] = useState<number>(30);
@@ -22,7 +22,7 @@ export const TeamConfiguration = ({ players, onStartMatch }: TeamConfigurationPr
     const [location, setLocation] = useState('');
     const [customDate, setCustomDate] = useState<string>(new Date().toISOString().slice(0, 10));
 
-    const { getOrCreatePair, updatePairName } = usePairStore();
+    const { getOrCreatePair, updatePairName, findPairByPlayers } = usePairStore();
     const [nosotrosPairName, setNosotrosPairName] = useState('');
     const [ellosPairName, setEllosPairName] = useState('');
     const [isEditingNosotrosPair, setIsEditingNosotrosPair] = useState(false);
@@ -31,36 +31,6 @@ export const TeamConfiguration = ({ players, onStartMatch }: TeamConfigurationPr
     const [ellosTeamName, setEllosTeamName] = useState('Equipo 2');
     const [isEditingNosotrosTeam, setIsEditingNosotrosTeam] = useState(false);
     const [isEditingEllosTeam, setIsEditingEllosTeam] = useState(false);
-
-    // Initial load: Everything in Pool
-    useEffect(() => {
-        setPool(players);
-        setNosotros([]);
-        setEllos([]);
-    }, [players]);
-
-    // Names Sync Logic
-    useEffect(() => {
-        // Auto-update team name if it's 1v1
-        if (nosotros.length === 1 && !isEditingNosotrosTeam) {
-            setNosotrosTeamName(nosotros[0].name);
-        }
-        if (ellos.length === 1 && !isEditingEllosTeam) {
-            setEllosTeamName(ellos[0].name);
-        }
-
-        // Pairs sync for 2v2
-        if (nosotros.length === 2) {
-            const pair = getOrCreatePair([nosotros[0].id, nosotros[1].id] as [string, string], `${nosotros[0].name} + ${nosotros[1].name}`);
-            setNosotrosPairName(pair.name);
-            if (!isEditingNosotrosTeam) setNosotrosTeamName(pair.name);
-        }
-        if (ellos.length === 2) {
-            const pair = getOrCreatePair([ellos[0].id, ellos[1].id] as [string, string], `${ellos[0].name} + ${ellos[1].name}`);
-            setEllosPairName(pair.name);
-            if (!isEditingEllosTeam) setEllosTeamName(pair.name);
-        }
-    }, [nosotros, ellos, getOrCreatePair, isEditingNosotrosTeam, isEditingEllosTeam]);
 
     const handlePairNameSave = (team: TeamId, name: string) => {
         if (team === 'nosotros' && nosotros.length === 2) {
@@ -120,6 +90,20 @@ export const TeamConfiguration = ({ players, onStartMatch }: TeamConfigurationPr
     const limit = getLimit();
     const isValid = nosotros.length === limit && ellos.length === limit;
     const is2v2 = limit === 2;
+    const defaultNosotrosPairName = nosotros.length === 2
+        ? (findPairByPlayers([nosotros[0].id, nosotros[1].id])?.name ?? `${nosotros[0].name} + ${nosotros[1].name}`)
+        : '';
+    const defaultEllosPairName = ellos.length === 2
+        ? (findPairByPlayers([ellos[0].id, ellos[1].id])?.name ?? `${ellos[0].name} + ${ellos[1].name}`)
+        : '';
+    const displayNosotrosPairName = nosotrosPairName || defaultNosotrosPairName;
+    const displayEllosPairName = ellosPairName || defaultEllosPairName;
+    const displayNosotrosTeamName = isEditingNosotrosTeam
+        ? nosotrosTeamName
+        : (limit === 1 && nosotros.length === 1 ? nosotros[0].name : (is2v2 ? (displayNosotrosPairName || nosotrosTeamName) : nosotrosTeamName));
+    const displayEllosTeamName = isEditingEllosTeam
+        ? ellosTeamName
+        : (limit === 1 && ellos.length === 1 ? ellos[0].name : (is2v2 ? (displayEllosPairName || ellosTeamName) : ellosTeamName));
 
     // Drag & Drop Handlers
     const [draggedPlayer, setDraggedPlayer] = useState<{ p: Player, from: 'pool' | TeamId } | null>(null);
@@ -175,10 +159,13 @@ export const TeamConfiguration = ({ players, onStartMatch }: TeamConfigurationPr
                             />
                         ) : (
                             <div
-                                onClick={() => setIsEditingNosotrosTeam(true)}
+                                onClick={() => {
+                                    setNosotrosTeamName(displayNosotrosTeamName);
+                                    setIsEditingNosotrosTeam(true);
+                                }}
                                 className="text-[10px] font-black uppercase text-[var(--color-nosotros)] tracking-widest text-center px-1 truncate cursor-edit"
                             >
-                                {nosotrosTeamName}
+                                {displayNosotrosTeamName}
                             </div>
                         )}
                     </div>
@@ -215,10 +202,13 @@ export const TeamConfiguration = ({ players, onStartMatch }: TeamConfigurationPr
                             />
                         ) : (
                             <div
-                                onClick={() => setIsEditingEllosTeam(true)}
+                                onClick={() => {
+                                    setEllosTeamName(displayEllosTeamName);
+                                    setIsEditingEllosTeam(true);
+                                }}
                                 className="text-[10px] font-black uppercase text-[var(--color-ellos)] tracking-widest text-center px-1 truncate cursor-edit"
                             >
-                                {ellosTeamName}
+                                {displayEllosTeamName}
                             </div>
                         )}
                     </div>
@@ -262,8 +252,14 @@ export const TeamConfiguration = ({ players, onStartMatch }: TeamConfigurationPr
                                 <button onClick={() => handlePairNameSave('nosotros', nosotrosPairName)} className="text-[var(--color-accent)] font-black text-xs">OK</button>
                             </div>
                         ) : (
-                            <div className="flex justify-between items-center" onClick={() => setIsEditingNosotrosPair(true)}>
-                                <span className="font-black text-sm">{nosotrosPairName}</span>
+                            <div
+                                className="flex justify-between items-center"
+                                onClick={() => {
+                                    setNosotrosPairName(displayNosotrosPairName);
+                                    setIsEditingNosotrosPair(true);
+                                }}
+                            >
+                                <span className="font-black text-sm">{displayNosotrosPairName}</span>
                                 <span className="text-[9px] text-[var(--color-accent)] font-black uppercase tracking-widest">Editar</span>
                             </div>
                         )}
@@ -282,8 +278,14 @@ export const TeamConfiguration = ({ players, onStartMatch }: TeamConfigurationPr
                                 <button onClick={() => handlePairNameSave('ellos', ellosPairName)} className="text-[var(--color-accent)] font-black text-xs">OK</button>
                             </div>
                         ) : (
-                            <div className="flex justify-between items-center" onClick={() => setIsEditingEllosPair(true)}>
-                                <span className="font-black text-sm">{ellosPairName}</span>
+                            <div
+                                className="flex justify-between items-center"
+                                onClick={() => {
+                                    setEllosPairName(displayEllosPairName);
+                                    setIsEditingEllosPair(true);
+                                }}
+                            >
+                                <span className="font-black text-sm">{displayEllosPairName}</span>
                                 <span className="text-[9px] text-[var(--color-accent)] font-black uppercase tracking-widest">Editar</span>
                             </div>
                         )}
@@ -360,7 +362,7 @@ export const TeamConfiguration = ({ players, onStartMatch }: TeamConfigurationPr
                             {
                                 location: location || 'Sin ubicación',
                                 date: dateTs,
-                                teamNames: { nosotros: nosotrosTeamName, ellos: ellosTeamName }
+                                teamNames: { nosotros: displayNosotrosTeamName, ellos: displayEllosTeamName }
                             },
                             pIds,
                             targetScore

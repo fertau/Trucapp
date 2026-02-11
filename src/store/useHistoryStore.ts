@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { collection, addDoc, getDocs, query, orderBy, limit, deleteDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, limit, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { MatchState } from '../types';
 
@@ -29,30 +29,36 @@ export const useHistoryStore = create<HistoryStore>((set) => ({
 
             const querySnapshot = await getDocs(q);
             const loadedMatches: MatchState[] = [];
+            const seen = new Set<string>();
 
-            querySnapshot.forEach((doc: any) => {
-                const data = doc.data() as MatchState;
-                // Ensure ID ensures unicity? 
-                // We might want to store the Firestore Doc ID if we edit.
-                // For now, just loading for display is enough.
-                loadedMatches.push(data);
+            querySnapshot.forEach((d) => {
+                const data = d.data() as MatchState;
+                const matchId = data.id || d.id;
+                if (!matchId || seen.has(matchId)) return;
+                seen.add(matchId);
+                loadedMatches.push({ ...data, id: matchId });
             });
 
             set({ matches: loadedMatches, isLoading: false });
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Error fetching matches:", err);
-            set({ error: err.message, isLoading: false });
+            set({ error: err instanceof Error ? err.message : 'Unknown error', isLoading: false });
         }
     },
 
     addMatch: async (match) => {
-        // Optimistic update
-        set((state) => ({ matches: [match, ...state.matches] }));
+        // Optimistic upsert
+        set((state) => {
+            const exists = state.matches.some((m) => m.id === match.id);
+            if (exists) {
+                return { matches: state.matches.map((m) => (m.id === match.id ? match : m)) };
+            }
+            return { matches: [match, ...state.matches] };
+        });
 
         try {
-            const matchesRef = collection(db, 'matches');
-            await addDoc(matchesRef, match);
-        } catch (err: any) {
+            await setDoc(doc(db, 'matches', match.id), match, { merge: true });
+        } catch (err: unknown) {
             console.error("Error saving match to cloud:", err);
             // Rollback or show error?
             // For now, just log.

@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useUserStore } from '../store/useUserStore';
 import { useAuthStore } from '../store/useAuthStore';
 import type { Player } from '../types';
+import { hashPin } from '../utils/pinSecurity';
 
 interface PlayerSelectionProps {
     onSelect: (players: Player[]) => void;
@@ -50,7 +51,7 @@ export const PlayerSelection = ({ onSelect, requiredCount }: PlayerSelectionProp
 
     const handleCreate = async () => {
         if (!newPlayerName.trim()) return;
-        const player = await addPlayer(newPlayerName.trim(), '0000');
+        const player = await addPlayer(newPlayerName.trim(), await hashPin('0000'));
         setNewPlayerName('');
         toggleSelect(player.id);
         setMessage(`Usuario creado. PIN provisorio: 0000`);

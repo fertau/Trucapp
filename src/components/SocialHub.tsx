@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useUserStore } from '../store/useUserStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { PinInput } from './PinInput';
+import { hashPin } from '../utils/pinSecurity';
 
 interface SocialHubProps {
     onBack: () => void;
@@ -42,8 +43,6 @@ export const SocialHub = ({ onBack }: SocialHubProps) => {
 
     if (!currentUser) return <div className="p-8 text-center text-white/20 uppercase font-black tracking-widest">No hay sesión activa</div>;
 
-    if (!currentUser) return <div className="p-8 text-center text-white/20 uppercase font-black tracking-widest">No hay sesión activa</div>;
-
     const handleUpdateNickname = async () => {
         await updateNickname(currentUser.id, tempNickname);
         setEditingNickname(false);
@@ -52,11 +51,11 @@ export const SocialHub = ({ onBack }: SocialHubProps) => {
     const handleUpdatePin = async () => {
         if (newPin.length !== 4) return;
         try {
-            await updatePlayer(currentUser.id, { pinHash: `hash_${newPin}` });
+            await updatePlayer(currentUser.id, { pinHash: await hashPin(newPin) });
             setShowPinChange(false);
             setNewPin('');
             setPinError('');
-        } catch (e) {
+        } catch {
             setPinError('Error al cambiar PIN');
         }
     };

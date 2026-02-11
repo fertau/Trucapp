@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useUserStore } from '../store/useUserStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { PinInput } from './PinInput';
+import { hashPin, isModernPinHash } from '../utils/pinSecurity';
 
 interface AccountSelectorProps {
     onLoginSuccess: () => void;
@@ -38,7 +39,7 @@ export const AccountSelector = ({ onLoginSuccess }: AccountSelectorProps) => {
         setTimeout(() => setShakeError(false), 500);
     };
 
-    const handleLoginSubmit = (pinFromInput?: string) => {
+    const handleLoginSubmit = async (pinFromInput?: string) => {
         if (!selectedUser) return;
 
         const actualPin = typeof pinFromInput === 'string' ? pinFromInput : loginPin;
@@ -50,14 +51,14 @@ export const AccountSelector = ({ onLoginSuccess }: AccountSelectorProps) => {
             return;
         }
 
-        const success = login(selectedUser.id, actualPin);
+        const success = await login(selectedUser.id, actualPin);
         if (success) {
             onLoginSuccess();
         } else {
             // Find user to check if default PIN
             const user = players.find(p => p.id === selectedUser.id);
             const storedPin = user?.pinHash || user?.pin;
-            if (user && (storedPin === '0000' || storedPin === 'hash_0000')) {
+            if (user && storedPin && !isModernPinHash(storedPin) && (storedPin === '0000' || storedPin === 'hash_0000')) {
                 triggerError('PIN incorrecto (Probá con 0000)');
             } else {
                 triggerError('PIN incorrecto');
@@ -89,10 +90,9 @@ export const AccountSelector = ({ onLoginSuccess }: AccountSelectorProps) => {
     const handleCreateComplete = async () => {
         if (newPin.length !== 4) return;
         try {
-            // Store is prepared for pinHash, we pass the raw pin for now (or pre-hash)
-            // useUserStore.addPlayer(name, pinHash)
-            const newP = await addPlayer(newName.trim(), `hash_${newPin}`);
-            login(newP.id, newPin);
+            const hashedPin = await hashPin(newPin);
+            const newP = await addPlayer(newName.trim(), hashedPin);
+            await login(newP.id, newPin);
             onLoginSuccess();
         } catch (e) {
             console.error(e);
@@ -234,7 +234,7 @@ export const AccountSelector = ({ onLoginSuccess }: AccountSelectorProps) => {
                     <PinInput
                         value={loginPin}
                         onChange={(val) => { setLoginPin(val); setError(''); }}
-                        onComplete={(pin) => handleLoginSubmit(pin)}
+                        onComplete={(pin) => void handleLoginSubmit(pin)}
                         autoFocus={true}
                     />
                 </div>
@@ -242,7 +242,7 @@ export const AccountSelector = ({ onLoginSuccess }: AccountSelectorProps) => {
                 {error && <div className={`mt-6 font-bold ${error.includes('encontramos') ? 'text-[var(--color-accent)]' : 'text-red-500'}`}>{error}</div>}
                 {!error && <div className="h-6 mt-6"></div>} {/* Spacer */}
 
-                <button onClick={() => handleLoginSubmit()} className="mt-8 bg-[var(--color-accent)] text-white font-bold py-3 px-8 rounded-xl disabled:opacity-50" disabled={loginPin.length !== 4}>
+                <button onClick={() => void handleLoginSubmit()} className="mt-8 bg-[var(--color-accent)] text-white font-bold py-3 px-8 rounded-xl disabled:opacity-50" disabled={loginPin.length !== 4}>
                     Ingresar
                 </button>
             </div>

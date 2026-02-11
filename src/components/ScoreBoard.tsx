@@ -68,7 +68,6 @@ const SquareGroup = ({ points }: { points: number }) => {
 export const ScoreBoard = () => {
     const teams = useMatchStore(state => state.teams);
     const addPoints = useMatchStore(state => state.addPoints);
-    // @ts-ignore
     const subtractPoints = useMatchStore(state => state.subtractPoints);
 
     // Interaction Handlers

@@ -265,7 +265,7 @@ export const useMatchStore = create<MatchStore>()(
             setPlayers: (team, playerIds) => set((state) => ({
                 teams: {
                     ...state.teams,
-                    [team]: { ...state.teams[team], players: playerIds.map(id => ({ id } as any)) } // Simplified for store
+                    [team]: { ...state.teams[team], players: playerIds }
                 }
             })),
 
