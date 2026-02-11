@@ -27,6 +27,7 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
     const [pinError, setPinError] = useState('');
     const [showSocialHub, setShowSocialHub] = useState(false);
     const [showAdminDanger, setShowAdminDanger] = useState(false);
+    const [showAllAvatars, setShowAllAvatars] = useState(false);
 
     if (!currentUser) {
         return (
@@ -236,24 +237,57 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
                     {/* Avatar Selection */}
                     <div style={cardStyle}>
                         <h3 style={labelStyle}>Seleccionar Avatar</h3>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '10px' }}>
-                            {avatars.map(av => (
-                                <button
-                                    key={av}
-                                    onClick={() => handleAvatarChange(av)}
-                                    style={{
-                                        ...btnStyle,
-                                        aspectRatio: '1', borderRadius: '1rem',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        fontSize: '22px',
-                                        background: currentUser.avatar === av ? 'rgba(74,222,128,0.2)' : s.whiteBg,
-                                        border: currentUser.avatar === av ? '2px solid var(--color-accent)' : '2px solid rgba(255,255,255,0.05)',
-                                        transform: currentUser.avatar === av ? 'scale(1.1)' : 'scale(1)',
-                                    }}
-                                >
-                                    {av}
-                                </button>
-                            ))}
+                        {!showAllAvatars ? (
+                            <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '4px' }}>
+                                {avatars.slice(0, 10).map(av => (
+                                    <button
+                                        key={av}
+                                        onClick={() => handleAvatarChange(av)}
+                                        style={{
+                                            ...btnStyle,
+                                            width: '52px',
+                                            height: '52px',
+                                            borderRadius: '1rem',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            fontSize: '22px',
+                                            flexShrink: 0,
+                                            background: currentUser.avatar === av ? 'rgba(74,222,128,0.2)' : s.whiteBg,
+                                            border: currentUser.avatar === av ? '2px solid var(--color-accent)' : '2px solid rgba(255,255,255,0.05)',
+                                            transform: currentUser.avatar === av ? 'scale(1.08)' : 'scale(1)',
+                                        }}
+                                    >
+                                        {av}
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '10px' }}>
+                                {avatars.map(av => (
+                                    <button
+                                        key={av}
+                                        onClick={() => handleAvatarChange(av)}
+                                        style={{
+                                            ...btnStyle,
+                                            aspectRatio: '1', borderRadius: '1rem',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            fontSize: '22px',
+                                            background: currentUser.avatar === av ? 'rgba(74,222,128,0.2)' : s.whiteBg,
+                                            border: currentUser.avatar === av ? '2px solid var(--color-accent)' : '2px solid rgba(255,255,255,0.05)',
+                                            transform: currentUser.avatar === av ? 'scale(1.1)' : 'scale(1)',
+                                        }}
+                                    >
+                                        {av}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                        <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'center' }}>
+                            <button
+                                onClick={() => setShowAllAvatars(v => !v)}
+                                style={{ ...btnStyle, background: s.whiteBg, border: `1px solid ${s.whiteBgHover}`, color: s.whiteSoft, padding: '8px 14px', borderRadius: '9999px', fontSize: '10px', letterSpacing: '0.12em' }}
+                            >
+                                {showAllAvatars ? 'VER MENOS' : 'VER MAS'}
+                            </button>
                         </div>
                     </div>
 
