@@ -20,8 +20,8 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
     const user = players.find(p => p.id === currentUserId);
 
     return (
-        <div className="full-screen bg-[var(--color-bg)] flex flex-col p-6" style={{ paddingTop: 'max(24px, env(safe-area-inset-top))' }}>
-            <div className="flex justify-between items-center mb-8">
+        <div className="full-screen bg-[var(--color-bg)] flex flex-col p-5" style={{ paddingTop: 'max(20px, env(safe-area-inset-top))' }}>
+            <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-black tracking-tighter">TRUCAPP</h1>
                 <div className="flex items-center gap-2" onClick={onProfile}>
                     <div className="w-8 h-8 rounded-full bg-[var(--color-surface)] flex items-center justify-center text-xs font-bold border border-[var(--color-border)] cursor-pointer active:scale-95 transition-all">
@@ -30,7 +30,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto pb-32">
+            <div className="flex-1 overflow-y-auto pb-28">
                 {tab === 'PARTIDO' && (
                     <div className="flex flex-col gap-4 animate-in slide-in-from-bottom duration-300">
                         <button
@@ -40,7 +40,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                             NUEVO PARTIDO
                         </button>
 
-                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mt-2 tracking-wider border-b border-[var(--color-border)] pb-2">
+                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mt-1 tracking-wider border-b border-[var(--color-border)] pb-2">
                             Últimos partidos
                         </h3>
 
@@ -53,7 +53,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                                 };
 
                                 return (
-                                    <div key={m.id} className="flex justify-between items-start bg-[var(--color-surface)] p-4 rounded-[1.5rem] border border-[var(--color-border)] shadow-sm">
+                                    <div key={m.id} className="flex justify-between items-start bg-[var(--color-surface)] p-3 rounded-[1.25rem] border border-[var(--color-border)] shadow-sm min-h-[106px]">
                                         <div className="flex flex-col gap-3 flex-1 overflow-hidden">
                                             <div className="flex justify-between items-start pr-4">
                                                 <div className="flex flex-col gap-0.5 flex-1">
@@ -95,14 +95,14 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                             })}
                         </div>
 
-                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mt-4 tracking-wider border-b border-[var(--color-border)] pb-2">
+                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mt-2 tracking-wider border-b border-[var(--color-border)] pb-2">
                             Novedades
                         </h3>
                         <div className="flex flex-col gap-2">
                             {matches.slice(0, 3).map((m) => {
                                 const wasEdited = Boolean(m.editedFlags?.resultEdited);
                                 return (
-                                    <div key={`news-${m.id}`} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl px-4 py-3">
+                                    <div key={`news-${m.id}`} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl px-4 py-2.5">
                                         <div className="text-[10px] uppercase tracking-widest text-white/40 font-black">
                                             {wasEdited ? 'Resultado editado' : 'Partido registrado'}
                                         </div>
@@ -128,7 +128,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                 style={{
                     left: '12px',
                     right: '12px',
-                    bottom: 'max(12px, env(safe-area-inset-bottom))',
+                    bottom: 'max(16px, env(safe-area-inset-bottom))',
                 }}
             >
                 <div className="grid grid-cols-2 gap-2 max-w-md mx-auto">

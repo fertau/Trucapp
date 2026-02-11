@@ -52,9 +52,7 @@ export const SplashScreen = ({ onFinish }: { onFinish: () => void }) => {
                         TRUCAPP
                     </h1>
                     <div className={`h-[1px] w-12 bg-[var(--color-accent)] my-4 transition-opacity duration-500 ${showWordmark ? 'opacity-100' : 'opacity-0'}`} />
-                    <p className={`text-[var(--color-text-muted)] text-[10px] uppercase tracking-[0.35em] transition-all duration-500 ${showWordmark ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'}`}>
-                        PLAY SMARTER
-                    </p>
+                    <div className={`h-3 transition-all duration-500 ${showWordmark ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'}`} />
                 </div>
             </div>
         </div>
