@@ -15,6 +15,7 @@ type FilterMode = 'ALL' | MatchMode;
 type Scope = 'MINE' | 'GLOBAL';
 type ResultFilter = 'ALL' | 'W' | 'L';
 type RankingType = 'PLAYERS' | 'PAIRS';
+type SummaryWindow = '7D' | '30D' | 'ALL';
 
 const MODES: FilterMode[] = ['ALL', '1v1', '2v2', '3v3'];
 
@@ -56,6 +57,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
     const [opponentGroupKey, setOpponentGroupKey] = useState<string>('ALL');
     const [search, setSearch] = useState('');
     const [rankingType, setRankingType] = useState<RankingType>('PLAYERS');
+    const [summaryWindow, setSummaryWindow] = useState<SummaryWindow>('30D');
     const [selectedMatch, setSelectedMatch] = useState<MatchState | null>(null);
     const loadMoreAnchorRef = useRef<HTMLDivElement | null>(null);
 
@@ -158,10 +160,22 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
         return mine.filter((m) => m.mode === mode);
     }, [matches, currentUserId, mode]);
 
+    const summaryMatches = useMemo(() => {
+        if (summaryWindow === 'ALL') return myModeMatches;
+        const now = Date.now();
+        const from = summaryWindow === '7D'
+            ? now - (7 * 24 * 60 * 60 * 1000)
+            : now - (30 * 24 * 60 * 60 * 1000);
+        return myModeMatches.filter((m) => {
+            const ts = m.metadata?.date ?? m.startDate;
+            return ts >= from && ts <= now;
+        });
+    }, [myModeMatches, summaryWindow]);
+
     const summary = useMemo(() => {
         if (!currentUserId) return { total: 0, wins: 0, losses: 0, winRate: 0, pointsDiff: 0, streak: [] as ('W' | 'L')[] };
 
-        const streak = myModeMatches.slice(0, 8).map((m) => {
+        const streak = summaryMatches.slice(0, 8).map((m) => {
             const team = getTeamIdForUser(m, currentUserId);
             if (!team || !m.winner) return 'L';
             return m.winner === team ? 'W' : 'L';
@@ -169,7 +183,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
 
         let wins = 0;
         let pointsDiff = 0;
-        myModeMatches.forEach((m) => {
+        summaryMatches.forEach((m) => {
             const team = getTeamIdForUser(m, currentUserId);
             if (!team) return;
             const opponent = getOppositeTeam(team);
@@ -177,7 +191,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
             pointsDiff += m.teams[team].score - m.teams[opponent].score;
         });
 
-        const total = myModeMatches.length;
+        const total = summaryMatches.length;
         return {
             total,
             wins,
@@ -186,13 +200,14 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
             pointsDiff,
             streak
         };
-    }, [myModeMatches, currentUserId]);
+    }, [summaryMatches, currentUserId]);
 
     const trends = useMemo(() => {
         const now = Date.now();
         const dayMs = 24 * 60 * 60 * 1000;
-        const last7From = now - (7 * dayMs);
-        const prev7From = now - (14 * dayMs);
+        const windowDays = summaryWindow === '7D' ? 7 : summaryWindow === '30D' ? 30 : 7;
+        const currentFrom = now - (windowDays * dayMs);
+        const prevFrom = now - ((windowDays * 2) * dayMs);
 
         const getBucketStats = (from: number, to: number) => {
             const bucket = myModeMatches.filter((m) => {
@@ -207,15 +222,71 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
             return { wins, total, winRate: total ? Math.round((wins / total) * 100) : 0 };
         };
 
-        const last7 = getBucketStats(last7From, now);
-        const prev7 = getBucketStats(prev7From, last7From);
+        const lastWindow = getBucketStats(currentFrom, now);
+        const prevWindow = getBucketStats(prevFrom, currentFrom);
         return {
-            last7,
-            prev7,
-            deltaMatches: last7.total - prev7.total,
-            deltaWinRate: last7.winRate - prev7.winRate
+            lastWindow,
+            prevWindow,
+            deltaMatches: lastWindow.total - prevWindow.total,
+            deltaWinRate: lastWindow.winRate - prevWindow.winRate,
+            windowDays
         };
-    }, [myModeMatches, currentUserId]);
+    }, [myModeMatches, currentUserId, summaryWindow]);
+
+    const summaryInsights = useMemo(() => {
+        if (!currentUserId) {
+            return {
+                avgFor: 0,
+                avgAgainst: 0,
+                topRivals: [] as Array<{ id: string; name: string; matches: number; wins: number }>,
+                topLocations: [] as Array<{ name: string; matches: number }>
+            };
+        }
+
+        let totalFor = 0;
+        let totalAgainst = 0;
+        const rivalStats: Record<string, { matches: number; wins: number }> = {};
+        const locationStats: Record<string, number> = {};
+
+        summaryMatches.forEach((m) => {
+            const myTeam = getTeamIdForUser(m, currentUserId);
+            if (!myTeam) return;
+            const oppTeam = m.teams[getOppositeTeam(myTeam)];
+
+            totalFor += m.teams[myTeam].score;
+            totalAgainst += oppTeam.score;
+
+            const didWin = m.winner === myTeam;
+            oppTeam.players.forEach((rivalId) => {
+                rivalStats[rivalId] = rivalStats[rivalId] ?? { matches: 0, wins: 0 };
+                rivalStats[rivalId].matches += 1;
+                if (didWin) rivalStats[rivalId].wins += 1;
+            });
+
+            const location = (m.metadata?.location ?? '').trim();
+            if (location) {
+                locationStats[location] = (locationStats[location] ?? 0) + 1;
+            }
+        });
+
+        const divisor = summaryMatches.length || 1;
+        const topRivals = Object.entries(rivalStats)
+            .map(([id, s]) => ({ id, name: getPlayerName(id), matches: s.matches, wins: s.wins }))
+            .sort((a, b) => b.matches - a.matches || b.wins - a.wins)
+            .slice(0, 3);
+
+        const topLocations = Object.entries(locationStats)
+            .map(([name, matches]) => ({ name, matches }))
+            .sort((a, b) => b.matches - a.matches)
+            .slice(0, 3);
+
+        return {
+            avgFor: Math.round((totalFor / divisor) * 10) / 10,
+            avgAgainst: Math.round((totalAgainst / divisor) * 10) / 10,
+            topRivals,
+            topLocations
+        };
+    }, [summaryMatches, currentUserId, getPlayerName]);
 
     const rankings = useMemo(() => {
         const source = mode === 'ALL' ? scopeMatches : scopeMatches.filter((m) => m.mode === mode);
@@ -443,6 +514,18 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
 
                 {!isLoading && tab === 'SUMMARY' && (
                     <div className="flex flex-col gap-4 animate-in slide-in-from-bottom duration-300">
+                        <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                            {(['7D', '30D', 'ALL'] as const).map((w) => (
+                                <button
+                                    key={w}
+                                    onClick={() => setSummaryWindow(w)}
+                                    className={`px-3 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border whitespace-nowrap ${summaryWindow === w ? 'bg-white text-black border-white' : 'bg-white/5 text-white/45 border-white/10'}`}
+                                >
+                                    {w === '7D' ? '7 dias' : w === '30D' ? '30 dias' : 'Todo'}
+                                </button>
+                            ))}
+                        </div>
+
                         <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] p-6">
                             <div className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-black mb-3">Resumen del jugador</div>
                             <div className="grid grid-cols-2 gap-3">
@@ -466,22 +549,58 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                         </div>
 
                         <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] p-6">
-                            <div className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-black mb-3">Tendencia (7 días)</div>
+                            <div className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-black mb-3">Tendencia ({trends.windowDays} dias)</div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="bg-white/5 rounded-2xl p-3">
                                     <div className="text-xs text-white/40">Partidos</div>
-                                    <div className="text-2xl font-black">{trends.last7.total}</div>
+                                    <div className="text-2xl font-black">{trends.lastWindow.total}</div>
                                     <div className={`text-[10px] font-black ${trends.deltaMatches >= 0 ? 'text-[var(--color-nosotros)]' : 'text-[var(--color-ellos)]'}`}>
-                                        vs 7 previos: {trends.deltaMatches >= 0 ? `+${trends.deltaMatches}` : trends.deltaMatches}
+                                        vs periodo previo: {trends.deltaMatches >= 0 ? `+${trends.deltaMatches}` : trends.deltaMatches}
                                     </div>
                                 </div>
                                 <div className="bg-white/5 rounded-2xl p-3">
                                     <div className="text-xs text-white/40">Winrate</div>
-                                    <div className="text-2xl font-black">{trends.last7.winRate}%</div>
+                                    <div className="text-2xl font-black">{trends.lastWindow.winRate}%</div>
                                     <div className={`text-[10px] font-black ${trends.deltaWinRate >= 0 ? 'text-[var(--color-nosotros)]' : 'text-[var(--color-ellos)]'}`}>
-                                        vs 7 previos: {trends.deltaWinRate >= 0 ? `+${trends.deltaWinRate}` : trends.deltaWinRate} pts
+                                        vs periodo previo: {trends.deltaWinRate >= 0 ? `+${trends.deltaWinRate}` : trends.deltaWinRate} pts
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] p-6">
+                            <div className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-black mb-3">Insights</div>
+                            <div className="grid grid-cols-2 gap-3 mb-3">
+                                <div className="bg-white/5 rounded-2xl p-3">
+                                    <div className="text-xs text-white/40">Prom. puntos a favor</div>
+                                    <div className="text-2xl font-black">{summaryInsights.avgFor}</div>
+                                </div>
+                                <div className="bg-white/5 rounded-2xl p-3">
+                                    <div className="text-xs text-white/40">Prom. puntos en contra</div>
+                                    <div className="text-2xl font-black">{summaryInsights.avgAgainst}</div>
+                                </div>
+                            </div>
+
+                            <div className="bg-white/5 rounded-2xl p-3 mb-3">
+                                <div className="text-xs text-white/40 mb-2">Rivales mas frecuentes</div>
+                                {summaryInsights.topRivals.length === 0 && <div className="text-xs text-white/30">Sin datos</div>}
+                                {summaryInsights.topRivals.map((r) => (
+                                    <div key={r.id} className="flex items-center justify-between text-xs py-1">
+                                        <span>{r.name}</span>
+                                        <span className="text-white/55">{r.matches} pj | {r.wins} W</span>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="bg-white/5 rounded-2xl p-3">
+                                <div className="text-xs text-white/40 mb-2">Sedes mas usadas</div>
+                                {summaryInsights.topLocations.length === 0 && <div className="text-xs text-white/30">Sin sedes registradas</div>}
+                                {summaryInsights.topLocations.map((loc) => (
+                                    <div key={loc.name} className="flex items-center justify-between text-xs py-1">
+                                        <span className="truncate pr-2">{loc.name}</span>
+                                        <span className="text-white/55">{loc.matches} pj</span>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     </div>
