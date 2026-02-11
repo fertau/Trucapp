@@ -220,6 +220,10 @@ const WinnerCelebration = ({ winner, teams, onFinish }: { winner: TeamId, teams:
         onFinish('home');
     };
 
+    const handleNextSeriesMatch = () => {
+        onFinish('series-next');
+    };
+
     const copyShareLink = () => {
         const url = `${window.location.origin}/?matchId=${matchId}`;
         navigator.clipboard.writeText(url);
@@ -280,12 +284,21 @@ const WinnerCelebration = ({ winner, teams, onFinish }: { winner: TeamId, teams:
                 )}
 
                 <div className="flex flex-col gap-4 w-full relative z-20">
-                    <button
-                        onClick={handleRematch}
-                        className={`w-full bg-[var(--color-${winner})] text-black py-4 rounded-xl font-black text-xl shadow-lg active:scale-95 transition-transform`}
-                    >
-                        REVANCHA
-                    </button>
+                    {seriesProgress && !seriesProgress.isFinished ? (
+                        <button
+                            onClick={handleNextSeriesMatch}
+                            className={`w-full bg-[var(--color-${winner})] text-black py-4 rounded-xl font-black text-xl shadow-lg active:scale-95 transition-transform`}
+                        >
+                            SIGUIENTE PARTIDO (SERIE)
+                        </button>
+                    ) : (
+                        <button
+                            onClick={handleRematch}
+                            className={`w-full bg-[var(--color-${winner})] text-black py-4 rounded-xl font-black text-xl shadow-lg active:scale-95 transition-transform`}
+                        >
+                            REVANCHA
+                        </button>
+                    )}
                     <button
                         onClick={handleGoHome}
                         className="text-[var(--color-text-muted)] font-bold uppercase tracking-widest text-xs py-4 active:text-white transition-colors"

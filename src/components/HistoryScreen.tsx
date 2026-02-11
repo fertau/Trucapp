@@ -63,7 +63,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
     const [summaryWindow, setSummaryWindow] = useState<SummaryWindow>('30D');
     const [analysisWindow, setAnalysisWindow] = useState<AnalysisWindow>('ALL');
     const [rankingMinMatches, setRankingMinMatches] = useState<number>(3);
-    const [matchListView, setMatchListView] = useState<MatchListView>('MATCHES');
+    const [matchListView, setMatchListView] = useState<MatchListView>('SERIES');
     const [openSeriesId, setOpenSeriesId] = useState<string | null>(null);
     const [selectedMatch, setSelectedMatch] = useState<MatchState | null>(null);
     const loadMoreAnchorRef = useRef<HTMLDivElement | null>(null);
@@ -718,6 +718,15 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                                 Partidos
                             </button>
                         </div>
+
+                        {groupedSeries.length > 0 && matchListView === 'MATCHES' && (
+                            <button
+                                onClick={() => setMatchListView('SERIES')}
+                                className="w-full py-2.5 rounded-xl text-xs font-black uppercase tracking-widest border border-[var(--color-accent)]/40 bg-[var(--color-accent)]/10 text-[var(--color-accent)]"
+                            >
+                                Ver series sugeridas ({groupedSeries.length})
+                            </button>
+                        )}
 
                         <div className="grid grid-cols-2 gap-2">
                             <select value={opponentId} onChange={(e) => setOpponentId(e.target.value)} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-xs font-bold">
