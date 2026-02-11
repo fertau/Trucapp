@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useHistoryStore } from '../store/useHistoryStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useUserStore } from '../store/useUserStore';
@@ -57,6 +57,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
     const [search, setSearch] = useState('');
     const [rankingType, setRankingType] = useState<RankingType>('PLAYERS');
     const [selectedMatch, setSelectedMatch] = useState<MatchState | null>(null);
+    const loadMoreAnchorRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         setTab(initialTab);
@@ -318,6 +319,23 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
         return chips;
     }, [scope, mode, result, opponentId, opponentGroupKey, search, getPlayerName, availableOpponentGroups]);
 
+    useEffect(() => {
+        if (tab !== 'MATCHES') return;
+        const anchor = loadMoreAnchorRef.current;
+        if (!anchor) return;
+
+        const observer = new IntersectionObserver((entries) => {
+            const [entry] = entries;
+            if (!entry?.isIntersecting) return;
+            if (hasMore && !isLoadingMore) {
+                void loadMoreMatches();
+            }
+        }, { rootMargin: '120px' });
+
+        observer.observe(anchor);
+        return () => observer.disconnect();
+    }, [tab, hasMore, isLoadingMore, loadMoreMatches]);
+
     return (
         <div
             className="full-screen bg-[var(--color-bg)] flex flex-col p-5 overflow-hidden"
@@ -538,6 +556,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                                 {isLoadingMore ? 'Cargando...' : 'Cargar mas'}
                             </button>
                         )}
+                        <div ref={loadMoreAnchorRef} className="h-1" />
                     </div>
                 )}
 
