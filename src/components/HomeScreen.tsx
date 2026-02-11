@@ -30,7 +30,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto pb-28">
+            <div className="flex-1 overflow-y-auto pb-36">
                 {tab === 'PARTIDO' && (
                     <div className="flex flex-col gap-4 animate-in slide-in-from-bottom duration-300">
                         <button
@@ -123,35 +123,33 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                 {tab === 'HISTORIAL' && <div className="hidden" />}
             </div>
 
-            <div
-                className="fixed bg-[var(--color-bg)]/95 backdrop-blur border border-[var(--color-border)] px-3 py-3 rounded-2xl shadow-2xl"
-                style={{
-                    left: '12px',
-                    right: '12px',
-                    bottom: 'max(16px, env(safe-area-inset-bottom))',
-                }}
+            <nav
+                className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--color-border)] bg-[var(--color-surface)]/95 backdrop-blur-xl shadow-[0_-12px_30px_rgba(0,0,0,0.45)]"
+                style={{ paddingBottom: 'max(14px, env(safe-area-inset-bottom))' }}
             >
-                <div className="grid grid-cols-2 gap-2 max-w-md mx-auto">
-                    {([
-                        { id: 'PARTIDO', label: 'Partido' },
-                        { id: 'HISTORIAL', label: 'Historial' },
-                    ] as const).map((item) => (
-                        <button
-                            key={item.id}
-                            onClick={() => {
-                                setTab(item.id);
-                                if (item.id === 'HISTORIAL') onHistory();
-                            }}
-                            className={`min-h-11 py-3 rounded-xl text-xs font-black uppercase tracking-widest border transition-all ${tab === item.id
-                                ? 'bg-[var(--color-accent)] text-black border-[var(--color-accent)]'
-                                : 'bg-white/5 text-white/50 border-white/10'
-                                }`}
-                        >
-                            {item.label}
-                        </button>
-                    ))}
+                <div className="max-w-md mx-auto px-4 pt-3">
+                    <div className="grid grid-cols-2 gap-2 bg-black/20 border border-white/10 rounded-2xl p-1.5">
+                        {([
+                            { id: 'PARTIDO', label: 'Partido' },
+                            { id: 'HISTORIAL', label: 'Historial' },
+                        ] as const).map((item) => (
+                            <button
+                                key={item.id}
+                                onClick={() => {
+                                    setTab(item.id);
+                                    if (item.id === 'HISTORIAL') onHistory();
+                                }}
+                                className={`min-h-11 py-3 rounded-xl text-xs font-black uppercase tracking-widest border transition-all ${tab === item.id
+                                    ? 'bg-[var(--color-accent)] text-black border-[var(--color-accent)]'
+                                    : 'bg-white/5 text-white/55 border-white/10'
+                                    }`}
+                            >
+                                {item.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
-            </div>
+            </nav>
         </div>
     );
 };
