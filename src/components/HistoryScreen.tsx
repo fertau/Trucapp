@@ -17,6 +17,7 @@ type Scope = 'MINE' | 'GLOBAL';
 type ResultFilter = 'ALL' | 'W' | 'L';
 type RankingType = 'PLAYERS' | 'PAIRS';
 type SummaryWindow = '7D' | '30D' | 'ALL';
+type AnalysisWindow = 'ALL' | '30D' | '90D';
 
 const MODES: FilterMode[] = ['ALL', '1v1', '2v2', '3v3'];
 
@@ -59,6 +60,8 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
     const [search, setSearch] = useState('');
     const [rankingType, setRankingType] = useState<RankingType>('PLAYERS');
     const [summaryWindow, setSummaryWindow] = useState<SummaryWindow>('30D');
+    const [analysisWindow, setAnalysisWindow] = useState<AnalysisWindow>('ALL');
+    const [rankingMinMatches, setRankingMinMatches] = useState<number>(3);
     const [selectedMatch, setSelectedMatch] = useState<MatchState | null>(null);
     const loadMoreAnchorRef = useRef<HTMLDivElement | null>(null);
 
@@ -112,8 +115,21 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
 
     const filteredMatches = useMemo(() => {
         const text = search.trim().toLowerCase();
+        const now = Date.now();
+        const sourceByWindow = tab === 'H2H' && analysisWindow !== 'ALL'
+            ? scopeMatches.filter((m) => {
+                const ts = m.metadata?.date ?? m.startDate;
+                const from = analysisWindow === '30D'
+                    ? now - (30 * 24 * 60 * 60 * 1000)
+                    : now - (90 * 24 * 60 * 60 * 1000);
+                return ts >= from && ts <= now;
+            })
+            : scopeMatches;
+        const sourceModeMatches = mode === 'ALL'
+            ? sourceByWindow
+            : sourceByWindow.filter((m) => m.mode === mode);
 
-        return modeMatches.filter((m) => {
+        return sourceModeMatches.filter((m) => {
             const userTeam = currentUserId ? getTeamIdForUser(m, currentUserId) : null;
 
             if (opponentId !== 'ALL') {
@@ -152,7 +168,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
 
             return true;
         });
-    }, [modeMatches, currentUserId, opponentId, opponentGroupKey, result, scope, search, getPlayerName]);
+    }, [tab, analysisWindow, scopeMatches, mode, scope, currentUserId, opponentId, opponentGroupKey, result, search, getPlayerName]);
 
     const myModeMatches = useMemo(() => {
         if (!currentUserId) return [];
@@ -234,6 +250,18 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
         };
     }, [myModeMatches, currentUserId, summaryWindow]);
 
+    const analysisScopedMatches = useMemo(() => {
+        if (analysisWindow === 'ALL') return scopeMatches;
+        const now = Date.now();
+        const from = analysisWindow === '30D'
+            ? now - (30 * 24 * 60 * 60 * 1000)
+            : now - (90 * 24 * 60 * 60 * 1000);
+        return scopeMatches.filter((m) => {
+            const ts = m.metadata?.date ?? m.startDate;
+            return ts >= from && ts <= now;
+        });
+    }, [scopeMatches, analysisWindow]);
+
     const summaryInsights = useMemo(() => {
         if (!currentUserId) {
             return {
@@ -290,7 +318,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
     }, [summaryMatches, currentUserId, getPlayerName]);
 
     const rankings = useMemo(() => {
-        const source = mode === 'ALL' ? scopeMatches : scopeMatches.filter((m) => m.mode === mode);
+        const source = mode === 'ALL' ? analysisScopedMatches : analysisScopedMatches.filter((m) => m.mode === mode);
 
         if (rankingType === 'PLAYERS') {
             const stats: Record<string, { wins: number; total: number }> = {};
@@ -316,6 +344,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                     wins: s.wins,
                     winRate: s.total ? Math.round((s.wins / s.total) * 100) : 0
                 }))
+                .filter((x) => x.total >= rankingMinMatches)
                 .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins);
         }
 
@@ -344,8 +373,32 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                 wins: s.wins,
                 winRate: s.total ? Math.round((s.wins / s.total) * 100) : 0
             }))
+            .filter((x) => x.total >= rankingMinMatches)
             .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins);
-    }, [scopeMatches, mode, rankingType, getPlayerName]);
+    }, [analysisScopedMatches, mode, rankingType, getPlayerName, rankingMinMatches]);
+
+    const h2hSummary = useMemo(() => {
+        if (!currentUserId) return { total: 0, wins: 0, losses: 0, winRate: 0, diff: 0 };
+        let wins = 0;
+        let losses = 0;
+        let diff = 0;
+        filteredMatches.forEach((m) => {
+            const myTeam = getTeamIdForUser(m, currentUserId);
+            if (!myTeam) return;
+            const oppTeam = getOppositeTeam(myTeam);
+            if (m.winner === myTeam) wins++;
+            else if (m.winner === oppTeam) losses++;
+            diff += m.teams[myTeam].score - m.teams[oppTeam].score;
+        });
+        const total = wins + losses;
+        return {
+            total,
+            wins,
+            losses,
+            winRate: total ? Math.round((wins / total) * 100) : 0,
+            diff
+        };
+    }, [filteredMatches, currentUserId]);
 
     const locationSuggestions = useMemo(() => (
         Array.from(
@@ -692,6 +745,17 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
 
                 {!isLoading && tab === 'H2H' && (
                     <div className="flex flex-col gap-3 animate-in slide-in-from-bottom duration-300">
+                        <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                            {(['ALL', '30D', '90D'] as const).map((w) => (
+                                <button
+                                    key={w}
+                                    onClick={() => setAnalysisWindow(w)}
+                                    className={`px-3 py-2 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap border ${analysisWindow === w ? 'bg-white text-black border-white' : 'bg-white/5 text-white/40 border-white/10'}`}
+                                >
+                                    {w === 'ALL' ? 'Todo' : w}
+                                </button>
+                            ))}
+                        </div>
                         <div className="text-xs text-white/50">Filtrá por rival y modo para ver el cara a cara.</div>
                         <select value={opponentId} onChange={(e) => setOpponentId(e.target.value)} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-xs font-bold">
                             <option value="ALL">Seleccionar rival</option>
@@ -705,13 +769,12 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                         )}
                         <div className="bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] p-4">
                             <div className="text-xs text-white/40 mb-2 uppercase font-black">Resultados en el filtro actual</div>
-                            <div className="text-2xl font-black">{filteredMatches.length} partidos</div>
+                            <div className="text-2xl font-black">{h2hSummary.total} partidos</div>
                             <div className="text-sm text-white/60 mt-2">
-                                Ganados: {filteredMatches.filter((m) => {
-                                    if (!currentUserId) return false;
-                                    const t = getTeamIdForUser(m, currentUserId);
-                                    return !!t && m.winner === t;
-                                }).length}
+                                Ganados: {h2hSummary.wins} | Perdidos: {h2hSummary.losses}
+                            </div>
+                            <div className="text-sm text-white/60 mt-1">
+                                Winrate: {h2hSummary.winRate}% | Dif: {h2hSummary.diff >= 0 ? `+${h2hSummary.diff}` : h2hSummary.diff}
                             </div>
                         </div>
                     </div>
@@ -719,6 +782,28 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
 
                 {!isLoading && tab === 'RANKING' && (
                     <div className="flex flex-col gap-3 animate-in slide-in-from-bottom duration-300">
+                        <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                            {(['ALL', '30D', '90D'] as const).map((w) => (
+                                <button
+                                    key={w}
+                                    onClick={() => setAnalysisWindow(w)}
+                                    className={`px-3 py-2 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap border ${analysisWindow === w ? 'bg-white text-black border-white' : 'bg-white/5 text-white/40 border-white/10'}`}
+                                >
+                                    {w === 'ALL' ? 'Todo' : w}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                            {[1, 3, 5].map((min) => (
+                                <button
+                                    key={min}
+                                    onClick={() => setRankingMinMatches(min)}
+                                    className={`px-3 py-2 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap border ${rankingMinMatches === min ? 'bg-[var(--color-accent)] text-black border-[var(--color-accent)]' : 'bg-white/5 text-white/50 border-white/10'}`}
+                                >
+                                    Min {min} PJ
+                                </button>
+                            ))}
+                        </div>
                         <div className="flex bg-[var(--color-surface)] p-1 rounded-xl border border-[var(--color-border)]">
                             <button onClick={() => setRankingType('PLAYERS')} className={`flex-1 py-2 rounded-lg text-xs font-black ${rankingType === 'PLAYERS' ? 'bg-white text-black' : 'text-white/50'}`}>Jugadores</button>
                             <button onClick={() => setRankingType('PAIRS')} className={`flex-1 py-2 rounded-lg text-xs font-black ${rankingType === 'PAIRS' ? 'bg-white text-black' : 'text-white/50'}`}>Parejas</button>
