@@ -101,7 +101,12 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
         }
     };
 
-    const avatars = ['⚽', '🃏', '🍺', '🍖', '🏆', '🧉', '🦁', '🦉', '🦊', '🐻'];
+    const avatars = [
+        '⚽', '🃏', '🏆', '🎯', '🎮', '🎲',
+        '🧉', '🍺', '🍷', '🍖', '🍕', '🍔',
+        '😎', '🤠', '🧠', '🔥', '💥', '⭐',
+        '🦁', '🦅', '🐯', '🐺', '🦊', '🐻',
+    ];
 
     // Using inline styles to guarantee visibility (Tailwind was not generating arbitrary value classes)
     const s = {
@@ -231,7 +236,7 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
                     {/* Avatar Selection */}
                     <div style={cardStyle}>
                         <h3 style={labelStyle}>Seleccionar Avatar</h3>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '10px' }}>
                             {avatars.map(av => (
                                 <button
                                     key={av}
@@ -240,7 +245,7 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
                                         ...btnStyle,
                                         aspectRatio: '1', borderRadius: '1rem',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        fontSize: '24px',
+                                        fontSize: '22px',
                                         background: currentUser.avatar === av ? 'rgba(74,222,128,0.2)' : s.whiteBg,
                                         border: currentUser.avatar === av ? '2px solid var(--color-accent)' : '2px solid rgba(255,255,255,0.05)',
                                         transform: currentUser.avatar === av ? 'scale(1.1)' : 'scale(1)',

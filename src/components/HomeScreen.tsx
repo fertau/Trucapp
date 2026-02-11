@@ -6,15 +6,14 @@ import { useState } from 'react';
 interface HomeScreenProps {
     onNewMatch: () => void;
     onHistory: () => void;
-    onUpdates: () => void;
     onProfile: () => void;
 }
 
-export const HomeScreen = ({ onNewMatch, onHistory, onUpdates, onProfile }: HomeScreenProps) => {
+export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps) => {
     const currentUserId = useAuthStore(state => state.currentUserId);
     const players = useUserStore(state => state.players);
     const matches = useHistoryStore(state => state.matches);
-    const [tab, setTab] = useState<'PARTIDO' | 'HISTORIAL' | 'PERFIL'>('PARTIDO');
+    const [tab, setTab] = useState<'PARTIDO' | 'HISTORIAL'>('PARTIDO');
 
     // Recent matches (last 2)
     const recentMatches = matches.slice(0, 2);
@@ -31,13 +30,12 @@ export const HomeScreen = ({ onNewMatch, onHistory, onUpdates, onProfile }: Home
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto pb-28">
+            <div className="flex-1 overflow-y-auto pb-32">
                 {tab === 'PARTIDO' && (
                     <div className="flex flex-col gap-4 animate-in slide-in-from-bottom duration-300">
                         <button
                             onClick={onNewMatch}
                             className="bg-[var(--color-accent)] text-white py-5 rounded-lg font-bold text-xl shadow-lg shadow-blue-900/20 active:scale-[0.98] transition-all"
-                            style={{ fontFamily: "'Sora', sans-serif" }}
                         >
                             NUEVO PARTIDO
                         </button>
@@ -62,9 +60,11 @@ export const HomeScreen = ({ onNewMatch, onHistory, onUpdates, onProfile }: Home
                                                     <span className={`text-sm font-black uppercase truncate ${m.winner === 'nosotros' ? 'text-[var(--color-nosotros)]' : 'text-white/60'}`}>
                                                         {m.teams.nosotros.name}
                                                     </span>
-                                                    <span className="text-[10px] font-medium text-white/40 truncate">
-                                                        {getPlayerNames(m.teams.nosotros.players)}
-                                                    </span>
+                                                    {m.mode !== '1v1' && (
+                                                        <span className="text-[10px] font-medium text-white/40 truncate">
+                                                            {getPlayerNames(m.teams.nosotros.players)}
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <span className={`text-lg font-black ml-2 ${m.winner === 'nosotros' ? 'text-[var(--color-nosotros)]' : 'text-white/40'}`}>
                                                     {m.teams.nosotros.score}
@@ -76,9 +76,11 @@ export const HomeScreen = ({ onNewMatch, onHistory, onUpdates, onProfile }: Home
                                                     <span className={`text-sm font-black uppercase truncate ${m.winner === 'ellos' ? 'text-[var(--color-ellos)]' : 'text-white/60'}`}>
                                                         {m.teams.ellos.name}
                                                     </span>
-                                                    <span className="text-[10px] font-medium text-white/40 truncate">
-                                                        {getPlayerNames(m.teams.ellos.players)}
-                                                    </span>
+                                                    {m.mode !== '1v1' && (
+                                                        <span className="text-[10px] font-medium text-white/40 truncate">
+                                                            {getPlayerNames(m.teams.ellos.players)}
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <span className={`text-lg font-black ml-2 ${m.winner === 'ellos' ? 'text-[var(--color-ellos)]' : 'text-white/40'}`}>
                                                     {m.teams.ellos.score}
@@ -92,56 +94,54 @@ export const HomeScreen = ({ onNewMatch, onHistory, onUpdates, onProfile }: Home
                                 );
                             })}
                         </div>
-                    </div>
-                )}
 
-                {tab === 'HISTORIAL' && (
-                    <div className="flex flex-col gap-4 animate-in slide-in-from-bottom duration-300">
-                        <button
-                            onClick={onHistory}
-                            className="bg-[var(--color-surface)] border border-[var(--color-border)] py-5 rounded-lg font-black text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] tracking-[0.2em] text-sm"
-                        >
-                            HISTORIALES
-                        </button>
-                        <button
-                            onClick={onUpdates}
-                            className="bg-[var(--color-surface)] border border-[var(--color-border)] py-4 rounded-lg font-bold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
-                        >
-                            NOVEDADES
-                        </button>
-                    </div>
-                )}
-
-                {tab === 'PERFIL' && (
-                    <div className="flex flex-col gap-4 animate-in slide-in-from-bottom duration-300">
-                        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-5">
-                            <div className="text-xs text-white/40 uppercase tracking-widest font-black mb-3">Cuenta</div>
-                            <div className="text-lg font-black">{user?.nickname || user?.name || 'Jugador'}</div>
-                            <div className="text-sm text-white/50 mt-1">Gestioná perfil, social y seguridad.</div>
+                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mt-4 tracking-wider border-b border-[var(--color-border)] pb-2">
+                            Novedades
+                        </h3>
+                        <div className="flex flex-col gap-2">
+                            {matches.slice(0, 3).map((m) => {
+                                const wasEdited = Boolean(m.editedFlags?.resultEdited);
+                                return (
+                                    <div key={`news-${m.id}`} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl px-4 py-3">
+                                        <div className="text-[10px] uppercase tracking-widest text-white/40 font-black">
+                                            {wasEdited ? 'Resultado editado' : 'Partido registrado'}
+                                        </div>
+                                        <div className="text-sm font-black mt-1">
+                                            {m.teams.nosotros.name} {m.teams.nosotros.score} - {m.teams.ellos.score} {m.teams.ellos.name}
+                                        </div>
+                                        <div className="text-[11px] text-white/45 mt-1">
+                                            {new Date(m.startDate).toLocaleString()}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            {matches.length === 0 && <p className="text-[var(--color-text-muted)]">Sin novedades todavía.</p>}
                         </div>
-                        <button
-                            onClick={onProfile}
-                            className="bg-[var(--color-accent)] text-black py-4 rounded-xl font-black text-sm uppercase tracking-widest"
-                        >
-                            Abrir Perfil
-                        </button>
                     </div>
                 )}
+
+                {tab === 'HISTORIAL' && <div className="hidden" />}
             </div>
 
             <div
-                className="fixed bottom-0 left-0 right-0 bg-[var(--color-bg)]/95 backdrop-blur border-t border-[var(--color-border)] px-4 py-3"
-                style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
+                className="fixed bg-[var(--color-bg)]/95 backdrop-blur border border-[var(--color-border)] px-3 py-3 rounded-2xl shadow-2xl"
+                style={{
+                    left: '12px',
+                    right: '12px',
+                    bottom: 'max(12px, env(safe-area-inset-bottom))',
+                }}
             >
-                <div className="grid grid-cols-3 gap-2 max-w-md mx-auto">
+                <div className="grid grid-cols-2 gap-2 max-w-md mx-auto">
                     {([
                         { id: 'PARTIDO', label: 'Partido' },
                         { id: 'HISTORIAL', label: 'Historial' },
-                        { id: 'PERFIL', label: 'Perfil' }
                     ] as const).map((item) => (
                         <button
                             key={item.id}
-                            onClick={() => setTab(item.id)}
+                            onClick={() => {
+                                setTab(item.id);
+                                if (item.id === 'HISTORIAL') onHistory();
+                            }}
                             className={`min-h-11 py-3 rounded-xl text-xs font-black uppercase tracking-widest border transition-all ${tab === item.id
                                 ? 'bg-[var(--color-accent)] text-black border-[var(--color-accent)]'
                                 : 'bg-white/5 text-white/50 border-white/10'

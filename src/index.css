@@ -44,6 +44,13 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
 .full-screen {
   height: 100dvh;
   width: 100vw;

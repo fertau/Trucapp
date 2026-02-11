@@ -513,9 +513,11 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                                         </div>
                                     </div>
                                     <div className="text-sm font-black">{m.teams.nosotros.name} {m.teams.nosotros.score} - {m.teams.ellos.score} {m.teams.ellos.name}</div>
-                                    <div className="text-[11px] text-white/50 mt-1">
-                                        {m.teams.nosotros.players.map(getPlayerName).join(', ')} vs {m.teams.ellos.players.map(getPlayerName).join(', ')}
-                                    </div>
+                                    {m.mode !== '1v1' && (
+                                        <div className="text-[11px] text-white/50 mt-1">
+                                            {m.teams.nosotros.players.map(getPlayerName).join(', ')} vs {m.teams.ellos.players.map(getPlayerName).join(', ')}
+                                        </div>
+                                    )}
                                     {scope === 'MINE' && didWin !== null && (
                                         <div className={`mt-2 text-[10px] font-black uppercase tracking-wider ${didWin ? 'text-[var(--color-nosotros)]' : 'text-[var(--color-ellos)]'}`}>
                                             {didWin ? 'Ganaste' : 'Perdiste'}
@@ -756,9 +758,11 @@ const MatchDetailDrawer = ({ match, currentUserId, getPlayerName, locationSugges
 
                 <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 mb-4">
                     <div className="text-sm font-black mb-1">{match.teams.nosotros.name} {scoreNos} - {scoreEll} {match.teams.ellos.name}</div>
-                    <div className="text-[11px] text-white/50">
-                        {match.teams.nosotros.players.map(getPlayerName).join(', ')} vs {match.teams.ellos.players.map(getPlayerName).join(', ')}
-                    </div>
+                    {match.mode !== '1v1' && (
+                        <div className="text-[11px] text-white/50">
+                            {match.teams.nosotros.players.map(getPlayerName).join(', ')} vs {match.teams.ellos.players.map(getPlayerName).join(', ')}
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex flex-col gap-3 mb-4">

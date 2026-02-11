@@ -322,7 +322,6 @@ function App() {
     <HomeScreen
       onNewMatch={() => setStep('SETUP_PLAYERS_COUNT')}
       onHistory={() => { setHistoryInitialTab('SUMMARY'); setStep('HISTORY'); }}
-      onUpdates={() => { setHistoryInitialTab('MATCHES'); setStep('HISTORY'); }}
       onProfile={() => setStep('PROFILE')}
     />
   );
