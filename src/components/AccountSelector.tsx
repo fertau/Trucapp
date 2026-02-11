@@ -3,6 +3,7 @@ import { useUserStore } from '../store/useUserStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { PinInput } from './PinInput';
 import { hashPin, isModernPinHash } from '../utils/pinSecurity';
+import { AvatarBadge } from './AvatarBadge';
 
 interface AccountSelectorProps {
     onLoginSuccess: () => void;
@@ -127,9 +128,7 @@ export const AccountSelector = ({ onLoginSuccess }: AccountSelectorProps) => {
                                     onClick={() => { setSelectedUser(user); setMode('login'); }}
                                     className="w-full aspect-square flex flex-col items-center justify-center gap-3 bg-[var(--color-surface)] rounded-[2.5rem] border border-[var(--color-border)] active:scale-95 transition-all shadow-xl hover:bg-white/5"
                                 >
-                                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[var(--color-accent)] to-[#1d4ed8] flex items-center justify-center font-black text-white text-2xl shadow-lg">
-                                        {user.avatar || user.name.substring(0, 1).toUpperCase()}
-                                    </div>
+                                    <AvatarBadge avatar={user.avatar} name={user.nickname || user.name} size={64} />
                                     <div className="font-black text-xs text-white uppercase tracking-tight truncate w-full px-4 text-center">
                                         {user.nickname || user.name}
                                     </div>
@@ -202,9 +201,7 @@ export const AccountSelector = ({ onLoginSuccess }: AccountSelectorProps) => {
                                 onClick={() => setSelectedUser(user)}
                                 className="flex items-center gap-4 p-4 rounded-xl hover:bg-[var(--color-surface)] text-left border border-transparent hover:border-[var(--color-border)] transition-all"
                             >
-                                <div className="w-10 h-10 rounded-full bg-[var(--color-surface-hover)] flex items-center justify-center font-bold text-[var(--color-text-secondary)]">
-                                    {(user?.name || '?').substring(0, 2).toUpperCase()}
-                                </div>
+                                <AvatarBadge avatar={user.avatar} name={user.nickname || user.name} size={40} />
                                 <span className="font-bold text-white">{user?.name || 'Sin nombre'}</span>
                             </button>
                         ))}
@@ -224,9 +221,7 @@ export const AccountSelector = ({ onLoginSuccess }: AccountSelectorProps) => {
             <div className="full-screen bg-[var(--color-bg)] flex flex-col items-center justify-center p-8">
                 <button onClick={() => setSelectedUser(null)} className="absolute top-8 left-8 text-[var(--color-text-muted)] font-bold">← Cambiar usuario</button>
 
-                <div className="w-20 h-20 rounded-full bg-[var(--color-surface)] flex items-center justify-center font-black text-3xl text-white mb-6 border-2 border-[var(--color-border)]">
-                    {selectedUser.name.substring(0, 2).toUpperCase()}
-                </div>
+                <AvatarBadge avatar={players.find((p) => p.id === selectedUser.id)?.avatar} name={selectedUser.name} size={80} className="mb-6 border-2 border-[var(--color-border)]" />
                 <h2 className="text-2xl font-black text-white mb-2">{selectedUser.name}</h2>
                 <p className="text-sm text-[var(--color-text-muted)] mb-8">Ingresá tu PIN para entrar</p>
 

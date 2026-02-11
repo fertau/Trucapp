@@ -76,27 +76,27 @@ export const HeadToHead = ({ mode }: HeadToHeadProps) => {
                         <span className={`text-xl font-black ${diff >= 0 ? 'text-[var(--color-nosotros)]' : 'text-[var(--color-ellos)]'}`}>
                             {diff >= 0 ? `+${diff}` : diff}
                         </span>
-                        <span className="text-[8px] font-black uppercase text-white/20 tracking-widest">Balance Pts</span>
+                        <span className="text-[8px] font-black uppercase text-white/20 tracking-widest">Dif. Pts</span>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 relative z-10">
                     <div className="bg-white/5 p-4 rounded-3xl border border-white/5 flex flex-col items-center">
                         <span className="text-lg font-black text-white">{wins}</span>
-                        <span className="text-[7px] font-black uppercase text-white/20 tracking-widest">Wins</span>
+                        <span className="text-[7px] font-black uppercase text-white/20 tracking-widest">G</span>
                     </div>
                     <div className="bg-white/5 p-4 rounded-3xl border border-white/5 flex flex-col items-center">
                         <span className="text-lg font-black text-white">{losses}</span>
-                        <span className="text-[7px] font-black uppercase text-white/20 tracking-widest">Losses</span>
+                        <span className="text-[7px] font-black uppercase text-white/20 tracking-widest">P</span>
                     </div>
                     <div className="bg-white/5 p-4 rounded-3xl border border-white/5 flex flex-col items-center">
                         <span className="text-lg font-black text-white">{total}</span>
-                        <span className="text-[7px] font-black uppercase text-white/20 tracking-widest">Total</span>
+                        <span className="text-[7px] font-black uppercase text-white/20 tracking-widest">PJ</span>
                     </div>
                 </div>
             </div>
 
-            {/* Insights Section */}
+            {/* Indicadores */}
             {(topRivalId || topPartnerId) && (
                 <div className="grid grid-cols-2 gap-4">
                     {topRivalId && (
@@ -134,7 +134,7 @@ export const HeadToHead = ({ mode }: HeadToHeadProps) => {
                                     ? 'bg-[var(--color-nosotros)]/20 text-[var(--color-nosotros)] border-[var(--color-nosotros)]/40'
                                     : 'bg-[var(--color-ellos)]/20 text-[var(--color-ellos)] border-[var(--color-ellos)]/40'}`}
                             >
-                                {isWin ? 'W' : 'L'}
+                                {isWin ? 'G' : 'P'}
                             </div>
                         );
                     })}

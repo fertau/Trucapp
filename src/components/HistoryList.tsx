@@ -39,7 +39,7 @@ export const HistoryList = ({ filter }: HistoryListProps) => {
                             <div className={`w-12 h-12 rounded-[1.25rem] flex flex-col items-center justify-center font-black transition-all border ${isUserWin
                                 ? 'bg-[var(--color-nosotros)]/10 text-[var(--color-nosotros)] border-[var(--color-nosotros)]/20'
                                 : 'bg-[var(--color-ellos)]/10 text-[var(--color-ellos)] border-[var(--color-ellos)]/20'}`}>
-                                <span className="text-sm leading-none">{isUserWin ? 'W' : 'L'}</span>
+                                <span className="text-sm leading-none">{isUserWin ? 'G' : 'P'}</span>
                             </div>
 
                             <div className="flex flex-col">

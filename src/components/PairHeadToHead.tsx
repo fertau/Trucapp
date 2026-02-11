@@ -128,7 +128,7 @@ export const PairHeadToHead = ({ onBack }: { onBack: () => void }) => {
                 <div className="flex justify-between items-end mb-10">
                     <div className="flex-1 text-center">
                         <div className="text-6xl font-black text-[var(--color-nosotros)] tabular-nums tracking-tighter">{sideAWins}</div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-[var(--color-text-muted)] mt-2">Win</div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-[var(--color-text-muted)] mt-2">G</div>
                     </div>
                     <div className="flex flex-col items-center px-4">
                         <div className="text-xl font-black text-white/20 mb-2 tabular-nums">{totalMatches}</div>
@@ -136,7 +136,7 @@ export const PairHeadToHead = ({ onBack }: { onBack: () => void }) => {
                     </div>
                     <div className="flex-1 text-center">
                         <div className="text-6xl font-black text-[var(--color-ellos)] tabular-nums tracking-tighter">{sideBWins}</div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-[var(--color-text-muted)] mt-2">Win</div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-[var(--color-text-muted)] mt-2">G</div>
                     </div>
                 </div>
 
@@ -173,7 +173,7 @@ export const PairHeadToHead = ({ onBack }: { onBack: () => void }) => {
                                         key={i}
                                         className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shadow-lg ${isWinA ? 'bg-[var(--color-nosotros)] text-black' : 'bg-[var(--color-ellos)] text-black'}`}
                                     >
-                                        {isWinA ? 'W' : 'L'}
+                                        {isWinA ? 'G' : 'P'}
                                     </div>
                                 );
                             })}

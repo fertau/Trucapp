@@ -85,7 +85,7 @@ export const SocialHub = ({ onBack }: SocialHubProps) => {
                     ← VOLVER
                 </button>
                 <div className="bg-[var(--color-accent)]/10 text-[var(--color-accent)] px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border border-[var(--color-accent)]/20">
-                    Social Hub
+                    Social
                 </div>
             </div>
 

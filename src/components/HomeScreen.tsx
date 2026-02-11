@@ -2,6 +2,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useUserStore } from '../store/useUserStore';
 import { useHistoryStore } from '../store/useHistoryStore';
 import { useState } from 'react';
+import { AvatarBadge } from './AvatarBadge';
 
 interface HomeScreenProps {
     onNewMatch: () => void;
@@ -24,8 +25,8 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-black tracking-tighter">TRUCAPP</h1>
                 <div className="flex items-center gap-2" onClick={onProfile}>
-                    <div className="w-8 h-8 rounded-full bg-[var(--color-surface)] flex items-center justify-center text-xs font-bold border border-[var(--color-border)] cursor-pointer active:scale-95 transition-all">
-                        {user?.avatar || user?.name?.substring(0, 2).toUpperCase()}
+                    <div className="cursor-pointer active:scale-95 transition-all">
+                        <AvatarBadge avatar={user?.avatar} name={user?.nickname || user?.name} size={34} />
                     </div>
                 </div>
             </div>
@@ -131,7 +132,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                     <div className="grid grid-cols-2 gap-2 bg-black/20 border border-white/10 rounded-2xl p-1.5">
                         {([
                             { id: 'PARTIDO', label: 'Partido' },
-                            { id: 'HISTORIAL', label: 'Historial' },
+                            { id: 'HISTORIAL', label: 'Estadísticas' },
                         ] as const).map((item) => (
                             <button
                                 key={item.id}

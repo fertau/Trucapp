@@ -9,6 +9,7 @@ import { PinInput } from './PinInput';
 import { hashPin } from '../utils/pinSecurity';
 import { isSuperAdmin } from '../utils/authz';
 import { SocialHub } from './SocialHub';
+import { AvatarBadge, avatarOptions } from './AvatarBadge';
 
 interface ProfileScreenProps {
     onBack: () => void;
@@ -102,13 +103,6 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
         }
     };
 
-    const avatars = [
-        '⚽', '🃏', '🏆', '🎯', '🎮', '🎲',
-        '🧉', '🍺', '🍷', '🍖', '🍕', '🍔',
-        '😎', '🤠', '🧠', '🔥', '💥', '⭐',
-        '🦁', '🦅', '🐯', '🐺', '🦊', '🐻',
-    ];
-
     // Using inline styles to guarantee visibility (Tailwind was not generating arbitrary value classes)
     const s = {
         bg: 'var(--color-bg)',
@@ -177,13 +171,11 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                             <div style={{
                                 width: '96px', height: '96px', borderRadius: '50%',
-                                background: `linear-gradient(135deg, ${s.accent}, #1d4ed8)`,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                fontSize: '36px', fontWeight: 900, color: s.white,
                                 boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
-                                marginBottom: '16px', border: '4px solid rgba(255,255,255,0.05)'
+                                marginBottom: '16px'
                             }}>
-                                {currentUser.avatar || currentUser.name[0].toUpperCase()}
+                                <AvatarBadge avatar={currentUser.avatar} name={currentUser.nickname || currentUser.name} size={96} />
                             </div>
 
                             {editingNickname ? (
@@ -224,7 +216,7 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
                             >
                                 <span style={{ fontSize: '8px', color: s.whiteFaint, letterSpacing: '0.1em', marginBottom: '4px' }}>VISIBILIDAD</span>
                                 <span style={{ fontSize: '10px', color: currentUser.visibility === 'PUBLIC' ? s.green : s.gold }}>
-                                    {currentUser.visibility}
+                                    {currentUser.visibility === 'PUBLIC' ? 'Pública' : 'Privada'}
                                 </span>
                             </button>
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px', background: s.whiteBg, borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.05)' }}>
@@ -239,44 +231,50 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
                         <h3 style={labelStyle}>Seleccionar Avatar</h3>
                         {!showAllAvatars ? (
                             <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '4px' }}>
-                                {avatars.slice(0, 10).map(av => (
+                                {avatarOptions.slice(0, 8).map((av) => (
                                     <button
-                                        key={av}
-                                        onClick={() => handleAvatarChange(av)}
+                                        key={av.id}
+                                        onClick={() => handleAvatarChange(av.id)}
                                         style={{
                                             ...btnStyle,
-                                            width: '52px',
-                                            height: '52px',
+                                            width: '58px',
+                                            minWidth: '58px',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            gap: '5px',
+                                            padding: '4px 0',
                                             borderRadius: '1rem',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            fontSize: '22px',
-                                            flexShrink: 0,
-                                            background: currentUser.avatar === av ? 'rgba(74,222,128,0.2)' : s.whiteBg,
-                                            border: currentUser.avatar === av ? '2px solid var(--color-accent)' : '2px solid rgba(255,255,255,0.05)',
-                                            transform: currentUser.avatar === av ? 'scale(1.08)' : 'scale(1)',
+                                            background: currentUser.avatar === av.id ? 'rgba(74,222,128,0.2)' : s.whiteBg,
+                                            border: currentUser.avatar === av.id ? '2px solid var(--color-accent)' : '2px solid rgba(255,255,255,0.05)',
                                         }}
                                     >
-                                        {av}
+                                        <AvatarBadge avatar={av.id} name={av.label} size={40} />
+                                        <span style={{ fontSize: '8px', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.05em' }}>{av.label}</span>
                                     </button>
                                 ))}
                             </div>
                         ) : (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '10px' }}>
-                                {avatars.map(av => (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+                                {avatarOptions.map((av) => (
                                     <button
-                                        key={av}
-                                        onClick={() => handleAvatarChange(av)}
+                                        key={av.id}
+                                        onClick={() => handleAvatarChange(av.id)}
                                         style={{
                                             ...btnStyle,
-                                            aspectRatio: '1', borderRadius: '1rem',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            fontSize: '22px',
-                                            background: currentUser.avatar === av ? 'rgba(74,222,128,0.2)' : s.whiteBg,
-                                            border: currentUser.avatar === av ? '2px solid var(--color-accent)' : '2px solid rgba(255,255,255,0.05)',
-                                            transform: currentUser.avatar === av ? 'scale(1.1)' : 'scale(1)',
+                                            minHeight: '66px',
+                                            borderRadius: '1rem',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '6px',
+                                            background: currentUser.avatar === av.id ? 'rgba(74,222,128,0.2)' : s.whiteBg,
+                                            border: currentUser.avatar === av.id ? '2px solid var(--color-accent)' : '2px solid rgba(255,255,255,0.05)',
                                         }}
                                     >
-                                        {av}
+                                        <AvatarBadge avatar={av.id} name={av.label} size={38} />
+                                        <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.62)', letterSpacing: '0.06em' }}>{av.label}</span>
                                     </button>
                                 ))}
                             </div>
@@ -286,7 +284,7 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
                                 onClick={() => setShowAllAvatars(v => !v)}
                                 style={{ ...btnStyle, background: s.whiteBg, border: `1px solid ${s.whiteBgHover}`, color: s.whiteSoft, padding: '8px 14px', borderRadius: '9999px', fontSize: '10px', letterSpacing: '0.12em' }}
                             >
-                                {showAllAvatars ? 'VER MENOS' : 'VER MAS'}
+                                {showAllAvatars ? 'VER MENOS' : 'VER MÁS'}
                             </button>
                         </div>
                     </div>
@@ -298,7 +296,7 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
                             onClick={() => setShowSocialHub(true)}
                             style={{ ...btnStyle, width: '100%', background: s.whiteBg, border: `1px solid ${s.whiteBgHover}`, padding: '16px', borderRadius: '1rem', color: s.whiteSoft, fontSize: '14px', letterSpacing: '0.15em' }}
                         >
-                            Abrir Social Hub
+                            Abrir social
                         </button>
                     </div>
 

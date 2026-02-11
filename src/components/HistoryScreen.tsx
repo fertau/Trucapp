@@ -37,17 +37,9 @@ const isParticipant = (match: MatchState, userId: string | null): boolean => {
 
 const TAB_META: Record<HistoryTab, { title: string; hint: string }> = {
     SUMMARY: { title: 'Resumen', hint: 'Tus indicadores clave y rendimiento reciente.' },
-    MATCHES: { title: 'Historial', hint: 'Listado de partidos con filtros combinables.' },
+    MATCHES: { title: 'Partidos', hint: 'Listado de partidos con filtros combinables.' },
     H2H: { title: 'Enfrentamientos', hint: 'Compará resultados contra rivales o equipos.' },
     RANKING: { title: 'Ranking', hint: 'Tabla de posiciones por jugadores o parejas.' }
-};
-
-const toCsvSafe = (value: string | number | null | undefined): string => {
-    const s = `${value ?? ''}`;
-    if (s.includes(',') || s.includes('"') || s.includes('\n')) {
-        return `"${s.replace(/"/g, '""')}"`;
-    }
-    return s;
 };
 
 export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenProps) => {
@@ -71,7 +63,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
     const [summaryWindow, setSummaryWindow] = useState<SummaryWindow>('30D');
     const [analysisWindow, setAnalysisWindow] = useState<AnalysisWindow>('ALL');
     const [rankingMinMatches, setRankingMinMatches] = useState<number>(3);
-    const [matchListView, setMatchListView] = useState<MatchListView>('SERIES');
+    const [matchListView, setMatchListView] = useState<MatchListView>('MATCHES');
     const [openSeriesId, setOpenSeriesId] = useState<string | null>(null);
     const [selectedMatch, setSelectedMatch] = useState<MatchState | null>(null);
     const loadMoreAnchorRef = useRef<HTMLDivElement | null>(null);
@@ -495,44 +487,6 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
         search.trim() === ''
     ), [scope, mode, result, opponentId, opponentGroupKey, search]);
 
-    const exportFilteredMatchesToCsv = useCallback(() => {
-        const rows = [
-            [
-                'id',
-                'fecha',
-                'modo',
-                'equipo_nosotros',
-                'puntos_nosotros',
-                'equipo_ellos',
-                'puntos_ellos',
-                'ganador',
-                'sede',
-                'resultado_editado'
-            ],
-            ...filteredMatches.map((m) => [
-                m.id,
-                new Date(m.metadata?.date ?? m.startDate).toISOString(),
-                m.mode,
-                m.teams.nosotros.name,
-                m.teams.nosotros.score,
-                m.teams.ellos.name,
-                m.teams.ellos.score,
-                m.winner ?? '',
-                m.metadata?.location ?? '',
-                m.editedFlags?.resultEdited ? 'si' : 'no'
-            ])
-        ];
-
-        const csv = rows.map((row) => row.map((col) => toCsvSafe(col)).join(',')).join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `trucapp-historial-${new Date().toISOString().slice(0, 10)}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-    }, [filteredMatches]);
-
     useEffect(() => {
         if (tab !== 'MATCHES') return;
         if (!canAutoLoadMore) return;
@@ -561,7 +515,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                     ← VOLVER
                 </button>
                 <div className="bg-[var(--color-accent)]/10 text-[var(--color-accent)] px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border border-[var(--color-accent)]/20">
-                    Historial & Stats
+                    Estadísticas
                 </div>
             </div>
 
@@ -655,7 +609,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                                     onClick={() => setSummaryWindow(w)}
                                     className={`px-3 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border whitespace-nowrap ${summaryWindow === w ? 'bg-white text-black border-white' : 'bg-white/5 text-white/45 border-white/10'}`}
                                 >
-                                    {w === '7D' ? '7 dias' : w === '30D' ? '30 dias' : 'Todo'}
+                                    {w === '7D' ? '7 días' : w === '30D' ? '30 días' : 'Todo'}
                                 </button>
                             ))}
                         </div>
@@ -664,8 +618,8 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                             <div className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-black mb-3">Resumen del jugador</div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="bg-white/5 rounded-2xl p-3"><div className="text-xs text-white/40">PJ</div><div className="text-2xl font-black">{summary.total}</div></div>
-                                <div className="bg-white/5 rounded-2xl p-3"><div className="text-xs text-white/40">Winrate</div><div className="text-2xl font-black">{summary.winRate}%</div></div>
-                                <div className="bg-white/5 rounded-2xl p-3"><div className="text-xs text-white/40">PG / PP</div><div className="text-2xl font-black">{summary.wins} / {summary.losses}</div></div>
+                                <div className="bg-white/5 rounded-2xl p-3"><div className="text-xs text-white/40">Efectividad</div><div className="text-2xl font-black">{summary.winRate}%</div></div>
+                                <div className="bg-white/5 rounded-2xl p-3"><div className="text-xs text-white/40">G / P</div><div className="text-2xl font-black">{summary.wins} / {summary.losses}</div></div>
                                 <div className="bg-white/5 rounded-2xl p-3"><div className="text-xs text-white/40">Dif. puntos</div><div className="text-2xl font-black">{summary.pointsDiff >= 0 ? `+${summary.pointsDiff}` : summary.pointsDiff}</div></div>
                             </div>
                         </div>
@@ -683,7 +637,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                         </div>
 
                         <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] p-6">
-                            <div className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-black mb-3">Tendencia ({trends.windowDays} dias)</div>
+                            <div className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-black mb-3">Tendencia ({trends.windowDays} días)</div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="bg-white/5 rounded-2xl p-3">
                                     <div className="text-xs text-white/40">Partidos</div>
@@ -693,7 +647,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                                     </div>
                                 </div>
                                 <div className="bg-white/5 rounded-2xl p-3">
-                                    <div className="text-xs text-white/40">Winrate</div>
+                                    <div className="text-xs text-white/40">Efectividad</div>
                                     <div className="text-2xl font-black">{trends.lastWindow.winRate}%</div>
                                     <div className={`text-[10px] font-black ${trends.deltaWinRate >= 0 ? 'text-[var(--color-nosotros)]' : 'text-[var(--color-ellos)]'}`}>
                                         vs periodo previo: {trends.deltaWinRate >= 0 ? `+${trends.deltaWinRate}` : trends.deltaWinRate} pts
@@ -703,7 +657,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                         </div>
 
                         <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] p-6">
-                            <div className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-black mb-3">Insights</div>
+                            <div className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-black mb-3">Indicadores</div>
                             <div className="grid grid-cols-2 gap-3 mb-3">
                                 <div className="bg-white/5 rounded-2xl p-3">
                                     <div className="text-xs text-white/40">Prom. puntos a favor</div>
@@ -716,23 +670,23 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                             </div>
 
                             <div className="bg-white/5 rounded-2xl p-3 mb-3">
-                                <div className="text-xs text-white/40 mb-2">Rivales mas frecuentes</div>
+                                <div className="text-xs text-white/40 mb-2">Rivales más frecuentes</div>
                                 {summaryInsights.topRivals.length === 0 && <div className="text-xs text-white/30">Sin datos</div>}
                                 {summaryInsights.topRivals.map((r) => (
                                     <div key={r.id} className="flex items-center justify-between text-xs py-1">
                                         <span>{r.name}</span>
-                                        <span className="text-white/55">{r.matches} pj | {r.wins} W</span>
+                                        <span className="text-white/55">{r.matches} PJ | {r.wins} G | {r.matches - r.wins} P</span>
                                     </div>
                                 ))}
                             </div>
 
                             <div className="bg-white/5 rounded-2xl p-3">
-                                <div className="text-xs text-white/40 mb-2">Sedes mas usadas</div>
+                                <div className="text-xs text-white/40 mb-2">Sedes más usadas</div>
                                 {summaryInsights.topLocations.length === 0 && <div className="text-xs text-white/30">Sin sedes registradas</div>}
                                 {summaryInsights.topLocations.map((loc) => (
                                     <div key={loc.name} className="flex items-center justify-between text-xs py-1">
                                         <span className="truncate pr-2">{loc.name}</span>
-                                        <span className="text-white/55">{loc.matches} pj</span>
+                                        <span className="text-white/55">{loc.matches} PJ</span>
                                     </div>
                                 ))}
                             </div>
@@ -742,13 +696,6 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
 
                 {!isLoading && tab === 'MATCHES' && (
                     <div className="flex flex-col gap-3 animate-in slide-in-from-bottom duration-300">
-                        <button
-                            onClick={exportFilteredMatchesToCsv}
-                            disabled={filteredMatches.length === 0}
-                            className="w-full py-3 rounded-xl border border-white/15 bg-white/5 text-xs font-black uppercase tracking-widest disabled:opacity-40"
-                        >
-                            Exportar CSV (filtro actual)
-                        </button>
                         <input
                             type="text"
                             value={search}
@@ -818,7 +765,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                                                     {first.teams.nosotros.name} {serie.winsNos} - {serie.winsEll} {first.teams.ellos.name}
                                                 </div>
                                                 <div className="text-[11px] text-white/50 mt-1">
-                                                    {serie.matches.length} partidos · ultima: {new Date(serie.matches[serie.matches.length - 1].startDate).toLocaleDateString()}
+                                                    {serie.matches.length} partidos · última: {new Date(serie.matches[serie.matches.length - 1].startDate).toLocaleDateString()}
                                                 </div>
                                             </button>
 
@@ -891,7 +838,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                                 disabled={isLoadingMore}
                                 className="w-full mt-2 py-3 rounded-xl border border-white/15 bg-white/5 text-xs font-black uppercase tracking-widest disabled:opacity-50"
                             >
-                                {isLoadingMore ? 'Cargando...' : 'Cargar mas'}
+                                {isLoadingMore ? 'Cargando...' : 'Cargar más'}
                             </button>
                         )}
                         <div ref={loadMoreAnchorRef} className="h-1" />
@@ -926,10 +873,10 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                             <div className="text-xs text-white/40 mb-2 uppercase font-black">Resultados en el filtro actual</div>
                             <div className="text-2xl font-black">{h2hSummary.total} partidos</div>
                             <div className="text-sm text-white/60 mt-2">
-                                Ganados: {h2hSummary.wins} | Perdidos: {h2hSummary.losses}
+                                G: {h2hSummary.wins} | P: {h2hSummary.losses}
                             </div>
                             <div className="text-sm text-white/60 mt-1">
-                                Winrate: {h2hSummary.winRate}% | Dif: {h2hSummary.diff >= 0 ? `+${h2hSummary.diff}` : h2hSummary.diff}
+                                Efectividad: {h2hSummary.winRate}% | Dif: {h2hSummary.diff >= 0 ? `+${h2hSummary.diff}` : h2hSummary.diff}
                             </div>
                         </div>
                     </div>
@@ -972,7 +919,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                                 </div>
                                 <div className="text-right">
                                     <div className="text-xl font-black">{item.winRate}%</div>
-                                    <div className="text-[10px] text-white/40">{item.wins}/{item.total}</div>
+                                    <div className="text-[10px] text-white/40">{item.total} PJ | {item.wins} G | {item.total - item.wins} P</div>
                                 </div>
                             </div>
                         ))}
@@ -989,7 +936,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                     onClose={() => setSelectedMatch(null)}
                     onSave={async (updated) => {
                         if (!canUserEditMatch(updated, currentUserId)) {
-                            alert('No tenes permiso para editar este partido.');
+                            alert('No tenés permiso para editar este partido.');
                             return;
                         }
                         try {
