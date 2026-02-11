@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { usePairStore } from '../store/usePairStore';
+import { useHistoryStore } from '../store/useHistoryStore';
 import type { Player, TeamId } from '../types';
 
 interface TeamConfigurationProps {
@@ -21,6 +22,14 @@ export const TeamConfiguration = ({ players, onStartMatch }: TeamConfigurationPr
 
     const [location, setLocation] = useState('');
     const [customDate, setCustomDate] = useState<string>(new Date().toISOString().slice(0, 10));
+    const matches = useHistoryStore(state => state.matches);
+    const locationSuggestions = Array.from(
+        new Set(
+            matches
+                .map(m => m.metadata?.location?.trim())
+                .filter((loc): loc is string => Boolean(loc))
+        )
+    ).slice(0, 12);
 
     const { getOrCreatePair, updatePairName, findPairByPlayers } = usePairStore();
     const [nosotrosPairName, setNosotrosPairName] = useState('');
@@ -323,10 +332,16 @@ export const TeamConfiguration = ({ players, onStartMatch }: TeamConfigurationPr
                         <input
                             type="text"
                             placeholder="Ej. Quincho de Julian"
+                            list="location-suggestions"
                             className="bg-[var(--color-surface)] border border-[var(--color-border)] p-4 rounded-2xl w-full font-bold text-sm outline-none focus:border-[var(--color-accent)]"
                             value={location}
                             onChange={(e) => setLocation(e.target.value)}
                         />
+                        <datalist id="location-suggestions">
+                            {locationSuggestions.map((loc) => (
+                                <option key={loc} value={loc} />
+                            ))}
+                        </datalist>
                     </div>
                     <div className="flex flex-col gap-1.5">
                         <label className="text-[9px] font-black uppercase text-[var(--color-text-muted)] ml-2">Fecha (Opcional)</label>

@@ -61,6 +61,18 @@ export interface MatchMetadata {
     customDate?: number | null; // If user edits the date
 }
 
+export interface MatchEditField {
+    key: 'winner' | 'score_nosotros' | 'score_ellos' | 'location' | 'date';
+    before: string | number | null;
+    after: string | number | null;
+}
+
+export interface MatchEditLog {
+    at: number;
+    byUserId: string;
+    fields: MatchEditField[];
+}
+
 export interface MatchState {
     id: string;
     mode: MatchMode;
@@ -84,4 +96,9 @@ export interface MatchState {
     history: GameAction[];
     isFinished: boolean;
     winner?: TeamId | null;
+    editedFlags?: {
+        resultEdited?: boolean;
+        metadataEdited?: boolean;
+    };
+    edits?: MatchEditLog[];
 }

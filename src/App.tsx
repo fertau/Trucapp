@@ -10,7 +10,6 @@ import { ProfileScreen } from './components/ProfileScreen';
 import { HomeScreen } from './components/HomeScreen';
 import { PicaPicaSetup } from './components/PicaPicaSetup';
 import { PicaPicaHub } from './components/PicaPicaHub';
-import { Leaderboard } from './components/Leaderboard';
 
 import { useMatchStore } from './store/useMatchStore';
 import { useHistoryStore } from './store/useHistoryStore';
@@ -29,11 +28,10 @@ import './index.css';
 // 5. Returns to PicaHub -> Home
 
 type AppStep = 'AUTH' | 'HOME' | 'SETUP_PLAYERS_COUNT' | 'SETUP_PLAYERS_SELECT' | 'SETUP_TEAMS' |
-  'MATCH' | 'HISTORY' | 'LEADERBOARD' | 'SOCIAL' | 'PROFILE' |
+  'MATCH' | 'HISTORY' | 'PROFILE' |
   'PICAPICA_SETUP' | 'PICAPICA_HUB';
 type HistoryTab = 'SUMMARY' | 'MATCHES' | 'H2H' | 'RANKING';
 
-import { SocialHub } from './components/SocialHub';
 import { AccountSelector } from './components/AccountSelector';
 
 function App() {
@@ -47,6 +45,7 @@ function App() {
     const savedStep = localStorage.getItem('trucapp-app-step');
     if (savedStep === 'MATCH' && !useMatchStore.getState().id) return 'HOME';
     if (savedStep === 'STATS') return 'HOME'; // Migration: STATS is now part of HISTORY
+    if (savedStep === 'LEADERBOARD' || savedStep === 'SOCIAL') return 'HISTORY';
     return (savedStep as AppStep) || 'HOME';
   });
 
@@ -187,14 +186,6 @@ function App() {
     return <HistoryScreen onBack={() => setStep('HOME')} initialTab={historyInitialTab} />;
   }
 
-  if (effectiveStep === 'LEADERBOARD') {
-    return <Leaderboard onBack={() => setStep('HOME')} />;
-  }
-
-  if (effectiveStep === 'SOCIAL') {
-    return <SocialHub onBack={() => setStep('HOME')} />;
-  }
-
   if (effectiveStep === 'PROFILE') {
     return <ProfileScreen onBack={() => setStep('HOME')} />;
   }
@@ -292,8 +283,7 @@ function App() {
     <HomeScreen
       onNewMatch={() => setStep('SETUP_PLAYERS_COUNT')}
       onHistory={() => { setHistoryInitialTab('SUMMARY'); setStep('HISTORY'); }}
-      onLeaderboard={() => { setHistoryInitialTab('RANKING'); setStep('HISTORY'); }}
-      onSocial={() => setStep('SOCIAL')}
+      onUpdates={() => { setHistoryInitialTab('MATCHES'); setStep('HISTORY'); }}
       onProfile={() => setStep('PROFILE')}
     />
   );

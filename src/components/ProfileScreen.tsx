@@ -5,6 +5,7 @@ import { useHistoryStore } from '../store/useHistoryStore';
 import { PinInput } from './PinInput';
 import { hashPin } from '../utils/pinSecurity';
 import { isSuperAdmin } from '../utils/authz';
+import { SocialHub } from './SocialHub';
 
 interface ProfileScreenProps {
     onBack: () => void;
@@ -21,6 +22,8 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
     const [showPinChange, setShowPinChange] = useState(false);
     const [newPin, setNewPin] = useState('');
     const [pinError, setPinError] = useState('');
+    const [showSocialHub, setShowSocialHub] = useState(false);
+    const [showAdminDanger, setShowAdminDanger] = useState(false);
 
     if (!currentUser) {
         return (
@@ -38,6 +41,10 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
                 </div>
             </div>
         );
+    }
+
+    if (showSocialHub) {
+        return <SocialHub onBack={() => setShowSocialHub(false)} />;
     }
 
     const handleUpdateNickname = async () => {
@@ -146,6 +153,7 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
             <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '48px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
+                    <div style={{ ...labelStyle, marginBottom: '-8px' }}>Cuenta</div>
                     {/* Profile Card */}
                     <div style={{ ...cardStyle, padding: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -232,6 +240,18 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
                         </div>
                     </div>
 
+                    <div style={{ ...labelStyle, marginBottom: '-8px' }}>Social</div>
+                    <div style={cardStyle}>
+                        <h3 style={labelStyle}>Social</h3>
+                        <button
+                            onClick={() => setShowSocialHub(true)}
+                            style={{ ...btnStyle, width: '100%', background: s.whiteBg, border: `1px solid ${s.whiteBgHover}`, padding: '16px', borderRadius: '1rem', color: s.whiteSoft, fontSize: '14px', letterSpacing: '0.15em' }}
+                        >
+                            Abrir Social Hub
+                        </button>
+                    </div>
+
+                    <div style={{ ...labelStyle, marginBottom: '-8px' }}>Seguridad</div>
                     {/* PIN Change */}
                     <div style={cardStyle}>
                         <h3 style={labelStyle}>Cambiar PIN</h3>
@@ -256,15 +276,25 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
 
                     {/* Danger Zone */}
                     {canClearAllData && (
-                        <div style={{ ...cardStyle, background: s.redBg, border: `1px solid ${s.redBorder}` }}>
-                            <h3 style={{ ...labelStyle, color: 'rgba(255,69,58,0.6)' }}>Zona de Peligro</h3>
-                            <button
-                                onClick={handleClearAllData}
-                                style={{ ...btnStyle, width: '100%', background: s.redBg, border: `1px solid rgba(255,69,58,0.3)`, color: s.red, padding: '16px', borderRadius: '1rem', fontSize: '14px', letterSpacing: '0.15em' }}
-                            >
-                                🗑️ Borrar Todos los Datos
-                            </button>
-                        </div>
+                        <>
+                            <div style={{ ...labelStyle, marginBottom: '-8px' }}>Admin</div>
+                            <div style={{ ...cardStyle, background: s.redBg, border: `1px solid ${s.redBorder}` }}>
+                                <button
+                                    onClick={() => setShowAdminDanger((v) => !v)}
+                                    style={{ ...btnStyle, width: '100%', background: 'transparent', color: s.red, padding: '12px', borderRadius: '1rem', fontSize: '12px', letterSpacing: '0.15em', border: `1px solid rgba(255,69,58,0.25)` }}
+                                >
+                                    {showAdminDanger ? 'Ocultar Zona de Peligro' : 'Mostrar Zona de Peligro'}
+                                </button>
+                                {showAdminDanger && (
+                                    <button
+                                        onClick={handleClearAllData}
+                                        style={{ ...btnStyle, width: '100%', background: s.redBg, border: `1px solid rgba(255,69,58,0.3)`, color: s.red, padding: '16px', borderRadius: '1rem', fontSize: '14px', letterSpacing: '0.15em', marginTop: '12px' }}
+                                    >
+                                        🗑️ Borrar Todos los Datos
+                                    </button>
+                                )}
+                            </div>
+                        </>
                     )}
 
                     {/* Logout */}

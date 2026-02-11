@@ -11,6 +11,7 @@ interface HistoryStore {
     // Actions
     fetchMatches: () => Promise<void>;
     addMatch: (match: MatchState) => Promise<void>;
+    updateMatch: (match: MatchState) => Promise<void>;
     clearAllMatches: () => Promise<void>;
     clearHistory: () => void; // Deprecated: use clearAllMatches
 }
@@ -62,6 +63,18 @@ export const useHistoryStore = create<HistoryStore>((set) => ({
             console.error("Error saving match to cloud:", err);
             // Rollback or show error?
             // For now, just log.
+        }
+    },
+
+    updateMatch: async (match) => {
+        set((state) => ({
+            matches: state.matches.map((m) => (m.id === match.id ? match : m))
+        }));
+
+        try {
+            await setDoc(doc(db, 'matches', match.id), match, { merge: true });
+        } catch (err: unknown) {
+            console.error("Error updating match in cloud:", err);
         }
     },
 
