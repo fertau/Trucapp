@@ -3,6 +3,7 @@ import { useMatchStore } from '../store/useMatchStore';
 import { ScoreBoard } from './ScoreBoard';
 import { FaltaEnvidoModal } from './FaltaEnvidoModal';
 import type { MatchState, TeamId } from '../types';
+import { formatDateInputLocal, parseDateInputLocal } from '../utils/date';
 
 interface MatchScreenProps {
     onFinish: (next?: 'home' | 'rematch') => void;
@@ -49,7 +50,10 @@ export const MatchScreen = ({ onFinish }: MatchScreenProps) => {
     return (
         <div className="full-screen bg-[var(--color-bg)] flex flex-col">
             {/* Header / Top Bar */}
-            <div className="flex justify-between items-center p-4 border-b border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur z-50 h-[60px]">
+            <div
+                className="flex justify-between items-center p-4 border-b border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur z-50"
+                style={{ paddingTop: 'max(16px, env(safe-area-inset-top))', minHeight: '60px' }}
+            >
                 <button
                     onClick={undo}
                     className="text-[var(--color-text-secondary)] text-xs font-bold uppercase tracking-wider px-3 py-1 rounded border border-[var(--color-border)] active:bg-[var(--color-surface-hover)]"
@@ -101,11 +105,11 @@ const ManualScoreModal = ({ nosotros, ellos, onClose, onConfirm }: {
     const [location, setLocation] = useState(useMatchStore.getState().metadata?.location || '');
     const [date, setDate] = useState(() => {
         const d = useMatchStore.getState().metadata?.date || Date.now();
-        return new Date(d).toISOString().split('T')[0];
+        return formatDateInputLocal(d);
     });
 
     const handleConfirm = () => {
-        const selectedDate = new Date(date).getTime();
+        const selectedDate = parseDateInputLocal(date) ?? Date.now();
         useMatchStore.getState().setMetadata(location, selectedDate);
         onConfirm(scoreNos, scoreEll);
     };

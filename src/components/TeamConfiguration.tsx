@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { usePairStore } from '../store/usePairStore';
 import { useHistoryStore } from '../store/useHistoryStore';
 import type { Player, TeamId } from '../types';
+import { formatDateInputLocal, parseDateInputLocal } from '../utils/date';
 
 interface TeamConfigurationProps {
     players: Player[];
@@ -21,7 +22,7 @@ export const TeamConfiguration = ({ players, onStartMatch }: TeamConfigurationPr
     const [targetScore, setTargetScore] = useState<number>(30);
 
     const [location, setLocation] = useState('');
-    const [customDate, setCustomDate] = useState<string>(new Date().toISOString().slice(0, 10));
+    const [customDate, setCustomDate] = useState<string>(() => formatDateInputLocal(Date.now()));
     const matches = useHistoryStore(state => state.matches);
     const locationSuggestions = Array.from(
         new Set(
@@ -361,10 +362,8 @@ export const TeamConfiguration = ({ players, onStartMatch }: TeamConfigurationPr
                 onClick={() => {
                     try {
                         let dateTs = Date.now();
-                        if (customDate) {
-                            const parsed = new Date(customDate + 'T00:00:00').getTime();
-                            if (!isNaN(parsed)) dateTs = parsed;
-                        }
+                        const parsedDate = parseDateInputLocal(customDate);
+                        if (parsedDate !== null) dateTs = parsedDate;
 
                         let pIds: { nosotros?: string, ellos?: string } = {};
                         if (is2v2) {

@@ -3,6 +3,7 @@ import { useHistoryStore } from '../store/useHistoryStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useUserStore } from '../store/useUserStore';
 import type { MatchEditField, MatchMode, MatchState, TeamId } from '../types';
+import { formatDateInputLocal, parseDateInputLocal } from '../utils/date';
 
 interface HistoryScreenProps {
     onBack: () => void;
@@ -315,7 +316,10 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
     }, [scope, mode, result, opponentId, opponentGroupKey, search, getPlayerName, availableOpponentGroups]);
 
     return (
-        <div className="full-screen bg-[var(--color-bg)] flex flex-col p-5 overflow-hidden">
+        <div
+            className="full-screen bg-[var(--color-bg)] flex flex-col p-5 overflow-hidden"
+            style={{ paddingTop: 'max(20px, env(safe-area-inset-top))', paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
+        >
             <div className="flex items-center justify-between mb-6">
                 <button onClick={onBack} className="text-[var(--color-text-muted)] font-black text-[10px] uppercase tracking-[0.3em] bg-white/5 py-2 px-4 rounded-full active:scale-95 transition-all">
                     ← VOLVER
@@ -370,11 +374,24 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
 
                     {activeFilterChips.length > 0 && (
                         <div className="flex flex-wrap gap-2 mb-4">
+                            <button
+                                onClick={() => {
+                                    setScope('MINE');
+                                    setMode('ALL');
+                                    setResult('ALL');
+                                    setOpponentId('ALL');
+                                    setOpponentGroupKey('ALL');
+                                    setSearch('');
+                                }}
+                                className="min-h-11 px-3 py-2 rounded-full text-[10px] font-black bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/40 text-[var(--color-accent)]"
+                            >
+                                Limpiar todo
+                            </button>
                             {activeFilterChips.map((chip) => (
                                 <button
                                     key={chip.key}
                                     onClick={chip.onClear}
-                                    className="px-3 py-1.5 rounded-full text-[10px] font-black bg-white/10 border border-white/20 text-white/70"
+                                    className="min-h-11 px-3 py-2 rounded-full text-[10px] font-black bg-white/10 border border-white/20 text-white/70"
                                 >
                                     {chip.label} ✕
                                 </button>
@@ -592,7 +609,7 @@ const MatchDetailDrawer = ({ match, currentUserId, getPlayerName, locationSugges
     const [location, setLocation] = useState(match.metadata?.location ?? '');
     const [date, setDate] = useState(() => {
         const ts = match.metadata?.date || match.startDate;
-        return new Date(ts).toISOString().split('T')[0];
+        return formatDateInputLocal(ts);
     });
     const [scoreNos, setScoreNos] = useState(match.teams.nosotros.score);
     const [scoreEll, setScoreEll] = useState(match.teams.ellos.score);
@@ -611,8 +628,12 @@ const MatchDetailDrawer = ({ match, currentUserId, getPlayerName, locationSugges
             `Trucapp | ${match.mode}`,
             `${match.teams.nosotros.name} ${scoreNos} - ${scoreEll} ${match.teams.ellos.name}`,
             `Sede: ${location || 'Sin sede'}`,
-            `Fecha: ${new Date(date).toLocaleDateString()}`,
+            `Fecha: ${date}`,
         ].join('\n');
+        if (navigator.share) {
+            await navigator.share({ text: shareText });
+            return;
+        }
         await navigator.clipboard.writeText(shareText);
         alert('Resumen copiado al portapapeles');
     };
@@ -621,7 +642,37 @@ const MatchDetailDrawer = ({ match, currentUserId, getPlayerName, locationSugges
         if (!currentUserId) return;
         setIsSaving(true);
 
-        const newDate = new Date(date).getTime();
+        const newDate = parseDateInputLocal(date);
+        if (newDate === null) {
+            alert('Fecha inválida.');
+            setIsSaving(false);
+            return;
+        }
+        if (!Number.isFinite(scoreNos) || !Number.isFinite(scoreEll) || scoreNos < 0 || scoreEll < 0) {
+            alert('El puntaje debe ser un número mayor o igual a 0.');
+            setIsSaving(false);
+            return;
+        }
+        if (!Number.isInteger(scoreNos) || !Number.isInteger(scoreEll)) {
+            alert('El puntaje debe ser entero.');
+            setIsSaving(false);
+            return;
+        }
+        if (scoreNos === scoreEll && winner !== null) {
+            alert('Si hay empate, el ganador debe quedar sin definir.');
+            setIsSaving(false);
+            return;
+        }
+        if (scoreNos > scoreEll && winner !== 'nosotros') {
+            alert(`Ganador inconsistente: debe ganar ${match.teams.nosotros.name}.`);
+            setIsSaving(false);
+            return;
+        }
+        if (scoreEll > scoreNos && winner !== 'ellos') {
+            alert(`Ganador inconsistente: debe ganar ${match.teams.ellos.name}.`);
+            setIsSaving(false);
+            return;
+        }
         const fields: MatchEditField[] = [];
 
         if ((match.metadata?.location ?? '') !== location) {
@@ -683,7 +734,10 @@ const MatchDetailDrawer = ({ match, currentUserId, getPlayerName, locationSugges
 
     return (
         <div className="fixed inset-0 z-[120] bg-black/70 backdrop-blur-sm flex items-end">
-            <div className="w-full bg-[var(--color-bg)] border-t border-[var(--color-border)] rounded-t-3xl p-5 max-h-[85vh] overflow-y-auto">
+            <div
+                className="w-full bg-[var(--color-bg)] border-t border-[var(--color-border)] rounded-t-3xl p-5 max-h-[85vh] overflow-y-auto"
+                style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
+            >
                 <div className="flex justify-between items-center mb-4">
                     <div>
                         <div className="text-[10px] uppercase tracking-widest text-white/40 font-black">{match.mode}</div>

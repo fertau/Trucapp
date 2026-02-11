@@ -21,7 +21,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onUpdates, onProfile }: Home
     const user = players.find(p => p.id === currentUserId);
 
     return (
-        <div className="full-screen bg-[var(--color-bg)] flex flex-col p-6">
+        <div className="full-screen bg-[var(--color-bg)] flex flex-col p-6" style={{ paddingTop: 'max(24px, env(safe-area-inset-top))' }}>
             <div className="flex justify-between items-center mb-8">
                 <h1 className="text-2xl font-black tracking-tighter">TRUCAPP</h1>
                 <div className="flex items-center gap-2" onClick={onProfile}>
@@ -129,7 +129,10 @@ export const HomeScreen = ({ onNewMatch, onHistory, onUpdates, onProfile }: Home
                 )}
             </div>
 
-            <div className="fixed bottom-0 left-0 right-0 bg-[var(--color-bg)]/95 backdrop-blur border-t border-[var(--color-border)] px-4 py-3">
+            <div
+                className="fixed bottom-0 left-0 right-0 bg-[var(--color-bg)]/95 backdrop-blur border-t border-[var(--color-border)] px-4 py-3"
+                style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
+            >
                 <div className="grid grid-cols-3 gap-2 max-w-md mx-auto">
                     {([
                         { id: 'PARTIDO', label: 'Partido' },
@@ -139,7 +142,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onUpdates, onProfile }: Home
                         <button
                             key={item.id}
                             onClick={() => setTab(item.id)}
-                            className={`py-3 rounded-xl text-xs font-black uppercase tracking-widest border transition-all ${tab === item.id
+                            className={`min-h-11 py-3 rounded-xl text-xs font-black uppercase tracking-widest border transition-all ${tab === item.id
                                 ? 'bg-[var(--color-accent)] text-black border-[var(--color-accent)]'
                                 : 'bg-white/5 text-white/50 border-white/10'
                                 }`}

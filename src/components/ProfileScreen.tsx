@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { useUserStore } from '../store/useUserStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useHistoryStore } from '../store/useHistoryStore';
+import { usePairStore } from '../store/usePairStore';
+import { usePicaPicaStore } from '../store/usePicaPicaStore';
+import { useMatchStore } from '../store/useMatchStore';
 import { PinInput } from './PinInput';
 import { hashPin } from '../utils/pinSecurity';
 import { isSuperAdmin } from '../utils/authz';
@@ -82,8 +85,17 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
         if (confirm('¿Estás seguro? Esto eliminará TODOS los usuarios y partidos. Esta acción no se puede deshacer.')) {
             const { clearAllUsers } = useUserStore.getState();
             const { clearAllMatches } = useHistoryStore.getState();
+            const { clearPairs } = usePairStore.getState();
+            const { reset: resetPicaPica } = usePicaPicaStore.getState();
+            const { resetMatch } = useMatchStore.getState();
             await clearAllUsers();
             await clearAllMatches();
+            clearPairs();
+            resetPicaPica();
+            resetMatch();
+            localStorage.removeItem('trucapp-pairs');
+            localStorage.removeItem('trucapp-pica-pica');
+            localStorage.removeItem('trucapp-match-storage-v1');
             logout();
             onBack();
         }
@@ -135,7 +147,7 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
     };
 
     return (
-        <div className="full-screen" style={{ backgroundColor: s.bg, display: 'flex', flexDirection: 'column', padding: '20px', overflow: 'hidden' }}>
+        <div className="full-screen" style={{ backgroundColor: s.bg, display: 'flex', flexDirection: 'column', padding: '20px', paddingTop: 'max(20px, env(safe-area-inset-top))', overflow: 'hidden' }}>
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
                 <button
@@ -150,7 +162,7 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
             </div>
 
             {/* Scrollable Content */}
-            <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '48px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 'max(48px, env(safe-area-inset-bottom))' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
                     <div style={{ ...labelStyle, marginBottom: '-8px' }}>Cuenta</div>

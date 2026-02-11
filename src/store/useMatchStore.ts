@@ -36,6 +36,32 @@ const INITIAL_STATE: Omit<MatchState, 'id' | 'startDate'> = {
     isFinished: false,
 };
 
+const recomputeFromHistory = (
+    history: GameAction[],
+    targetScore: number
+): { teams: MatchState['teams']; isFinished: boolean; winner: TeamId | null } => {
+    const nextTeams: MatchState['teams'] = {
+        nosotros: { id: 'nosotros', name: 'Equipo 1', players: [], score: 0 },
+        ellos: { id: 'ellos', name: 'Equipo 2', players: [], score: 0 }
+    };
+
+    let winner: TeamId | null = null;
+    for (const action of history) {
+        if (action.type !== 'ADD_POINTS') continue;
+        const current = nextTeams[action.team].score;
+        const raw = current + action.amount;
+        const clamped = raw >= targetScore ? targetScore : raw;
+        nextTeams[action.team] = { ...nextTeams[action.team], score: clamped };
+        if (clamped >= targetScore) winner = action.team;
+    }
+
+    return {
+        teams: nextTeams,
+        isFinished: winner !== null,
+        winner
+    };
+};
+
 // Helper to extract only data from the store for persistence
 const getMatchData = (state: MatchStore) => ({
     id: state.id,
@@ -204,21 +230,21 @@ export const useMatchStore = create<MatchStore>()(
                 const lastAction = newHistory.pop();
 
                 if (!lastAction || lastAction.type !== 'ADD_POINTS') return { history: newHistory };
-
-                const teamId = lastAction.team;
-                const currentScore = state.teams[teamId].score;
-                const newScore = currentScore - lastAction.amount;
-
-                const newTeams = {
-                    ...state.teams,
-                    [teamId]: { ...state.teams[teamId], score: newScore }
-                };
-
+                const recomputed = recomputeFromHistory(newHistory, state.targetScore);
                 const newState = {
                     history: newHistory,
-                    teams: newTeams,
-                    isFinished: false,
-                    winner: null
+                    teams: {
+                        nosotros: {
+                            ...state.teams.nosotros,
+                            score: recomputed.teams.nosotros.score
+                        },
+                        ellos: {
+                            ...state.teams.ellos,
+                            score: recomputed.teams.ellos.score
+                        }
+                    },
+                    isFinished: recomputed.isFinished,
+                    winner: recomputed.winner
                 };
 
                 // Cloud Write

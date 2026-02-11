@@ -11,6 +11,7 @@ interface PairStore {
     recordMatchResult: (pairId: string, isWin: boolean) => void;
     findPairByPlayers: (playerIds: [string, string]) => Pair | undefined;
     toggleFavorite: (pairId: string) => void;
+    clearPairs: () => void;
 }
 
 export const usePairStore = create<PairStore>()(
@@ -59,7 +60,9 @@ export const usePairStore = create<PairStore>()(
 
             toggleFavorite: (id) => set(state => ({
                 pairs: state.pairs.map(p => p.id === id ? { ...p, isFavorite: !p.isFavorite } : p)
-            }))
+            })),
+
+            clearPairs: () => set({ pairs: [] })
         }),
         { name: 'trucapp-pairs' }
     )
