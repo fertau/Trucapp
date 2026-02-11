@@ -1,0 +1,84 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function hasValidMode(mode) {
+      return mode in ['1v1', '2v2', '3v3'];
+    }
+
+    function isValidTeam(team, expectedId) {
+      return team is map
+        && team.id == expectedId
+        && team.name is string
+        && team.players is list
+        && team.players.size() > 0
+        && team.players.size() <= 3
+        && team.score is int
+        && team.score >= 0;
+    }
+
+    function isWinnerConsistent(data) {
+      return (
+          data.teams.nosotros.score == data.teams.ellos.score
+          && data.winner == null
+        ) || (
+          data.teams.nosotros.score > data.teams.ellos.score
+          && data.winner == 'nosotros'
+        ) || (
+          data.teams.ellos.score > data.teams.nosotros.score
+          && data.winner == 'ellos'
+        );
+    }
+
+    function hasValidMetadata(data) {
+      return !data.keys().hasAny(['metadata'])
+        || data.metadata == null
+        || (
+          data.metadata is map
+          && (
+            !data.metadata.keys().hasAny(['location'])
+            || data.metadata.location == null
+            || data.metadata.location is string
+          )
+          && (
+            !data.metadata.keys().hasAny(['date'])
+            || data.metadata.date == null
+            || data.metadata.date is int
+          )
+        );
+    }
+
+    function hasValidMatchShape(data) {
+      return data.keys().hasAll([
+          'id', 'mode', 'startDate', 'targetScore', 'teams', 'history', 'isFinished'
+        ])
+        && data.id is string
+        && hasValidMode(data.mode)
+        && data.startDate is int
+        && data.targetScore is int
+        && data.targetScore > 0
+        && data.teams is map
+        && isValidTeam(data.teams.nosotros, 'nosotros')
+        && isValidTeam(data.teams.ellos, 'ellos')
+        && (!data.keys().hasAny(['winner']) || data.winner in ['nosotros', 'ellos', null])
+        && isWinnerConsistent(data)
+        && hasValidMetadata(data);
+    }
+
+    // NOTE:
+    // This project currently uses app-side session management, not Firebase Auth users.
+    // Rules below focus on schema/result integrity. Auth-based restrictions can be added later.
+    match /matches/{matchId} {
+      allow read: if true;
+      allow create, update: if hasValidMatchShape(request.resource.data);
+      allow delete: if true;
+    }
+
+    match /players/{playerId} {
+      allow read, write: if true;
+    }
+
+    match /friendRequests/{requestId} {
+      allow read, write: if true;
+    }
+  }
+}

@@ -41,6 +41,14 @@ const TAB_META: Record<HistoryTab, { title: string; hint: string }> = {
     RANKING: { title: 'Ranking', hint: 'Tabla de posiciones por jugadores o parejas.' }
 };
 
+const toCsvSafe = (value: string | number | null | undefined): string => {
+    const s = `${value ?? ''}`;
+    if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+        return `"${s.replace(/"/g, '""')}"`;
+    }
+    return s;
+};
+
 export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenProps) => {
     const matches = useHistoryStore(state => state.matches);
     const updateMatch = useHistoryStore(state => state.updateMatch);
@@ -453,6 +461,44 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
         search.trim() === ''
     ), [scope, mode, result, opponentId, opponentGroupKey, search]);
 
+    const exportFilteredMatchesToCsv = useCallback(() => {
+        const rows = [
+            [
+                'id',
+                'fecha',
+                'modo',
+                'equipo_nosotros',
+                'puntos_nosotros',
+                'equipo_ellos',
+                'puntos_ellos',
+                'ganador',
+                'sede',
+                'resultado_editado'
+            ],
+            ...filteredMatches.map((m) => [
+                m.id,
+                new Date(m.metadata?.date ?? m.startDate).toISOString(),
+                m.mode,
+                m.teams.nosotros.name,
+                m.teams.nosotros.score,
+                m.teams.ellos.name,
+                m.teams.ellos.score,
+                m.winner ?? '',
+                m.metadata?.location ?? '',
+                m.editedFlags?.resultEdited ? 'si' : 'no'
+            ])
+        ];
+
+        const csv = rows.map((row) => row.map((col) => toCsvSafe(col)).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `trucapp-historial-${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }, [filteredMatches]);
+
     useEffect(() => {
         if (tab !== 'MATCHES') return;
         if (!canAutoLoadMore) return;
@@ -662,6 +708,13 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
 
                 {!isLoading && tab === 'MATCHES' && (
                     <div className="flex flex-col gap-3 animate-in slide-in-from-bottom duration-300">
+                        <button
+                            onClick={exportFilteredMatchesToCsv}
+                            disabled={filteredMatches.length === 0}
+                            className="w-full py-3 rounded-xl border border-white/15 bg-white/5 text-xs font-black uppercase tracking-widest disabled:opacity-40"
+                        >
+                            Exportar CSV (filtro actual)
+                        </button>
                         <input
                             type="text"
                             value={search}
