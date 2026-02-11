@@ -1,39 +1,58 @@
 import type { CSSProperties } from 'react';
-import naipeImg from '../assets/avatars/naipe.svg';
-import espadaImg from '../assets/avatars/espada.svg';
-import copaImg from '../assets/avatars/copa.svg';
-import oroImg from '../assets/avatars/oro.svg';
-import pelotaImg from '../assets/avatars/pelota.svg';
-import mateImg from '../assets/avatars/mate.svg';
-import banderaImg from '../assets/avatars/bandera.svg';
-import estadioImg from '../assets/avatars/estadio.svg';
-import fuegoImg from '../assets/avatars/fuego.svg';
-import estrellaImg from '../assets/avatars/estrella.svg';
-import rayosImg from '../assets/avatars/rayos.svg';
-import naipesProImg from '../assets/avatars/naipes_pro.svg';
+import espadaImg from '../assets/avatars-real/espada.svg';
+import bastoImg from '../assets/avatars-real/basto.svg';
+import oroImg from '../assets/avatars-real/oro.svg';
+import copaImg from '../assets/avatars-real/copa.svg';
+import mateImg from '../assets/avatars-real/mate3.jpg';
+import mateGauchoImg from '../assets/avatars-real/mate_gaucho.jpg';
+import fernetImg from '../assets/avatars-real/fernet2.jpg';
+import fernetAltImg from '../assets/avatars-real/fernet.jpg';
+import choripanImg from '../assets/avatars-real/choripan2.jpg';
+import futbolImg from '../assets/avatars-real/futbol.jpg';
+import cartasImg from '../assets/avatars-real/cartas_real.jpg';
 
 type AvatarVisual = {
     id: string;
     label: string;
     src: string;
+    objectPosition?: string;
 };
 
 const AVATAR_VISUALS: AvatarVisual[] = [
-    { id: 'naipe', label: 'Naipe', src: naipeImg },
     { id: 'espada', label: 'Espada', src: espadaImg },
-    { id: 'copa', label: 'Copa', src: copaImg },
+    { id: 'basto', label: 'Basto', src: bastoImg },
     { id: 'oro', label: 'Oro', src: oroImg },
-    { id: 'pelota', label: 'Pelota', src: pelotaImg },
-    { id: 'mate', label: 'Mate', src: mateImg },
-    { id: 'bandera', label: 'Argentina', src: banderaImg },
-    { id: 'estadio', label: 'Estadio', src: estadioImg },
-    { id: 'fuego', label: 'Fuego', src: fuegoImg },
-    { id: 'estrella', label: 'Estrella', src: estrellaImg },
-    { id: 'rayos', label: 'Ráfaga', src: rayosImg },
-    { id: 'naipes_pro', label: 'Truco', src: naipesProImg },
+    { id: 'copa', label: 'Copa', src: copaImg },
+    { id: 'cartas', label: 'Cartas', src: cartasImg, objectPosition: 'center 62%' },
+    { id: 'mate', label: 'Mate', src: mateImg, objectPosition: 'center 34%' },
+    { id: 'mate_arg', label: 'Mate Argentino', src: mateGauchoImg, objectPosition: 'center 35%' },
+    { id: 'fernet', label: 'Fernet', src: fernetImg, objectPosition: 'center 58%' },
+    { id: 'fernet_clasico', label: 'Fernet Clásico', src: fernetAltImg, objectPosition: 'center 42%' },
+    { id: 'choripan', label: 'Choripán', src: choripanImg, objectPosition: 'center 45%' },
+    { id: 'futbol', label: 'Fútbol', src: futbolImg, objectPosition: 'center 42%' },
 ];
 
+const AVATAR_ALIASES: Record<string, string> = {
+    naipe: 'cartas',
+    pelota: 'futbol',
+    bandera: 'mate_arg',
+    estadio: 'futbol',
+    fuego: 'fernet',
+    estrella: 'copa',
+    rayos: 'espada',
+    naipes_pro: 'cartas',
+    truco: 'cartas'
+};
+
 const AVATAR_MAP = Object.fromEntries(AVATAR_VISUALS.map((option) => [option.id, option]));
+
+const getVisualByAvatarId = (avatar?: string | null): AvatarVisual | undefined => {
+    if (!avatar) return undefined;
+    const direct = AVATAR_MAP[avatar];
+    if (direct) return direct;
+    const alias = AVATAR_ALIASES[avatar];
+    return alias ? AVATAR_MAP[alias] : undefined;
+};
 
 const initialsFromName = (name?: string): string => {
     if (!name) return '?';
@@ -49,7 +68,7 @@ interface AvatarBadgeProps {
 }
 
 export const AvatarBadge = ({ avatar, name, size = 44, className = '' }: AvatarBadgeProps) => {
-    const visual = avatar ? AVATAR_MAP[avatar] : undefined;
+    const visual = getVisualByAvatarId(avatar);
     const style: CSSProperties = {
         width: `${size}px`,
         height: `${size}px`,
@@ -69,6 +88,7 @@ export const AvatarBadge = ({ avatar, name, size = 44, className = '' }: AvatarB
                     src={visual.src}
                     alt={visual.label}
                     className="w-full h-full object-cover"
+                    style={{ objectPosition: visual.objectPosition ?? 'center' }}
                     draggable={false}
                 />
             ) : avatar ? (
