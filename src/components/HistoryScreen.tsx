@@ -319,8 +319,18 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
         return chips;
     }, [scope, mode, result, opponentId, opponentGroupKey, search, getPlayerName, availableOpponentGroups]);
 
+    const canAutoLoadMore = useMemo(() => (
+        scope === 'MINE' &&
+        mode === 'ALL' &&
+        result === 'ALL' &&
+        opponentId === 'ALL' &&
+        opponentGroupKey === 'ALL' &&
+        search.trim() === ''
+    ), [scope, mode, result, opponentId, opponentGroupKey, search]);
+
     useEffect(() => {
         if (tab !== 'MATCHES') return;
+        if (!canAutoLoadMore) return;
         const anchor = loadMoreAnchorRef.current;
         if (!anchor) return;
 
@@ -334,7 +344,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
 
         observer.observe(anchor);
         return () => observer.disconnect();
-    }, [tab, hasMore, isLoadingMore, loadMoreMatches]);
+    }, [tab, hasMore, isLoadingMore, loadMoreMatches, canAutoLoadMore]);
 
     return (
         <div

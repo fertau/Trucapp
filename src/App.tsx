@@ -106,6 +106,30 @@ function App() {
   }, [isBootstrapping, currentUserId, players]);
 
   useEffect(() => {
+    if (isBootstrapping || !currentUserId) return;
+    const w = globalThis as typeof globalThis & {
+      requestIdleCallback?: (cb: () => void) => number;
+      cancelIdleCallback?: (idleId: number) => void;
+    };
+
+    const prefetch = () => {
+      void import('./components/HistoryScreen');
+      void import('./components/ProfileScreen');
+      void import('./components/MatchScreen');
+    };
+
+    if (w.requestIdleCallback) {
+      const id = w.requestIdleCallback(prefetch);
+      return () => {
+        w.cancelIdleCallback?.(id);
+      };
+    }
+
+    const timeoutId = setTimeout(prefetch, 800);
+    return () => clearTimeout(timeoutId);
+  }, [isBootstrapping, currentUserId]);
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const sharedMatchId = params.get('matchId');
     if (sharedMatchId) {
