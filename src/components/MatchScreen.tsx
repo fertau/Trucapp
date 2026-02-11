@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useMatchStore } from '../store/useMatchStore';
+import { useHistoryStore } from '../store/useHistoryStore';
 import { ScoreBoard } from './ScoreBoard';
 import { FaltaEnvidoModal } from './FaltaEnvidoModal';
 import type { MatchState, TeamId } from '../types';
 import { formatDateInputLocal, parseDateInputLocal } from '../utils/date';
 
 interface MatchScreenProps {
-    onFinish: (next?: 'home' | 'rematch') => void;
+    onFinish: (next?: 'home' | 'rematch' | 'series-next') => void;
 }
 
 export const MatchScreen = ({ onFinish }: MatchScreenProps) => {
@@ -192,10 +193,24 @@ const createConfettiPieces = (count: number): ConfettiPiece[] =>
         animationDelay: `${Math.random() * 2}s`,
     }));
 
-const WinnerCelebration = ({ winner, teams, onFinish }: { winner: TeamId, teams: MatchState['teams'], onFinish: (next?: 'home' | 'rematch') => void }) => {
+const WinnerCelebration = ({ winner, teams, onFinish }: { winner: TeamId, teams: MatchState['teams'], onFinish: (next?: 'home' | 'rematch' | 'series-next') => void }) => {
     const winnerData = teams[winner];
     const matchId = useMatchStore(state => state.id);
+    const series = useMatchStore(state => state.series);
+    const historyMatches = useHistoryStore(state => state.matches);
     const [confettiPieces] = useState<ConfettiPiece[]>(() => createConfettiPieces(20));
+
+    const seriesProgress = (() => {
+        if (!series) return null;
+        const matches = historyMatches.filter((m) => m.series?.id === series.id);
+        const currentMatch = useMatchStore.getState();
+        const included = matches.some((m) => m.id === currentMatch.id);
+        const all = included ? matches : [currentMatch, ...matches];
+        const winsNos = all.filter((m) => m.winner === 'nosotros').length;
+        const winsEll = all.filter((m) => m.winner === 'ellos').length;
+        const isFinished = winsNos >= series.targetWins || winsEll >= series.targetWins;
+        return { winsNos, winsEll, isFinished, targetWins: series.targetWins };
+    })();
 
     const handleRematch = () => {
         onFinish('rematch');
@@ -203,6 +218,10 @@ const WinnerCelebration = ({ winner, teams, onFinish }: { winner: TeamId, teams:
 
     const handleGoHome = () => {
         onFinish('home');
+    };
+
+    const handleNextSeriesMatch = () => {
+        onFinish('series-next');
     };
 
     const copyShareLink = () => {
@@ -255,13 +274,31 @@ const WinnerCelebration = ({ winner, teams, onFinish }: { winner: TeamId, teams:
                     </div>
                 </div>
 
+                {seriesProgress && (
+                    <div className="mb-8 text-center bg-white/5 border border-white/10 rounded-2xl px-6 py-4 w-full">
+                        <div className="text-[10px] uppercase tracking-widest text-white/50 font-black mb-1">Serie BO3</div>
+                        <div className="text-xl font-black">
+                            {teams.nosotros.name} {seriesProgress.winsNos} - {seriesProgress.winsEll} {teams.ellos.name}
+                        </div>
+                    </div>
+                )}
+
                 <div className="flex flex-col gap-4 w-full relative z-20">
-                    <button
-                        onClick={handleRematch}
-                        className={`w-full bg-[var(--color-${winner})] text-black py-4 rounded-xl font-black text-xl shadow-lg active:scale-95 transition-transform`}
-                    >
-                        REVANCHA
-                    </button>
+                    {seriesProgress && !seriesProgress.isFinished ? (
+                        <button
+                            onClick={handleNextSeriesMatch}
+                            className={`w-full bg-[var(--color-${winner})] text-black py-4 rounded-xl font-black text-xl shadow-lg active:scale-95 transition-transform`}
+                        >
+                            SIGUIENTE PARTIDO (SERIE)
+                        </button>
+                    ) : (
+                        <button
+                            onClick={handleRematch}
+                            className={`w-full bg-[var(--color-${winner})] text-black py-4 rounded-xl font-black text-xl shadow-lg active:scale-95 transition-transform`}
+                        >
+                            REVANCHA
+                        </button>
+                    )}
                     <button
                         onClick={handleGoHome}
                         className="text-[var(--color-text-muted)] font-bold uppercase tracking-widest text-xs py-4 active:text-white transition-colors"

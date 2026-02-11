@@ -18,6 +18,7 @@ type ResultFilter = 'ALL' | 'W' | 'L';
 type RankingType = 'PLAYERS' | 'PAIRS';
 type SummaryWindow = '7D' | '30D' | 'ALL';
 type AnalysisWindow = 'ALL' | '30D' | '90D';
+type MatchListView = 'SERIES' | 'MATCHES';
 
 const MODES: FilterMode[] = ['ALL', '1v1', '2v2', '3v3'];
 
@@ -70,6 +71,8 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
     const [summaryWindow, setSummaryWindow] = useState<SummaryWindow>('30D');
     const [analysisWindow, setAnalysisWindow] = useState<AnalysisWindow>('ALL');
     const [rankingMinMatches, setRankingMinMatches] = useState<number>(3);
+    const [matchListView, setMatchListView] = useState<MatchListView>('SERIES');
+    const [openSeriesId, setOpenSeriesId] = useState<string | null>(null);
     const [selectedMatch, setSelectedMatch] = useState<MatchState | null>(null);
     const loadMoreAnchorRef = useRef<HTMLDivElement | null>(null);
 
@@ -408,6 +411,37 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
         };
     }, [filteredMatches, currentUserId]);
 
+    const groupedSeries = useMemo(() => {
+        const map = new Map<string, MatchState[]>();
+        filteredMatches
+            .filter((m) => m.series?.id)
+            .forEach((m) => {
+                const sid = m.series!.id;
+                const arr = map.get(sid) ?? [];
+                arr.push(m);
+                map.set(sid, arr);
+            });
+
+        return Array.from(map.entries())
+            .map(([seriesId, ms]) => {
+                const matches = [...ms].sort((a, b) => a.startDate - b.startDate);
+                const first = matches[0];
+                const winsNos = matches.filter((m) => m.winner === 'nosotros').length;
+                const winsEll = matches.filter((m) => m.winner === 'ellos').length;
+                const targetWins = first.series?.targetWins ?? 2;
+                return {
+                    seriesId,
+                    matches,
+                    first,
+                    winsNos,
+                    winsEll,
+                    targetWins,
+                    isFinished: winsNos >= targetWins || winsEll >= targetWins
+                };
+            })
+            .sort((a, b) => (b.matches[b.matches.length - 1]?.startDate ?? 0) - (a.matches[a.matches.length - 1]?.startDate ?? 0));
+    }, [filteredMatches]);
+
     const locationSuggestions = useMemo(() => (
         Array.from(
             new Set(
@@ -723,6 +757,21 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                             className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl px-4 py-3 text-sm outline-none"
                         />
 
+                        <div className="flex bg-[var(--color-surface)] p-1 rounded-xl border border-[var(--color-border)]">
+                            <button
+                                onClick={() => setMatchListView('SERIES')}
+                                className={`flex-1 py-2 rounded-lg text-xs font-black ${matchListView === 'SERIES' ? 'bg-white text-black' : 'text-white/50'}`}
+                            >
+                                Series
+                            </button>
+                            <button
+                                onClick={() => setMatchListView('MATCHES')}
+                                className={`flex-1 py-2 rounded-lg text-xs font-black ${matchListView === 'MATCHES' ? 'bg-white text-black' : 'text-white/50'}`}
+                            >
+                                Partidos
+                            </button>
+                        </div>
+
                         <div className="grid grid-cols-2 gap-2">
                             <select value={opponentId} onChange={(e) => setOpponentId(e.target.value)} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-xs font-bold">
                                 <option value="ALL">Todos los rivales</option>
@@ -744,7 +793,60 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                         )}
 
                         {filteredMatches.length === 0 && <div className="text-center text-white/30 py-8 text-sm">No hay partidos con esos filtros.</div>}
-                        {filteredMatches.map((m) => {
+
+                        {matchListView === 'SERIES' && groupedSeries.length > 0 && (
+                            <div className="flex flex-col gap-3">
+                                {groupedSeries.map((serie) => {
+                                    const sid = serie.seriesId;
+                                    const isOpen = openSeriesId === sid;
+                                    const first = serie.first;
+                                    return (
+                                        <div key={sid} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl overflow-hidden">
+                                            <button
+                                                onClick={() => setOpenSeriesId((v) => (v === sid ? null : sid))}
+                                                className="w-full text-left p-4"
+                                            >
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <span className="text-[10px] uppercase text-white/45 font-black tracking-widest">
+                                                        Serie BO{(serie.targetWins * 2) - 1}
+                                                    </span>
+                                                    <span className={`text-[10px] font-black uppercase tracking-widest ${serie.isFinished ? 'text-[var(--color-nosotros)]' : 'text-amber-400'}`}>
+                                                        {serie.isFinished ? 'Cerrada' : 'En curso'}
+                                                    </span>
+                                                </div>
+                                                <div className="text-sm font-black">
+                                                    {first.teams.nosotros.name} {serie.winsNos} - {serie.winsEll} {first.teams.ellos.name}
+                                                </div>
+                                                <div className="text-[11px] text-white/50 mt-1">
+                                                    {serie.matches.length} partidos · ultima: {new Date(serie.matches[serie.matches.length - 1].startDate).toLocaleDateString()}
+                                                </div>
+                                            </button>
+
+                                            {isOpen && (
+                                                <div className="border-t border-white/10 p-3 flex flex-col gap-2 bg-black/10">
+                                                    {serie.matches.map((m) => (
+                                                        <button
+                                                            key={m.id}
+                                                            onClick={() => setSelectedMatch(m)}
+                                                            className="text-left bg-white/5 border border-white/10 rounded-xl p-3"
+                                                        >
+                                                            <div className="text-[10px] uppercase text-white/40 font-black tracking-widest">
+                                                                Partido {m.series?.gameNumber ?? '-'} · {new Date(m.startDate).toLocaleString()}
+                                                            </div>
+                                                            <div className="text-sm font-black mt-1">
+                                                                {m.teams.nosotros.name} {m.teams.nosotros.score} - {m.teams.ellos.score} {m.teams.ellos.name}
+                                                            </div>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {(matchListView === 'MATCHES' || groupedSeries.length === 0) && filteredMatches.map((m) => {
                             const userTeam = currentUserId ? getTeamIdForUser(m, currentUserId) : null;
                             const didWin = userTeam && m.winner ? m.winner === userTeam : null;
                             const showWarning = Boolean(m.editedFlags?.resultEdited);

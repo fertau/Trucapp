@@ -73,6 +73,12 @@ export interface MatchEditLog {
     fields: MatchEditField[];
 }
 
+export interface MatchSeriesInfo {
+    id: string;
+    targetWins: number;
+    gameNumber: number;
+}
+
 export interface MatchState {
     id: string;
     mode: MatchMode;
@@ -92,6 +98,7 @@ export interface MatchState {
         nosotros?: string | null; // PairId
         ellos?: string | null;    // PairId
     } | null;
+    series?: MatchSeriesInfo | null;
 
     history: GameAction[];
     isFinished: boolean;

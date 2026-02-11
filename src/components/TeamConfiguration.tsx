@@ -10,7 +10,8 @@ interface TeamConfigurationProps {
         teams: { nosotros: Player[], ellos: Player[] },
         metadata: { location: string, date: number, teamNames?: { nosotros: string, ellos: string } },
         pairIds: { nosotros?: string, ellos?: string },
-        targetScore?: number
+        targetScore?: number,
+        options?: { startBestOf3?: boolean }
     ) => void;
 }
 
@@ -41,6 +42,7 @@ export const TeamConfiguration = ({ players, onStartMatch }: TeamConfigurationPr
     const [ellosTeamName, setEllosTeamName] = useState('Equipo 2');
     const [isEditingNosotrosTeam, setIsEditingNosotrosTeam] = useState(false);
     const [isEditingEllosTeam, setIsEditingEllosTeam] = useState(false);
+    const [startBestOf3, setStartBestOf3] = useState(false);
 
     const handlePairNameSave = (team: TeamId, name: string) => {
         if (team === 'nosotros' && nosotros.length === 2) {
@@ -324,6 +326,22 @@ export const TeamConfiguration = ({ players, onStartMatch }: TeamConfigurationPr
                 </div>
             </div>
 
+            {is2v2 && (
+                <div className="mb-8">
+                    <div className="text-[10px] font-black uppercase text-[var(--color-text-muted)] mb-3 tracking-widest border-b border-[var(--color-border)] pb-2">Formato</div>
+                    <button
+                        type="button"
+                        onClick={() => setStartBestOf3((v) => !v)}
+                        className={`w-full rounded-2xl border px-4 py-3 text-left transition-all ${startBestOf3 ? 'bg-[var(--color-accent)]/15 border-[var(--color-accent)]/40 text-[var(--color-accent)]' : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text-secondary)]'}`}
+                    >
+                        <div className="text-sm font-black uppercase tracking-wide">Serie BO3 (mejor de 3)</div>
+                        <div className="text-[11px] opacity-80 mt-1">
+                            {startBestOf3 ? 'Activado: se encadenan hasta 2 victorias.' : 'Desactivado: partido suelto.'}
+                        </div>
+                    </button>
+                </div>
+            )}
+
             {/* Metadata Section */}
             <div className="mb-12">
                 <div className="text-[10px] font-black uppercase text-[var(--color-text-muted)] mb-4 tracking-widest border-b border-[var(--color-border)] pb-2">Información del Partido</div>
@@ -379,7 +397,8 @@ export const TeamConfiguration = ({ players, onStartMatch }: TeamConfigurationPr
                                 teamNames: { nosotros: displayNosotrosTeamName, ellos: displayEllosTeamName }
                             },
                             pIds,
-                            targetScore
+                            targetScore,
+                            { startBestOf3: is2v2 ? startBestOf3 : false }
                         );
                     } catch (e) {
                         alert("Error al iniciar partido: " + JSON.stringify(e));

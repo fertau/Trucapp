@@ -151,13 +151,15 @@ function App() {
 
   const setMetadata = useMatchStore(state => state.setMetadata);
   const setPairId = useMatchStore(state => state.setPairId);
+  const setSeries = useMatchStore(state => state.setSeries);
   const recordPairResult = usePairStore(state => state.recordMatchResult);
 
   const startMatch = (
     teams: { nosotros: Player[], ellos: Player[] },
     metadata?: { location: string, date: number, teamNames?: { nosotros: string, ellos: string } },
     pairIds?: { nosotros?: string, ellos?: string },
-    targetScore?: number
+    targetScore?: number,
+    options?: { startBestOf3?: boolean }
   ) => {
     if (playerCount === 6) {
       setTeamsConfig(teams);
@@ -184,6 +186,15 @@ function App() {
         if (pairIds.nosotros) setPairId('nosotros', pairIds.nosotros);
         if (pairIds.ellos) setPairId('ellos', pairIds.ellos);
       }
+      if (options?.startBestOf3 && playerCount === 4) {
+        setSeries({
+          id: crypto.randomUUID(),
+          targetWins: 2,
+          gameNumber: 1
+        });
+      } else {
+        setSeries(null);
+      }
       setStep('MATCH');
     }
   };
@@ -193,7 +204,7 @@ function App() {
     setShowSplash(false);
   };
 
-  const handleFinishMatch = async (next: 'home' | 'rematch' = 'home') => {
+  const handleFinishMatch = async (next: 'home' | 'rematch' | 'series-next' = 'home') => {
     if (isFinishingMatchRef.current) return;
     isFinishingMatchRef.current = true;
 
@@ -211,6 +222,40 @@ function App() {
         setActiveSubMatchId(null);
         setStep('PICAPICA_HUB');
       } else {
+        if (next === 'series-next' && matchState.series && matchState.winner) {
+          const all = useHistoryStore.getState().matches.filter((m) => m.series?.id === matchState.series?.id);
+          const winsNos = all.filter((m) => m.winner === 'nosotros').length;
+          const winsEll = all.filter((m) => m.winner === 'ellos').length;
+          const isSeriesFinished = winsNos >= matchState.series.targetWins || winsEll >= matchState.series.targetWins;
+
+          if (!isSeriesFinished) {
+            const target = matchState.targetScore;
+            const currentSeriesId = matchState.series.id;
+            const nextGameNumber = all.length + 1;
+            const nextMetadata = {
+              location: matchState.metadata?.location ?? 'Sin ubicación',
+              date: Date.now()
+            };
+
+            resetMatch(matchState.mode);
+            setTargetScore(target);
+            useMatchStore.getState().setTeamName('nosotros', matchState.teams.nosotros.name);
+            useMatchStore.getState().setTeamName('ellos', matchState.teams.ellos.name);
+            setPlayers('nosotros', matchState.teams.nosotros.players);
+            setPlayers('ellos', matchState.teams.ellos.players);
+            setMetadata(nextMetadata.location, nextMetadata.date);
+            if (matchState.pairs?.nosotros) setPairId('nosotros', matchState.pairs.nosotros);
+            if (matchState.pairs?.ellos) setPairId('ellos', matchState.pairs.ellos);
+            setSeries({
+              id: currentSeriesId,
+              targetWins: matchState.series.targetWins,
+              gameNumber: nextGameNumber
+            });
+            setStep('MATCH');
+            return;
+          }
+        }
+
         if (matchState.pairs) {
           if (matchState.pairs.nosotros && matchState.winner) {
             recordPairResult(matchState.pairs.nosotros, matchState.winner === 'nosotros');
@@ -219,6 +264,7 @@ function App() {
             recordPairResult(matchState.pairs.ellos, matchState.winner === 'ellos');
           }
         }
+        setSeries(null);
         setStep(next === 'rematch' ? 'SETUP_PLAYERS_COUNT' : 'HOME');
       }
     } finally {

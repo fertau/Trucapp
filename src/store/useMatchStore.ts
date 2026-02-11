@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import type { MatchState, TeamId, PointType, GameAction } from '../types';
+import type { MatchState, TeamId, PointType, GameAction, MatchSeriesInfo } from '../types';
 
 interface MatchStore extends MatchState {
     // Actions
@@ -17,6 +17,7 @@ interface MatchStore extends MatchState {
     // V2 Actions
     setMetadata: (location: string, date?: number) => void;
     setPairId: (team: TeamId, pairId: string) => void;
+    setSeries: (series: MatchSeriesInfo | null) => void;
 
     // Cloud Persistence
     isCloudSynced: boolean;
@@ -74,6 +75,8 @@ const getMatchData = (state: MatchStore) => ({
     winner: state.winner ?? null,
     metadata: state.metadata ?? null,
     pairs: state.pairs ?? null
+    ,
+    series: state.series ?? null
 });
 
 export const useMatchStore = create<MatchStore>()(
@@ -301,7 +304,9 @@ export const useMatchStore = create<MatchStore>()(
 
             setPairId: (team, pairId) => set((state) => ({
                 pairs: { ...state.pairs, [team]: pairId }
-            }))
+            })),
+
+            setSeries: (series) => set({ series })
         }),
         {
             name: 'trucapp-match-storage-v1', // unique name
@@ -314,7 +319,8 @@ export const useMatchStore = create<MatchStore>()(
                 isFinished: state.isFinished,
                 winner: state.winner,
                 metadata: state.metadata,
-                pairs: state.pairs
+                pairs: state.pairs,
+                series: state.series
             })
         }
     )
