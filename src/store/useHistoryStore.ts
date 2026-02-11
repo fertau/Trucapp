@@ -3,6 +3,7 @@ import { collection, getDocs, query, orderBy, limit, deleteDoc, doc, setDoc, sta
 import type { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { MatchState } from '../types';
+import { canUserEditMatch, validateMatchResultConsistency } from '../utils/matchValidation';
 
 const PAGE_SIZE = 50;
 
@@ -18,7 +19,7 @@ interface HistoryStore {
     fetchMatches: () => Promise<void>;
     loadMoreMatches: () => Promise<void>;
     addMatch: (match: MatchState) => Promise<void>;
-    updateMatch: (match: MatchState) => Promise<void>;
+    updateMatch: (match: MatchState, actorUserId?: string | null) => Promise<void>;
     clearAllMatches: () => Promise<void>;
     clearHistory: () => void; // Deprecated: use clearAllMatches
 }
@@ -107,6 +108,13 @@ export const useHistoryStore = create<HistoryStore>((set) => ({
     },
 
     addMatch: async (match) => {
+        const consistency = validateMatchResultConsistency(match);
+        if (!consistency.valid) {
+            const reason = consistency.reason ?? 'Resultado invalido.';
+            set({ error: reason });
+            throw new Error(reason);
+        }
+
         // Optimistic upsert
         set((state) => {
             const exists = state.matches.some((m) => m.id === match.id);
@@ -125,7 +133,18 @@ export const useHistoryStore = create<HistoryStore>((set) => ({
         }
     },
 
-    updateMatch: async (match) => {
+    updateMatch: async (match, actorUserId = null) => {
+        const consistency = validateMatchResultConsistency(match);
+        if (!consistency.valid) {
+            const reason = consistency.reason ?? 'Resultado invalido.';
+            set({ error: reason });
+            throw new Error(reason);
+        }
+        if (!canUserEditMatch(match, actorUserId)) {
+            set({ error: 'No autorizado para editar este partido.' });
+            throw new Error('No autorizado para editar este partido.');
+        }
+
         set((state) => ({
             matches: state.matches.map((m) => (m.id === match.id ? match : m))
         }));

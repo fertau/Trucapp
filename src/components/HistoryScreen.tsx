@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useUserStore } from '../store/useUserStore';
 import type { MatchEditField, MatchMode, MatchState, TeamId } from '../types';
 import { formatDateInputLocal, parseDateInputLocal } from '../utils/date';
+import { canUserEditMatch } from '../utils/matchValidation';
 
 interface HistoryScreenProps {
     onBack: () => void;
@@ -747,8 +748,17 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                     locationSuggestions={locationSuggestions}
                     onClose={() => setSelectedMatch(null)}
                     onSave={async (updated) => {
-                        await updateMatch(updated);
-                        setSelectedMatch(updated);
+                        if (!canUserEditMatch(updated, currentUserId)) {
+                            alert('No tenes permiso para editar este partido.');
+                            return;
+                        }
+                        try {
+                            await updateMatch(updated, currentUserId);
+                            setSelectedMatch(updated);
+                        } catch (err) {
+                            const message = err instanceof Error ? err.message : 'No se pudo guardar la edicion.';
+                            alert(message);
+                        }
                     }}
                 />
             )}
@@ -924,6 +934,27 @@ const MatchDetailDrawer = ({ match, currentUserId, getPlayerName, locationSugges
                         </div>
                     )}
                 </div>
+
+                {(match.edits?.length ?? 0) > 0 && (
+                    <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 mb-4">
+                        <div className="text-[10px] uppercase tracking-widest text-white/40 font-black mb-3">Historial de ediciones</div>
+                        <div className="flex flex-col gap-2">
+                            {[...(match.edits ?? [])]
+                                .slice(-6)
+                                .reverse()
+                                .map((edit, idx) => (
+                                    <div key={`${edit.at}-${idx}`} className="bg-white/5 border border-white/10 rounded-xl p-3">
+                                        <div className="text-[11px] text-white/60 mb-1">
+                                            {getPlayerName(edit.byUserId)} · {new Date(edit.at).toLocaleString()}
+                                        </div>
+                                        <div className="text-[11px] text-white/80">
+                                            {edit.fields.map((f) => `${f.key}: ${f.before ?? '-'} -> ${f.after ?? '-'}`).join(' | ')}
+                                        </div>
+                                    </div>
+                                ))}
+                        </div>
+                    </div>
+                )}
 
                 <div className="flex flex-col gap-3 mb-4">
                     <div>
