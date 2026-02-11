@@ -27,6 +27,7 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
     const [pinError, setPinError] = useState('');
     const [showSocialHub, setShowSocialHub] = useState(false);
     const [showAdminDanger, setShowAdminDanger] = useState(false);
+    const [copyIdSuccess, setCopyIdSuccess] = useState(false);
 
     if (!currentUser) {
         return (
@@ -74,6 +75,16 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
     const handleLogout = () => {
         logout();
         onBack();
+    };
+
+    const handleCopyUserId = async () => {
+        try {
+            await navigator.clipboard.writeText(currentUser.id);
+            setCopyIdSuccess(true);
+            setTimeout(() => setCopyIdSuccess(false), 1600);
+        } catch {
+            alert(`No se pudo copiar automáticamente. Tu ID es: ${currentUser.id}`);
+        }
     };
 
     const handleClearAllData = async () => {
@@ -226,6 +237,13 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
                                 <span style={{ fontSize: '20px', fontWeight: 900, color: s.white }}>{currentUser.friends?.length || 0}</span>
                             </div>
                         </div>
+
+                        <button
+                            onClick={() => void handleCopyUserId()}
+                            style={{ ...btnStyle, width: '100%', marginTop: '14px', background: copyIdSuccess ? 'rgba(74,222,128,0.2)' : s.whiteBg, border: `1px solid ${copyIdSuccess ? 'rgba(74,222,128,0.45)' : s.whiteBgHover}`, padding: '12px 14px', borderRadius: '12px', color: copyIdSuccess ? s.green : s.whiteSoft, fontSize: '11px', letterSpacing: '0.12em' }}
+                        >
+                            {copyIdSuccess ? 'ID COPIADO' : 'COPIAR MI ID'}
+                        </button>
                     </div>
 
                     {/* Avatar Selection */}
