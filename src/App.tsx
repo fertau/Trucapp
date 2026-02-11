@@ -36,6 +36,7 @@ import { AccountSelector } from './components/AccountSelector';
 
 function App() {
   const currentUserId = useAuthStore(state => state.currentUserId);
+  const players = useUserStore(state => state.players);
 
   const [step, setStep] = useState<AppStep>(() => {
     const params = new URLSearchParams(window.location.search);
@@ -55,6 +56,7 @@ function App() {
   const [teamsConfig, setTeamsConfig] = useState<{ nosotros: Player[], ellos: Player[] } | null>(null);
   const [activeSubMatchId, setActiveSubMatchId] = useState<string | null>(null);
   const [historyInitialTab, setHistoryInitialTab] = useState<HistoryTab>('SUMMARY');
+  const [isBootstrapping, setIsBootstrapping] = useState(true);
   const isFinishingMatchRef = useRef(false);
 
   // --- HOOKS (Must be at top level) ---
@@ -64,9 +66,36 @@ function App() {
   }, [step]);
 
   useEffect(() => {
-    useHistoryStore.getState().fetchMatches();
-    useUserStore.getState().fetchPlayers();
+    let cancelled = false;
+
+    const bootstrap = async () => {
+      await Promise.all([
+        useHistoryStore.getState().fetchMatches(),
+        useUserStore.getState().fetchPlayers(),
+      ]);
+      if (!cancelled) {
+        setIsBootstrapping(false);
+      }
+    };
+
+    void bootstrap();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  useEffect(() => {
+    if (isBootstrapping) return;
+    if (!currentUserId) return;
+
+    const hasValidUser = players.some((p) => p.id === currentUserId);
+    if (!hasValidUser) {
+      useAuthStore.getState().logout();
+      localStorage.removeItem('trucapp-app-step');
+      setStep('AUTH');
+    }
+  }, [isBootstrapping, currentUserId, players]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -169,6 +198,16 @@ function App() {
 
   if (showSplash) {
     return <SplashScreen onFinish={handleSplashFinish} />;
+  }
+
+  if (isBootstrapping) {
+    return (
+      <div className="full-screen bg-[var(--color-bg)] flex items-center justify-center">
+        <div className="text-[11px] font-black uppercase tracking-[0.3em] text-[var(--color-text-muted)]">
+          Cargando...
+        </div>
+      </div>
+    );
   }
 
 
