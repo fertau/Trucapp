@@ -2,6 +2,7 @@ import { useHistoryStore } from '../store/useHistoryStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useUserStore } from '../store/useUserStore';
 import type { MatchMode } from '../types';
+import { getMatchEffectiveDate } from '../utils/matchIdentity';
 
 interface HistoryListProps {
     filter: 'ALL' | MatchMode;
@@ -47,7 +48,7 @@ export const HistoryList = ({ filter }: HistoryListProps) => {
                                     <span className="text-[10px] font-black uppercase text-white/20 tracking-widest">{match.mode}</span>
                                     <span className="w-1 h-1 rounded-full bg-white/10"></span>
                                     <span className="text-[8px] font-black uppercase text-white/40 tracking-widest">
-                                        {new Date(match.startDate).toLocaleDateString(undefined, { day: '2-digit', month: 'short' })}
+                                        {new Date(getMatchEffectiveDate(match)).toLocaleDateString(undefined, { day: '2-digit', month: 'short' })}
                                     </span>
                                 </div>
 
@@ -91,7 +92,7 @@ export const HistoryList = ({ filter }: HistoryListProps) => {
                                 {isUserWin ? 'Ganaste' : 'Perdiste'}
                             </span>
                             <span className="text-[8px] font-black uppercase text-white/20 tracking-widest mt-0.5">
-                                Dif. {Math.abs(userTeam.score - oppTeam.score)}
+                                {isUserWin ? 'Victoria' : 'Derrota'}
                             </span>
                         </div>
 

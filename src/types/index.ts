@@ -79,6 +79,13 @@ export interface MatchSeriesInfo {
     gameNumber: number;
 }
 
+export interface MatchTeamRef {
+    key: string;
+    label: string;
+    playerIds: string[];
+    pairId?: string | null;
+}
+
 export interface MatchState {
     id: string;
     mode: MatchMode;
@@ -97,6 +104,10 @@ export interface MatchState {
     pairs?: {
         nosotros?: string | null; // PairId
         ellos?: string | null;    // PairId
+    } | null;
+    teamRefs?: {
+        nosotros: MatchTeamRef;
+        ellos: MatchTeamRef;
     } | null;
     series?: MatchSeriesInfo | null;
 

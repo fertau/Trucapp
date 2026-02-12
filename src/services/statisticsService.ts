@@ -1,4 +1,5 @@
 import type { MatchState, TeamId, MatchMode } from '../types';
+import { getMatchEffectiveDate, getTeamRefKey } from '../utils/matchIdentity';
 
 export interface BaseStats {
     matchesPlayed: number;
@@ -26,7 +27,6 @@ export interface HeadToHeadStats {
     totalMatches: number;
     sideAWins: number; // sideA is the first player/group in the comparison
     sideBWins: number;
-    pointDifferential: number;
     recentMatches: MatchState[];
 }
 
@@ -56,7 +56,7 @@ export const calculatePlayerStats = (playerId: string, matches: MatchState[], mo
     const recentForm: ('W' | 'L')[] = [];
 
     // Assuming matches are sorted by date desc, we reverse to calculate streaks
-    const sortedMatches = [...relevantMatches].sort((a, b) => a.startDate - b.startDate);
+    const sortedMatches = [...relevantMatches].sort((a, b) => getMatchEffectiveDate(a) - getMatchEffectiveDate(b));
 
     sortedMatches.forEach(m => {
         const teamId = m.teams.nosotros.players.some(p => toPlayerId(p) === playerId) ? 'nosotros' : 'ellos';
@@ -117,7 +117,7 @@ export const calculateGroupStats = (playerIds: string[], matches: MatchState[], 
     let bestStreak = 0;
     const recentForm: ('W' | 'L')[] = [];
 
-    const sortedMatches = [...relevantMatches].sort((a, b) => a.startDate - b.startDate);
+    const sortedMatches = [...relevantMatches].sort((a, b) => getMatchEffectiveDate(a) - getMatchEffectiveDate(b));
 
     sortedMatches.forEach(m => {
         const nosIds = m.teams.nosotros.players.map(toPlayerId);
@@ -157,30 +157,39 @@ export const calculateGroupStats = (playerIds: string[], matches: MatchState[], 
 };
 
 export const calculateHeadToHead = (sideAIds: string[], sideBIds: string[], matches: MatchState[]): HeadToHeadStats => {
-    const idA = getGroupId(sideAIds);
-    const idB = getGroupId(sideBIds);
+    const idA = `team:${getGroupId(sideAIds).replace(/-/g, '|')}`;
+    const idB = `team:${getGroupId(sideBIds).replace(/-/g, '|')}`;
+    const teamGroupKey = (m: MatchState, team: TeamId) => `team:${getGroupId(m.teams[team].players.map(toPlayerId)).replace(/-/g, '|')}`;
 
     const h2hMatches = matches.filter(m => {
-        const nosIds = getGroupId(m.teams.nosotros.players.map(toPlayerId));
-        const ellIds = getGroupId(m.teams.ellos.players.map(toPlayerId));
-        return (nosIds === idA && ellIds === idB) || (nosIds === idB && ellIds === idA);
+        const nosKey = getTeamRefKey(m, 'nosotros');
+        const ellKey = getTeamRefKey(m, 'ellos');
+        const nosGroup = teamGroupKey(m, 'nosotros');
+        const ellGroup = teamGroupKey(m, 'ellos');
+        return (
+            (nosKey === idA && ellKey === idB) ||
+            (nosKey === idB && ellKey === idA) ||
+            (nosGroup === idA && ellGroup === idB) ||
+            (nosGroup === idB && ellGroup === idA)
+        );
     });
 
     let sideAWins = 0;
     let sideBWins = 0;
-    let pointDiff = 0;
 
     h2hMatches.forEach(m => {
-        const nosIds = getGroupId(m.teams.nosotros.players.map(toPlayerId));
-        const ellIds = getGroupId(m.teams.ellos.players.map(toPlayerId));
-        const teamAId: TeamId | null = nosIds === idA ? 'nosotros' : (ellIds === idA ? 'ellos' : null);
-        const teamBId: TeamId | null = nosIds === idB ? 'nosotros' : (ellIds === idB ? 'ellos' : null);
+        const nosKey = getTeamRefKey(m, 'nosotros');
+        const ellKey = getTeamRefKey(m, 'ellos');
+        const nosGroup = teamGroupKey(m, 'nosotros');
+        const ellGroup = teamGroupKey(m, 'ellos');
+        const teamAId: TeamId | null =
+            nosKey === idA || nosGroup === idA ? 'nosotros' : (ellKey === idA || ellGroup === idA ? 'ellos' : null);
+        const teamBId: TeamId | null =
+            nosKey === idB || nosGroup === idB ? 'nosotros' : (ellKey === idB || ellGroup === idB ? 'ellos' : null);
 
         if (teamAId && teamBId) {
             if (m.winner === teamAId) sideAWins++;
             else if (m.winner === teamBId) sideBWins++;
-
-            pointDiff += (m.teams[teamAId].score - m.teams[teamBId].score);
         }
     });
 
@@ -188,7 +197,8 @@ export const calculateHeadToHead = (sideAIds: string[], sideBIds: string[], matc
         totalMatches: h2hMatches.length,
         sideAWins,
         sideBWins,
-        pointDifferential: pointDiff,
-        recentMatches: h2hMatches.slice(0, 5) // Most recent first
+        recentMatches: [...h2hMatches]
+            .sort((a, b) => getMatchEffectiveDate(b) - getMatchEffectiveDate(a))
+            .slice(0, 5) // Most recent first
     };
 };

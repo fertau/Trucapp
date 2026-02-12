@@ -2,6 +2,7 @@ import { useHistoryStore } from '../store/useHistoryStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useUserStore } from '../store/useUserStore';
 import type { MatchMode } from '../types';
+import { getMatchEffectiveDate } from '../utils/matchIdentity';
 
 interface HeadToHeadProps {
     mode: 'ALL' | MatchMode;
@@ -31,13 +32,6 @@ export const HeadToHead = ({ mode }: HeadToHeadProps) => {
 
     const losses = total - wins;
     const winRate = total > 0 ? Math.round((wins / total) * 100) : 0;
-
-    const diff = userMatches.reduce((acc, m) => {
-        const isNosotros = m.teams.nosotros.players.includes(currentUserId!);
-        const userScore = isNosotros ? m.teams.nosotros.score : m.teams.ellos.score;
-        const oppScore = isNosotros ? m.teams.ellos.score : m.teams.nosotros.score;
-        return acc + (userScore - oppScore);
-    }, 0);
 
     // Frequent Rivals / Partners
     const rivalsMap: Record<string, number> = {};
@@ -72,12 +66,7 @@ export const HeadToHead = ({ mode }: HeadToHeadProps) => {
                             <span className="text-2xl font-black text-[var(--color-accent)]">%</span>
                         </div>
                     </div>
-                    <div className="flex flex-col items-end">
-                        <span className={`text-xl font-black ${diff >= 0 ? 'text-[var(--color-nosotros)]' : 'text-[var(--color-ellos)]'}`}>
-                            {diff >= 0 ? `+${diff}` : diff}
-                        </span>
-                        <span className="text-[8px] font-black uppercase text-white/20 tracking-widest">Dif. Pts</span>
-                    </div>
+                    <div className="text-[8px] font-black uppercase text-white/20 tracking-widest">Resumen</div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 relative z-10">
@@ -124,7 +113,10 @@ export const HeadToHead = ({ mode }: HeadToHeadProps) => {
             <div className="flex flex-col gap-3 px-2">
                 <h4 className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em] ml-2">Racha</h4>
                 <div className="flex gap-2 overflow-x-auto pb-2 px-1 no-scrollbar">
-                    {userMatches.slice(0, 8).map(m => {
+                    {[...userMatches]
+                        .sort((a, b) => getMatchEffectiveDate(b) - getMatchEffectiveDate(a))
+                        .slice(0, 8)
+                        .map(m => {
                         const isNosotros = m.teams.nosotros.players.includes(currentUserId!);
                         const isWin = m.winner === (isNosotros ? 'nosotros' : 'ellos');
                         return (

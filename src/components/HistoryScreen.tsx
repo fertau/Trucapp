@@ -5,6 +5,7 @@ import { useUserStore } from '../store/useUserStore';
 import type { MatchEditField, MatchMode, MatchState, TeamId } from '../types';
 import { formatDateInputLocal, parseDateInputLocal } from '../utils/date';
 import { canUserEditMatch } from '../utils/matchValidation';
+import { getMatchEffectiveDate, getTeamRefKey, getTeamRefLabel } from '../utils/matchIdentity';
 
 interface HistoryScreenProps {
     onBack: () => void;
@@ -29,7 +30,6 @@ const getTeamIdForUser = (match: MatchState, userId: string): TeamId | null => {
 };
 
 const getOppositeTeam = (team: TeamId): TeamId => (team === 'nosotros' ? 'ellos' : 'nosotros');
-const getGroupKey = (playerIds: string[]): string => [...playerIds].sort().join('|');
 const isParticipant = (match: MatchState, userId: string | null): boolean => {
     if (!userId) return false;
     return match.teams.nosotros.players.includes(userId) || match.teams.ellos.players.includes(userId);
@@ -106,22 +106,22 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
         modeMatches.forEach((m) => {
             const userTeam = getTeamIdForUser(m, currentUserId);
             if (!userTeam) return;
-            const opponentTeam = m.teams[getOppositeTeam(userTeam)];
-            const key = getGroupKey(opponentTeam.players);
+            const opponentSide = getOppositeTeam(userTeam);
+            const key = getTeamRefKey(m, opponentSide);
             if (!keys.has(key)) {
-                keys.set(key, opponentTeam.players.map((id) => getPlayerName(id)).join(' + '));
+                keys.set(key, getTeamRefLabel(m, opponentSide));
             }
         });
 
         return Array.from(keys.entries()).map(([id, label]) => ({ id, label }));
-    }, [modeMatches, currentUserId, getPlayerName]);
+    }, [modeMatches, currentUserId]);
 
     const filteredMatches = useMemo(() => {
         const text = search.trim().toLowerCase();
         const now = Date.now();
         const sourceByWindow = tab === 'H2H' && analysisWindow !== 'ALL'
             ? scopeMatches.filter((m) => {
-                const ts = m.metadata?.date ?? m.startDate;
+                const ts = getMatchEffectiveDate(m);
                 const from = analysisWindow === '30D'
                     ? now - (30 * 24 * 60 * 60 * 1000)
                     : now - (90 * 24 * 60 * 60 * 1000);
@@ -151,8 +151,8 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
 
             if (opponentGroupKey !== 'ALL' && currentUserId) {
                 if (!userTeam) return false;
-                const opponentTeam = m.teams[getOppositeTeam(userTeam)];
-                if (getGroupKey(opponentTeam.players) !== opponentGroupKey) return false;
+                const opponentSide = getOppositeTeam(userTeam);
+                if (getTeamRefKey(m, opponentSide) !== opponentGroupKey) return false;
             }
 
             if (result !== 'ALL' && currentUserId) {
@@ -187,28 +187,26 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
             ? now - (7 * 24 * 60 * 60 * 1000)
             : now - (30 * 24 * 60 * 60 * 1000);
         return myModeMatches.filter((m) => {
-            const ts = m.metadata?.date ?? m.startDate;
+            const ts = getMatchEffectiveDate(m);
             return ts >= from && ts <= now;
         });
     }, [myModeMatches, summaryWindow]);
 
     const summary = useMemo(() => {
-        if (!currentUserId) return { total: 0, wins: 0, losses: 0, winRate: 0, pointsDiff: 0, streak: [] as ('W' | 'L')[] };
+        if (!currentUserId) return { total: 0, wins: 0, losses: 0, winRate: 0, streak: [] as ('W' | 'L')[] };
 
-        const streak = summaryMatches.slice(0, 8).map((m) => {
+        const orderedSummary = [...summaryMatches].sort((a, b) => getMatchEffectiveDate(a) - getMatchEffectiveDate(b));
+        const streak = orderedSummary.slice(-8).map((m) => {
             const team = getTeamIdForUser(m, currentUserId);
             if (!team || !m.winner) return 'L';
             return m.winner === team ? 'W' : 'L';
-        });
+        }).reverse();
 
         let wins = 0;
-        let pointsDiff = 0;
         summaryMatches.forEach((m) => {
             const team = getTeamIdForUser(m, currentUserId);
             if (!team) return;
-            const opponent = getOppositeTeam(team);
             if (m.winner === team) wins++;
-            pointsDiff += m.teams[team].score - m.teams[opponent].score;
         });
 
         const total = summaryMatches.length;
@@ -217,7 +215,6 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
             wins,
             losses: total - wins,
             winRate: total > 0 ? Math.round((wins / total) * 100) : 0,
-            pointsDiff,
             streak
         };
     }, [summaryMatches, currentUserId]);
@@ -231,7 +228,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
 
         const getBucketStats = (from: number, to: number) => {
             const bucket = myModeMatches.filter((m) => {
-                const ts = m.metadata?.date ?? m.startDate;
+                const ts = getMatchEffectiveDate(m);
                 return ts >= from && ts < to;
             });
             const wins = bucket.filter((m) => {
@@ -260,7 +257,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
             ? now - (30 * 24 * 60 * 60 * 1000)
             : now - (90 * 24 * 60 * 60 * 1000);
         return scopeMatches.filter((m) => {
-            const ts = m.metadata?.date ?? m.startDate;
+            const ts = getMatchEffectiveDate(m);
             return ts >= from && ts <= now;
         });
     }, [scopeMatches, analysisWindow]);
@@ -381,25 +378,22 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
     }, [analysisScopedMatches, mode, rankingType, getPlayerName, rankingMinMatches]);
 
     const h2hSummary = useMemo(() => {
-        if (!currentUserId) return { total: 0, wins: 0, losses: 0, winRate: 0, diff: 0 };
+        if (!currentUserId) return { total: 0, wins: 0, losses: 0, winRate: 0 };
         let wins = 0;
         let losses = 0;
-        let diff = 0;
         filteredMatches.forEach((m) => {
             const myTeam = getTeamIdForUser(m, currentUserId);
             if (!myTeam) return;
             const oppTeam = getOppositeTeam(myTeam);
             if (m.winner === myTeam) wins++;
             else if (m.winner === oppTeam) losses++;
-            diff += m.teams[myTeam].score - m.teams[oppTeam].score;
         });
         const total = wins + losses;
         return {
             total,
             wins,
             losses,
-            winRate: total ? Math.round((wins / total) * 100) : 0,
-            diff
+            winRate: total ? Math.round((wins / total) * 100) : 0
         };
     }, [filteredMatches, currentUserId]);
 
@@ -416,7 +410,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
 
         return Array.from(map.entries())
             .map(([seriesId, ms]) => {
-                const matches = [...ms].sort((a, b) => a.startDate - b.startDate);
+                const matches = [...ms].sort((a, b) => getMatchEffectiveDate(a) - getMatchEffectiveDate(b));
                 const first = matches[0];
                 const winsNos = matches.filter((m) => m.winner === 'nosotros').length;
                 const winsEll = matches.filter((m) => m.winner === 'ellos').length;
@@ -431,7 +425,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                     isFinished: winsNos >= targetWins || winsEll >= targetWins
                 };
             })
-            .sort((a, b) => (b.matches[b.matches.length - 1]?.startDate ?? 0) - (a.matches[a.matches.length - 1]?.startDate ?? 0));
+            .sort((a, b) => getMatchEffectiveDate(b.matches[b.matches.length - 1]) - getMatchEffectiveDate(a.matches[a.matches.length - 1]));
     }, [filteredMatches]);
 
     const locationSuggestions = useMemo(() => (
@@ -620,7 +614,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                                 <div className="bg-white/5 rounded-2xl p-3"><div className="text-xs text-white/40">PJ</div><div className="text-2xl font-black">{summary.total}</div></div>
                                 <div className="bg-white/5 rounded-2xl p-3"><div className="text-xs text-white/40">Efectividad</div><div className="text-2xl font-black">{summary.winRate}%</div></div>
                                 <div className="bg-white/5 rounded-2xl p-3"><div className="text-xs text-white/40">G / P</div><div className="text-2xl font-black">{summary.wins} / {summary.losses}</div></div>
-                                <div className="bg-white/5 rounded-2xl p-3"><div className="text-xs text-white/40">Dif. puntos</div><div className="text-2xl font-black">{summary.pointsDiff >= 0 ? `+${summary.pointsDiff}` : summary.pointsDiff}</div></div>
+                                <div className="bg-white/5 rounded-2xl p-3"><div className="text-xs text-white/40">Racha</div><div className="text-2xl font-black">{summary.streak.length}</div></div>
                             </div>
                         </div>
 
@@ -774,7 +768,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                                                     {first.teams.nosotros.name} {serie.winsNos} - {serie.winsEll} {first.teams.ellos.name}
                                                 </div>
                                                 <div className="text-[11px] text-white/50 mt-1">
-                                                    {serie.matches.length} partidos · última: {new Date(serie.matches[serie.matches.length - 1].startDate).toLocaleDateString()}
+                                                    {serie.matches.length} partidos · última: {new Date(getMatchEffectiveDate(serie.matches[serie.matches.length - 1])).toLocaleDateString()}
                                                 </div>
                                             </button>
 
@@ -787,7 +781,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                                                             className="text-left bg-white/5 border border-white/10 rounded-xl p-3"
                                                         >
                                                             <div className="text-[10px] uppercase text-white/40 font-black tracking-widest">
-                                                                Partido {m.series?.gameNumber ?? '-'} · {new Date(m.startDate).toLocaleString()}
+                                                                Partido {m.series?.gameNumber ?? '-'} · {new Date(getMatchEffectiveDate(m)).toLocaleString()}
                                                             </div>
                                                             <div className="text-sm font-black mt-1">
                                                                 {m.teams.nosotros.name} {m.teams.nosotros.score} - {m.teams.ellos.score} {m.teams.ellos.name}
@@ -824,7 +818,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                                                     ⚠
                                                 </span>
                                             )}
-                                            <span className="text-[10px] uppercase text-white/40 font-black tracking-widest">{new Date(m.startDate).toLocaleDateString()}</span>
+                                            <span className="text-[10px] uppercase text-white/40 font-black tracking-widest">{new Date(getMatchEffectiveDate(m)).toLocaleDateString()}</span>
                                         </div>
                                     </div>
                                     <div className="text-sm font-black">{m.teams.nosotros.name} {m.teams.nosotros.score} - {m.teams.ellos.score} {m.teams.ellos.name}</div>
@@ -884,9 +878,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                             <div className="text-sm text-white/60 mt-2">
                                 G: {h2hSummary.wins} | P: {h2hSummary.losses}
                             </div>
-                            <div className="text-sm text-white/60 mt-1">
-                                Efectividad: {h2hSummary.winRate}% | Dif: {h2hSummary.diff >= 0 ? `+${h2hSummary.diff}` : h2hSummary.diff}
-                            </div>
+                            <div className="text-sm text-white/60 mt-1">Efectividad: {h2hSummary.winRate}%</div>
                         </div>
                     </div>
                 )}
@@ -976,7 +968,7 @@ const MatchDetailDrawer = ({ match, currentUserId, getPlayerName, locationSugges
     const [isSaving, setIsSaving] = useState(false);
     const [location, setLocation] = useState(match.metadata?.location ?? '');
     const [date, setDate] = useState(() => {
-        const ts = match.metadata?.date || match.startDate;
+        const ts = getMatchEffectiveDate(match);
         return formatDateInputLocal(ts);
     });
     const [scoreNos, setScoreNos] = useState(match.teams.nosotros.score);
@@ -1046,7 +1038,7 @@ const MatchDetailDrawer = ({ match, currentUserId, getPlayerName, locationSugges
         if ((match.metadata?.location ?? '') !== location) {
             fields.push({ key: 'location', before: match.metadata?.location ?? null, after: location || null });
         }
-        const prevDate = match.metadata?.date ?? match.startDate;
+        const prevDate = getMatchEffectiveDate(match);
         if (prevDate !== newDate) {
             fields.push({ key: 'date', before: prevDate, after: newDate });
         }

@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { usePairStore } from '../store/usePairStore';
 import { useHistoryStore } from '../store/useHistoryStore';
 import { calculateHeadToHead, getGroupId } from '../services/statisticsService';
+import { getMatchEffectiveDate } from '../utils/matchIdentity';
 
 const toPlayerId = (player: unknown): string => {
     if (typeof player === 'string') return player;
@@ -81,7 +82,7 @@ export const PairHeadToHead = ({ onBack }: { onBack: () => void }) => {
         )
     }
 
-    const { totalMatches, sideAWins, sideBWins, pointDifferential, recentMatches } = h2hData!;
+    const { totalMatches, sideAWins, sideBWins, recentMatches } = h2hData!;
     const winRateA = totalMatches > 0 ? Math.round((sideAWins / totalMatches) * 100) : 0;
     const winRateB = totalMatches > 0 ? Math.round((sideBWins / totalMatches) * 100) : 0;
 
@@ -141,14 +142,6 @@ export const PairHeadToHead = ({ onBack }: { onBack: () => void }) => {
                 </div>
 
                 <div className="flex flex-col gap-6 border-t border-white/5 pt-8">
-                    {/* Point Differential */}
-                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest px-2">
-                        <span className="text-[var(--color-text-muted)]">Diferencia PTOS</span>
-                        <span className={`text-sm tracking-normal ${pointDifferential >= 0 ? 'text-[var(--color-nosotros)]' : 'text-[var(--color-ellos)]'}`}>
-                            {pointDifferential > 0 ? `+${pointDifferential}` : pointDifferential}
-                        </span>
-                    </div>
-
                     {/* Performance Bar */}
                     <div className="flex flex-col gap-2">
                         <div className="flex justify-between text-[11px] font-black tabular-nums">
@@ -195,7 +188,7 @@ export const PairHeadToHead = ({ onBack }: { onBack: () => void }) => {
                     <p className="text-center text-xs font-medium text-white/20 py-8 italic">No hay partidos disputados todavía.</p>
                 ) : (
                     recentMatches.map(m => {
-                        const date = new Date(m.metadata?.date || m.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' });
+                        const date = new Date(getMatchEffectiveDate(m)).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' });
                         const loc = m.metadata?.location || 'Sede';
                         const isWinA = (m.winner === 'nosotros' && getGroupId(m.teams.nosotros.players.map(toPlayerId)) === getGroupId(pairA!.playerIds)) ||
                             (m.winner === 'ellos' && getGroupId(m.teams.ellos.players.map(toPlayerId)) === getGroupId(pairA!.playerIds));

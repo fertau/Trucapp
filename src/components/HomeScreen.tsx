@@ -4,6 +4,7 @@ import { useHistoryStore } from '../store/useHistoryStore';
 import { useMemo, useState } from 'react';
 import { AvatarBadge } from './AvatarBadge';
 import type { MatchState } from '../types';
+import { getMatchEffectiveDate } from '../utils/matchIdentity';
 
 interface HomeScreenProps {
     onNewMatch: () => void;
@@ -95,7 +96,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                                 const getPlayerNames = (playerIds: string[]) => {
                                     return playerIds.map(id => players.find(p => p.id === id)?.name || '?').join(', ');
                                 };
-                                const dateText = new Date(m.metadata?.date ?? m.startDate).toLocaleDateString(undefined, {
+                                const dateText = new Date(getMatchEffectiveDate(m)).toLocaleDateString(undefined, {
                                     day: '2-digit',
                                     month: '2-digit'
                                 });
@@ -186,7 +187,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                                             {m.teams.nosotros.name} {m.teams.nosotros.score} - {m.teams.ellos.score} {m.teams.ellos.name}
                                         </div>
                                         <div className="text-[11px] text-white/45 mt-1">
-                                            {new Date(m.startDate).toLocaleString()}
+                                            {new Date(getMatchEffectiveDate(m)).toLocaleString()}
                                         </div>
                                     </div>
                                 );

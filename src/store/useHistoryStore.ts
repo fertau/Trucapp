@@ -4,6 +4,7 @@ import type { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { MatchState } from '../types';
 import { canUserEditMatch, validateMatchResultConsistency } from '../utils/matchValidation';
+import { getMatchEffectiveDate, withNormalizedMatchIdentity } from '../utils/matchIdentity';
 
 const PAGE_SIZE = 50;
 
@@ -47,12 +48,12 @@ export const useHistoryStore = create<HistoryStore>((set) => ({
                 const matchId = data.id || d.id;
                 if (!matchId || seen.has(matchId)) return;
                 seen.add(matchId);
-                loadedMatches.push({ ...data, id: matchId });
+                loadedMatches.push(withNormalizedMatchIdentity({ ...data, id: matchId }));
             });
 
             const lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1] ?? null;
             set({
-                matches: loadedMatches,
+                matches: loadedMatches.sort((a, b) => getMatchEffectiveDate(b) - getMatchEffectiveDate(a)),
                 isLoading: false,
                 lastVisible,
                 hasMore: querySnapshot.docs.length === PAGE_SIZE
@@ -84,7 +85,7 @@ export const useHistoryStore = create<HistoryStore>((set) => ({
                 const data = d.data() as MatchState;
                 const matchId = data.id || d.id;
                 if (!matchId) return;
-                loadedMatches.push({ ...data, id: matchId });
+                loadedMatches.push(withNormalizedMatchIdentity({ ...data, id: matchId }));
             });
 
             const nextLastVisible = querySnapshot.docs[querySnapshot.docs.length - 1] ?? lastVisible;
@@ -95,7 +96,7 @@ export const useHistoryStore = create<HistoryStore>((set) => ({
                     if (!seen.has(m.id)) merged.push(m);
                 });
                 return {
-                    matches: merged,
+                    matches: merged.sort((a, b) => getMatchEffectiveDate(b) - getMatchEffectiveDate(a)),
                     isLoadingMore: false,
                     lastVisible: nextLastVisible,
                     hasMore: querySnapshot.docs.length === PAGE_SIZE
@@ -115,17 +116,23 @@ export const useHistoryStore = create<HistoryStore>((set) => ({
             throw new Error(reason);
         }
 
+        const normalizedMatch = withNormalizedMatchIdentity(match);
+
         // Optimistic upsert
         set((state) => {
-            const exists = state.matches.some((m) => m.id === match.id);
+            const exists = state.matches.some((m) => m.id === normalizedMatch.id);
             if (exists) {
-                return { matches: state.matches.map((m) => (m.id === match.id ? match : m)) };
+                return {
+                    matches: state.matches
+                        .map((m) => (m.id === normalizedMatch.id ? normalizedMatch : m))
+                        .sort((a, b) => getMatchEffectiveDate(b) - getMatchEffectiveDate(a))
+                };
             }
-            return { matches: [match, ...state.matches] };
+            return { matches: [normalizedMatch, ...state.matches].sort((a, b) => getMatchEffectiveDate(b) - getMatchEffectiveDate(a)) };
         });
 
         try {
-            await setDoc(doc(db, 'matches', match.id), match, { merge: true });
+            await setDoc(doc(db, 'matches', normalizedMatch.id), normalizedMatch, { merge: true });
         } catch (err: unknown) {
             console.error("Error saving match to cloud:", err);
             // Rollback or show error?
@@ -145,12 +152,15 @@ export const useHistoryStore = create<HistoryStore>((set) => ({
             throw new Error('No autorizado para editar este partido.');
         }
 
+        const normalizedMatch = withNormalizedMatchIdentity(match);
         set((state) => ({
-            matches: state.matches.map((m) => (m.id === match.id ? match : m))
+            matches: state.matches
+                .map((m) => (m.id === normalizedMatch.id ? normalizedMatch : m))
+                .sort((a, b) => getMatchEffectiveDate(b) - getMatchEffectiveDate(a))
         }));
 
         try {
-            await setDoc(doc(db, 'matches', match.id), match, { merge: true });
+            await setDoc(doc(db, 'matches', normalizedMatch.id), normalizedMatch, { merge: true });
         } catch (err: unknown) {
             console.error("Error updating match in cloud:", err);
         }
