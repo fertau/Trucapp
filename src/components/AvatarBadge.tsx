@@ -34,17 +34,17 @@ const pick = (slug: string): string => fileBySlug[slug] ?? '';
 
 const AVATAR_VISUALS: AvatarVisual[] = [
     { id: 'capitan', label: 'Capitan', src: pick('messi_espalda'), objectFit: 'cover' as const, objectPosition: '52% 38%', scale: 1.04 },
-    { id: 'campeon', label: 'Campeon', src: pick('messi_copa'), objectFit: 'cover' as const, objectPosition: '50% 35%', scale: 1.02 },
+    { id: 'campeon', label: 'Campeon', src: pick('messi_copa'), objectFit: 'cover' as const, objectPosition: '50% 38%', scale: 1.14 },
     { id: 'afa', label: 'AFA', src: pick('afa'), scale: 0.9 },
     { id: 'ancho_basto', label: 'Ancho Basto', src: pick('ancho_basto'), scale: 0.9 },
     { id: 'ancho_espada', label: 'Ancho Espada', src: pick('ancho_espada'), scale: 0.9 },
     { id: 'pais_argento', label: 'Pais Argento', src: pick('pais_arg'), scale: 0.88 },
     { id: 'sol_argento', label: 'Sol Argento', src: pick('sol_arg'), scale: 0.88 },
     { id: 'cartas_truco', label: 'Cartas Truco', src: pick('cartas_truco'), scale: 0.82 },
-    { id: 'copa_mundo', label: 'Copa Mundo', src: pick('copa_del_mundo'), scale: 0.9 },
+    { id: 'copa_mundo', label: 'Copa Mundo', src: pick('copa_del_mundo'), objectFit: 'cover' as const, objectPosition: '50% 52%', scale: 1.12 },
     { id: 'river_escudo', label: 'River Escudo', src: pick('escudo_river'), scale: 0.9 },
-    { id: 'fernet', label: 'Fernet', src: pick('fernet_cortado'), scale: 0.88 },
-    { id: 'leon_river', label: 'Leon River', src: pick('leon_river'), scale: 0.92 },
+    { id: 'fernet', label: 'Fernet', src: pick('fernet_cortado'), objectFit: 'cover' as const, objectPosition: '50% 54%', scale: 1.2 },
+    { id: 'leon_river', label: 'Leon River', src: pick('leon_river'), objectFit: 'cover' as const, objectPosition: '50% 50%', scale: 1.08 },
     { id: 'mate_team', label: 'Mate Team', src: pick('mate_termo'), scale: 0.9 },
     { id: 'academia', label: 'Academia', src: pick('racing_escudo'), scale: 0.9 },
 ].filter((a) => Boolean(a.src));
