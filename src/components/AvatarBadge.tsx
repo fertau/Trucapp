@@ -1,15 +1,20 @@
 import type { CSSProperties } from 'react';
-import espadaImg from '../assets/avatars-real/espada.svg';
-import bastoImg from '../assets/avatars-real/basto.svg';
-import oroImg from '../assets/avatars-real/oro.svg';
-import copaImg from '../assets/avatars-real/copa.svg';
-import mateImg from '../assets/avatars-real/mate3.jpg';
-import mateGauchoImg from '../assets/avatars-real/mate_gaucho.jpg';
-import fernetImg from '../assets/avatars-real/fernet2.jpg';
-import fernetAltImg from '../assets/avatars-real/fernet.jpg';
-import choripanImg from '../assets/avatars-real/choripan2.jpg';
-import futbolImg from '../assets/avatars-real/futbol.jpg';
-import cartasImg from '../assets/avatars-real/cartas_real.jpg';
+import afaEscudoImg from '../assets/avatars-stickers/afa_escudo.png';
+import mateClasicoImg from '../assets/avatars-stickers/mate_clasico.png';
+import maradonaImg from '../assets/avatars-stickers/maradona.png';
+import messiEspaldaImg from '../assets/avatars-stickers/messi_espalda.png';
+import fernetVasoImg from '../assets/avatars-stickers/fernet_vaso.png';
+import empanadaImg from '../assets/avatars-stickers/empanada.png';
+import termoMateImg from '../assets/avatars-stickers/termo_mate.png';
+import fernetBotellaImg from '../assets/avatars-stickers/fernet_botella.png';
+import banderaArgImg from '../assets/avatars-stickers/bandera_arg.png';
+import ruta40Img from '../assets/avatars-stickers/ruta40.png';
+import solArgImg from '../assets/avatars-stickers/sol_arg.png';
+import mapaArgImg from '../assets/avatars-stickers/mapa_arg.png';
+import messiCopaImg from '../assets/avatars-stickers/messi_copa.png';
+import banderaArg2Img from '../assets/avatars-stickers/bandera_arg_2.png';
+import empanadasCartelImg from '../assets/avatars-stickers/empanadas_cartel.png';
+import termoMate2Img from '../assets/avatars-stickers/termo_mate_2.png';
 
 type AvatarVisual = {
     id: string;
@@ -19,29 +24,42 @@ type AvatarVisual = {
 };
 
 const AVATAR_VISUALS: AvatarVisual[] = [
-    { id: 'espada', label: 'Espada', src: espadaImg },
-    { id: 'basto', label: 'Basto', src: bastoImg },
-    { id: 'oro', label: 'Oro', src: oroImg },
-    { id: 'copa', label: 'Copa', src: copaImg },
-    { id: 'cartas', label: 'Cartas', src: cartasImg, objectPosition: 'center 62%' },
-    { id: 'mate', label: 'Mate', src: mateImg, objectPosition: 'center 34%' },
-    { id: 'mate_arg', label: 'Mate Argentino', src: mateGauchoImg, objectPosition: 'center 35%' },
-    { id: 'fernet', label: 'Fernet', src: fernetImg, objectPosition: 'center 58%' },
-    { id: 'fernet_clasico', label: 'Fernet Clásico', src: fernetAltImg, objectPosition: 'center 42%' },
-    { id: 'choripan', label: 'Choripán', src: choripanImg, objectPosition: 'center 45%' },
-    { id: 'futbol', label: 'Fútbol', src: futbolImg, objectPosition: 'center 42%' },
+    { id: 'afa_escudo', label: 'AFA', src: afaEscudoImg },
+    { id: 'mate_clasico', label: 'Mate', src: mateClasicoImg },
+    { id: 'maradona', label: 'Maradona', src: maradonaImg },
+    { id: 'messi_espalda', label: 'Messi 10', src: messiEspaldaImg },
+    { id: 'fernet_vaso', label: 'Fernet', src: fernetVasoImg },
+    { id: 'empanada', label: 'Empanada', src: empanadaImg },
+    { id: 'termo_mate', label: 'Termo y Mate', src: termoMateImg },
+    { id: 'fernet_botella', label: 'Fernet Botella', src: fernetBotellaImg },
+    { id: 'bandera_arg', label: 'Bandera', src: banderaArgImg },
+    { id: 'ruta40', label: 'Ruta 40', src: ruta40Img },
+    { id: 'sol_arg', label: 'Sol', src: solArgImg },
+    { id: 'mapa_arg', label: 'Argentina', src: mapaArgImg },
+    { id: 'messi_copa', label: 'Messi Copa', src: messiCopaImg },
+    { id: 'bandera_arg_2', label: 'Bandera 2', src: banderaArg2Img },
+    { id: 'empanadas_cartel', label: 'Empanadas', src: empanadasCartelImg },
+    { id: 'termo_mate_2', label: 'Mate Team', src: termoMate2Img },
 ];
 
 const AVATAR_ALIASES: Record<string, string> = {
-    naipe: 'cartas',
-    pelota: 'futbol',
-    bandera: 'mate_arg',
-    estadio: 'futbol',
-    fuego: 'fernet',
-    estrella: 'copa',
-    rayos: 'espada',
-    naipes_pro: 'cartas',
-    truco: 'cartas'
+    naipe: 'afa_escudo',
+    espada: 'messi_espalda',
+    basto: 'termo_mate',
+    oro: 'sol_arg',
+    copa: 'messi_copa',
+    pelota: 'messi_espalda',
+    mate: 'mate_clasico',
+    bandera: 'bandera_arg',
+    estadio: 'ruta40',
+    fuego: 'fernet_vaso',
+    estrella: 'sol_arg',
+    rayos: 'maradona',
+    naipes_pro: 'empanada',
+    truco: 'afa_escudo',
+    futbol: 'messi_copa',
+    fernet: 'fernet_vaso',
+    choripan: 'empanada'
 };
 
 const AVATAR_MAP = Object.fromEntries(AVATAR_VISUALS.map((option) => [option.id, option]));
@@ -87,7 +105,7 @@ export const AvatarBadge = ({ avatar, name, size = 44, className = '' }: AvatarB
                 <img
                     src={visual.src}
                     alt={visual.label}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain"
                     style={{ objectPosition: visual.objectPosition ?? 'center' }}
                     draggable={false}
                 />
