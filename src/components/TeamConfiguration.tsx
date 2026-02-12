@@ -86,19 +86,6 @@ export const TeamConfiguration = ({ players, onStartMatch }: TeamConfigurationPr
         else setEllos(prev => [...prev, player]);
     };
 
-    const randomize = () => {
-        const all = [...players];
-        for (let i = all.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [all[i], all[j]] = [all[j], all[i]];
-        }
-        const limit = getLimit();
-        setNosotros(all.slice(0, limit));
-        setEllos(all.slice(limit, limit * 2));
-        const assignedIds = new Set([...all.slice(0, limit * 2)].map(p => p.id));
-        setPool(all.filter(p => !assignedIds.has(p.id)));
-    };
-
     const limit = getLimit();
     const isValid = nosotros.length === limit && ellos.length === limit;
     const is2v2 = limit === 2;
@@ -240,13 +227,6 @@ export const TeamConfiguration = ({ players, onStartMatch }: TeamConfigurationPr
                     </div>
                 </div>
             </div>
-
-            <button
-                onClick={randomize}
-                className="mb-10 text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest bg-[var(--color-surface)]/50 py-2 px-4 rounded-full self-center border border-[var(--color-border)] active:scale-95 transition-all"
-            >
-                🔀 Mezclar Equipos
-            </button>
 
             {/* PAIRS UI */}
             {is2v2 && (

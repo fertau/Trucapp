@@ -298,7 +298,36 @@ export const useMatchStore = create<MatchStore>()(
                 }
             })),
 
-            setTargetScore: (score) => set({ targetScore: score }),
+            setTargetScore: (score) => set((state) => {
+                const nextTarget = score === 15 ? 15 : 30;
+                const nextNos = Math.min(state.teams.nosotros.score, nextTarget);
+                const nextEll = Math.min(state.teams.ellos.score, nextTarget);
+
+                let nextWinner: TeamId | null = null;
+                if (nextNos >= nextTarget && nextEll < nextTarget) nextWinner = 'nosotros';
+                if (nextEll >= nextTarget && nextNos < nextTarget) nextWinner = 'ellos';
+                if (nextNos >= nextTarget && nextEll >= nextTarget) {
+                    nextWinner = nextNos >= nextEll ? 'nosotros' : 'ellos';
+                }
+
+                const newState = {
+                    targetScore: nextTarget,
+                    teams: {
+                        ...state.teams,
+                        nosotros: { ...state.teams.nosotros, score: nextNos },
+                        ellos: { ...state.teams.ellos, score: nextEll }
+                    },
+                    isFinished: nextWinner !== null,
+                    winner: nextWinner
+                };
+
+                if (state.id) {
+                    const matchData = getMatchData(state);
+                    setDoc(doc(db, 'matches', state.id), { ...matchData, ...newState }, { merge: true }).catch(console.error);
+                }
+
+                return newState;
+            }),
 
             setMetadata: (location, date) => set({ metadata: { location, date } }),
 

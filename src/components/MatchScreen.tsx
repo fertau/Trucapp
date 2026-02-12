@@ -12,12 +12,15 @@ interface MatchScreenProps {
 
 export const MatchScreen = ({ onFinish }: MatchScreenProps) => {
     const teams = useMatchStore(state => state.teams);
+    const targetScore = useMatchStore(state => state.targetScore);
+    const setTargetScore = useMatchStore(state => state.setTargetScore);
     const isFinished = useMatchStore(state => state.isFinished);
     const winner = useMatchStore(state => state.winner);
     const undo = useMatchStore(state => state.undo);
 
     const [showFaltaModal, setShowFaltaModal] = useState(false);
     const [showManualScore, setShowManualScore] = useState(false);
+    const [showScoreConfig, setShowScoreConfig] = useState(false);
 
     const onRequestFaltaEnvido = () => {
         setShowFaltaModal(true);
@@ -62,7 +65,16 @@ export const MatchScreen = ({ onFinish }: MatchScreenProps) => {
                     DESHACER
                 </button>
 
-                <div className="text-xs font-black text-[var(--color-text-muted)] tracking-[0.2em]">TRUCAPP</div>
+                <div className="flex items-center gap-2">
+                    <div className="text-xs font-black text-[var(--color-text-muted)] tracking-[0.2em]">TRUCAPP</div>
+                    <button
+                        onClick={() => setShowScoreConfig(true)}
+                        className="text-[var(--color-text-secondary)] text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded border border-[var(--color-border)] active:bg-[var(--color-surface-hover)]"
+                        title="Configurar puntaje objetivo"
+                    >
+                        ⚙ {targetScore}
+                    </button>
+                </div>
 
                 <button
                     onClick={() => setShowManualScore(true)}
@@ -91,6 +103,79 @@ export const MatchScreen = ({ onFinish }: MatchScreenProps) => {
                     onConfirm={onFinishManualMatch}
                 />
             )}
+            {showScoreConfig && (
+                <ScoreSettingsModal
+                    currentTarget={targetScore}
+                    currentNos={teams.nosotros.score}
+                    currentEll={teams.ellos.score}
+                    onClose={() => setShowScoreConfig(false)}
+                    onConfirm={(next) => {
+                        setTargetScore(next);
+                        setShowScoreConfig(false);
+                    }}
+                />
+            )}
+        </div>
+    );
+};
+
+const ScoreSettingsModal = ({ currentTarget, currentNos, currentEll, onClose, onConfirm }: {
+    currentTarget: number;
+    currentNos: number;
+    currentEll: number;
+    onClose: () => void;
+    onConfirm: (nextTarget: number) => void;
+}) => {
+    const [selected, setSelected] = useState<number>(currentTarget);
+
+    const handleConfirm = () => {
+        if (selected !== currentTarget && (currentNos > 0 || currentEll > 0)) {
+            const ok = window.confirm('Cambiar objetivo en medio del partido puede alterar el resultado. ¿Confirmás el cambio?');
+            if (!ok) return;
+        }
+        onConfirm(selected);
+    };
+
+    return (
+        <div className="fixed inset-0 z-[120] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm">
+            <div className="w-full max-w-xs rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
+                <h3 className="text-lg font-black uppercase tracking-wide mb-1">Configurar Partido</h3>
+                <p className="text-[11px] text-[var(--color-text-muted)] uppercase tracking-wider mb-4">Puntos objetivo</p>
+
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                    {[15, 30].map((value) => (
+                        <button
+                            key={value}
+                            type="button"
+                            onClick={() => setSelected(value)}
+                            className={`py-3 rounded-xl border font-black text-sm transition-all ${selected === value ? 'bg-[var(--color-accent)] text-white border-[var(--color-accent)]' : 'bg-[var(--color-bg)] text-[var(--color-text-secondary)] border-[var(--color-border)]'}`}
+                        >
+                            {value} puntos
+                        </button>
+                    ))}
+                </div>
+
+                <div className="text-[10px] text-[var(--color-text-muted)] mb-5">
+                    Marcador actual: {currentNos} - {currentEll}
+                </div>
+
+                <div className="flex gap-2">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="flex-1 py-2 rounded-xl border border-[var(--color-border)] text-[var(--color-text-secondary)] text-xs font-black uppercase tracking-wider"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleConfirm}
+                        className="flex-1 py-2 rounded-xl bg-[var(--color-accent)] text-white text-xs font-black uppercase tracking-wider"
+                    >
+                        Guardar
+                    </button>
+                </div>
+            </div>
         </div>
     );
 };

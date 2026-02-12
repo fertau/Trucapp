@@ -67,8 +67,12 @@ const SquareGroup = ({ points }: { points: number }) => {
 
 export const ScoreBoard = () => {
     const teams = useMatchStore(state => state.teams);
+    const targetScore = useMatchStore(state => state.targetScore);
     const addPoints = useMatchStore(state => state.addPoints);
     const subtractPoints = useMatchStore(state => state.subtractPoints);
+    const hasBuenasSection = targetScore > 15;
+    const scoreSplit = Math.floor(targetScore / 2);
+    const faltaLabelFor = (opponentScore: number) => (opponentScore < scoreSplit ? 'PARTIDO' : `+${targetScore - opponentScore}`);
 
     // Interaction Handlers
     const [longPressTriggered, setLongPressTriggered] = useState<{ nosotros: boolean, ellos: boolean }>({ nosotros: false, ellos: false });
@@ -135,38 +139,42 @@ export const ScoreBoard = () => {
                     </div>
                 </div>
 
-                {/* Malas Section (Flex Row) */}
+                {/* Primera mitad */}
                 <div className="flex w-full items-start">
                     <div className="flex-1 flex flex-col items-center gap-2">
-                        <SquareGroup points={Math.min(teams.nosotros.score, 15)} />
+                        <SquareGroup points={Math.min(teams.nosotros.score, hasBuenasSection ? scoreSplit : targetScore)} />
                     </div>
                     <div className="w-[1px]"></div>
                     <div className="flex-1 flex flex-col items-center gap-2">
-                        <SquareGroup points={Math.min(teams.ellos.score, 15)} />
+                        <SquareGroup points={Math.min(teams.ellos.score, hasBuenasSection ? scoreSplit : targetScore)} />
                     </div>
                 </div>
 
-                {/* Dynamic Divider Row */}
-                <div className="w-full flex items-center justify-center py-6 relative shrink-0">
-                    <div className="absolute w-full h-[1px] bg-[var(--color-border)] -z-10 opacity-30 dashed"></div>
-                    <div className="bg-[var(--color-bg)] px-3 py-0.5 text-[9px] font-black text-[var(--color-text-muted)] tracking-[0.3em] border border-[var(--color-border)] rounded-full shadow-lg uppercase z-20">
-                        Buenas
-                    </div>
-                </div>
+                {hasBuenasSection && (
+                    <>
+                        {/* Dynamic Divider Row */}
+                        <div className="w-full flex items-center justify-center py-6 relative shrink-0">
+                            <div className="absolute w-full h-[1px] bg-[var(--color-border)] -z-10 opacity-30 dashed"></div>
+                            <div className="bg-[var(--color-bg)] px-3 py-0.5 text-[9px] font-black text-[var(--color-text-muted)] tracking-[0.3em] border border-[var(--color-border)] rounded-full shadow-lg uppercase z-20">
+                                Buenas
+                            </div>
+                        </div>
 
-                {/* Buenas Section (Flex Row) */}
-                <div className="flex w-full items-start">
-                    <div className="flex-1 flex flex-col items-center gap-2">
-                        <SquareGroup points={Math.max(0, teams.nosotros.score - 15)} />
-                    </div>
-                    <div className="w-[1px]"></div>
-                    <div className="flex-1 flex flex-col items-center gap-2">
-                        <SquareGroup points={Math.max(0, teams.ellos.score - 15)} />
-                    </div>
-                </div>
+                        {/* Segunda mitad */}
+                        <div className="flex w-full items-start">
+                            <div className="flex-1 flex flex-col items-center gap-2">
+                                <SquareGroup points={Math.max(0, teams.nosotros.score - scoreSplit)} />
+                            </div>
+                            <div className="w-[1px]"></div>
+                            <div className="flex-1 flex flex-col items-center gap-2">
+                                <SquareGroup points={Math.max(0, teams.ellos.score - scoreSplit)} />
+                            </div>
+                        </div>
+                    </>
+                )}
 
                 {/* Big Score Numbers (Fills remaining space) */}
-                <div className="flex-1 flex items-center w-full mt-4">
+                <div className={`flex-1 flex items-center w-full ${hasBuenasSection ? 'mt-4' : 'mt-8'}`}>
                     <div className="flex-1 flex justify-center">
                         <span className="text-6xl font-black opacity-10 tabular-nums tracking-tighter mix-blend-overlay">{teams.nosotros.score}</span>
                     </div>
@@ -183,7 +191,7 @@ export const ScoreBoard = () => {
                         <ShortcutButton label="Real Envido" points={3} type="real_envido" teamId="nosotros" onAction={() => addPoints('nosotros', 3, 'real_envido')} />
                         <ShortcutButton
                             label="Falta Envido"
-                            points={teams.ellos.score < 15 ? 'MATCH' : `+${30 - teams.ellos.score}`}
+                            points={faltaLabelFor(teams.ellos.score)}
                             type="falta_envido"
                             teamId="nosotros"
                             onAction={() => window.dispatchEvent(new CustomEvent('requestFaltaEnvido'))}
@@ -200,7 +208,7 @@ export const ScoreBoard = () => {
                         <ShortcutButton label="Real Envido" points={3} type="real_envido" teamId="ellos" onAction={() => addPoints('ellos', 3, 'real_envido')} />
                         <ShortcutButton
                             label="Falta Envido"
-                            points={teams.nosotros.score < 15 ? 'MATCH' : `+${30 - teams.nosotros.score}`}
+                            points={faltaLabelFor(teams.nosotros.score)}
                             type="falta_envido"
                             teamId="ellos"
                             onAction={() => window.dispatchEvent(new CustomEvent('requestFaltaEnvido'))}

@@ -23,8 +23,7 @@ const baseName = (path: string): string => {
 };
 
 const curatedModules = {
-    ...import.meta.glob('../assets/avatars-stickers/*.{png,jpg,jpeg,webp,avif}', { eager: true, import: 'default' }),
-    ...import.meta.glob('../assets/avatars-library/*.{png,jpg,jpeg,webp,avif}', { eager: true, import: 'default' })
+    ...import.meta.glob('../assets/avatars-final/*.{png,jpg,jpeg,webp,avif}', { eager: true, import: 'default' })
 } as Record<string, string>;
 
 const fileBySlug = Object.fromEntries(
@@ -34,77 +33,71 @@ const fileBySlug = Object.fromEntries(
 const pick = (slug: string): string => fileBySlug[slug] ?? '';
 
 const AVATAR_VISUALS: AvatarVisual[] = [
-    { id: 'el_diez', label: 'El Diez', src: pick('messi_espalda'), objectFit: 'cover' as const, objectPosition: '52% 38%', scale: 1.06 },
-    { id: 'campeon', label: 'Campeon', src: pick('messi_copa'), objectFit: 'cover' as const, objectPosition: '50% 34%', scale: 1.02 },
-    { id: 'pelusa', label: 'Pelusa', src: pick('maradona'), objectFit: 'cover' as const, objectPosition: '50% 40%', scale: 1.08 },
-    { id: 'afa_dorada', label: 'AFA Dorada', src: pick('afa'), scale: 0.86 },
-    { id: 'escudo_patria', label: 'Escudo Patrio', src: pick('escudo_arg'), scale: 0.84 },
-    { id: 'mapa_argento', label: 'Mapa Argento', src: pick('arg_pais'), scale: 0.8 },
-    { id: 'bandera_cielo', label: 'Bandera Cielo', src: pick('arg_bandera'), scale: 0.82 },
-    { id: 'ruta_cuarenta', label: 'Ruta Cuarenta', src: pick('ruta40'), scale: 0.86 },
-    { id: 'ancho_espada', label: 'Ancho Espada', src: pick('ancho_espada'), scale: 0.83 },
-    { id: 'ancho_basto', label: 'Ancho Basto', src: pick('ancho_basto'), scale: 0.83 },
-    { id: 'basto_bravo', label: 'Basto Bravo', src: pick('basto'), scale: 0.82 },
-    { id: 'copa_truco', label: 'Copa Truco', src: pick('copa'), scale: 0.84 },
-    { id: 'cartas_bravas', label: 'Cartas Bravas', src: pick('cartas_truco'), scale: 0.74 },
+    { id: 'capitan', label: 'Capitan', src: pick('messi_espalda'), objectFit: 'cover' as const, objectPosition: '52% 38%', scale: 1.04 },
+    { id: 'campeon', label: 'Campeon', src: pick('messi_copa'), objectFit: 'cover' as const, objectPosition: '50% 35%', scale: 1.01 },
+    { id: 'pelusa', label: 'Pelusa', src: pick('maradona'), objectFit: 'cover' as const, objectPosition: '50% 40%', scale: 1.06 },
+    { id: 'afa', label: 'AFA', src: pick('afa_escudo'), scale: 0.9 },
+    { id: 'escudo_patrio', label: 'Escudo Patrio', src: pick('escudo_arg'), scale: 0.9 },
+    { id: 'arg_mapa', label: 'Arg Mapa', src: pick('argentina_mapa'), scale: 0.9 },
+    { id: 'bandera', label: 'Bandera', src: pick('bandera_arg'), scale: 0.9 },
+    { id: 'ancho_espada', label: 'Ancho Espada', src: pick('ancho_espada'), scale: 0.9 },
+    { id: 'ancho_basto', label: 'Ancho Basto', src: pick('ancho_basto'), scale: 0.9 },
+    { id: 'copa_truco', label: 'Copa Truco', src: pick('copa_truco'), scale: 0.9 },
     { id: 'la_empa', label: 'La Empa', src: pick('empanada'), scale: 0.94 },
-    { id: 'fernet_cortado', label: 'Fernet Cortado', src: pick('fernet_cortado'), scale: 0.8 },
-    { id: 'branca_logo', label: 'Branca', src: pick('fernet_branca'), scale: 0.86 },
-    { id: 'branca_botella', label: 'Branca Botella', src: pick('fernet_botella'), scale: 0.78 },
-    { id: 'mate_power', label: 'Mate Power', src: pick('mate_termo'), scale: 0.82 },
-    { id: 'manso_mate', label: 'Manso Mate', src: pick('mate_clasico'), scale: 0.82 },
-    { id: 'copa_mundial', label: 'Copa Mundial', src: pick('copa_del_mundo'), scale: 0.8 },
-    { id: 'millonario', label: 'Millonario', src: pick('escudi_river'), scale: 0.86 },
-    { id: 'academia', label: 'Academia', src: pick('racing_escudo'), scale: 0.86 },
+    { id: 'fernet', label: 'Fernet', src: pick('fernet_vaso'), scale: 0.84 },
+    { id: 'branca', label: 'Branca', src: pick('fernet_branca'), scale: 0.9 },
+    { id: 'mate', label: 'Mate', src: pick('mate_solo'), scale: 0.88 },
+    { id: 'mate_team', label: 'Mate Team', src: pick('mate_termo'), scale: 0.9 },
+    { id: 'empanadas_fc', label: 'Empanadas FC', src: pick('empanadas_cartel'), scale: 0.88 },
 ].filter((a) => Boolean(a.src));
 
 const AVATAR_MAP = Object.fromEntries(AVATAR_VISUALS.map((option) => [option.id, option]));
 
 const AVATAR_ALIASES: Record<string, string> = {
-    naipe: 'cartas_bravas',
+    naipe: 'copa_truco',
     espada: 'ancho_espada',
     basto: 'ancho_basto',
-    oro: 'escudo_patria',
+    oro: 'escudo_patrio',
     copa: 'copa_truco',
-    pelota: 'el_diez',
-    mate: 'mate_power',
-    bandera: 'bandera_cielo',
-    estadio: 'ruta_cuarenta',
-    fuego: 'fernet_cortado',
-    estrella: 'escudo_patria',
+    pelota: 'capitan',
+    mate: 'mate_team',
+    bandera: 'bandera',
+    estadio: 'afa',
+    fuego: 'fernet',
+    estrella: 'escudo_patrio',
     rayos: 'pelusa',
-    naipes_pro: 'cartas_bravas',
-    truco: 'cartas_bravas',
+    naipes_pro: 'copa_truco',
+    truco: 'copa_truco',
     futbol: 'campeon',
-    fernet: 'fernet_cortado',
+    fernet: 'fernet',
     choripan: 'la_empa',
-    afa_escudo: 'afa_dorada',
-    afa: 'afa_dorada',
+    afa_escudo: 'afa',
+    afa: 'afa',
     maradona: 'pelusa',
-    messi_espalda: 'el_diez',
+    messi_espalda: 'capitan',
     messi_copa: 'campeon',
-    fernet_vaso: 'fernet_cortado',
-    fernet_cortado: 'fernet_cortado',
-    fernet_branca: 'branca_logo',
+    fernet_vaso: 'fernet',
+    fernet_cortado: 'fernet',
+    fernet_branca: 'branca',
     empanada: 'la_empa',
-    termo_mate: 'mate_power',
-    mate_termo: 'mate_power',
-    termo_mate_2: 'mate_power',
-    mate_solo: 'manso_mate',
-    mate_clasico: 'manso_mate',
-    fernet_botella: 'branca_botella',
-    bandera_arg: 'bandera_cielo',
-    bandera_arg_2: 'bandera_cielo',
-    arg_bandera: 'bandera_cielo',
-    ruta40: 'ruta_cuarenta',
-    sol_arg: 'escudo_patria',
-    mapa_arg: 'mapa_argento',
-    arg_pais: 'mapa_argento',
+    termo_mate: 'mate_team',
+    mate_termo: 'mate_team',
+    termo_mate_2: 'mate_team',
+    mate_solo: 'mate',
+    mate_clasico: 'mate',
+    fernet_botella: 'branca',
+    bandera_arg: 'bandera',
+    bandera_arg_2: 'bandera',
+    arg_bandera: 'bandera',
+    ruta40: 'afa',
+    sol_arg: 'escudo_patrio',
+    mapa_arg: 'arg_mapa',
+    arg_pais: 'arg_mapa',
     empanadas_cartel: 'la_empa',
-    escudo_arg: 'escudo_patria',
-    racing_escudo: 'academia',
-    escudi_river: 'millonario',
-    cartas_truco: 'cartas_bravas'
+    escudo_arg: 'escudo_patrio',
+    racing_escudo: 'afa',
+    escudi_river: 'afa',
+    cartas_truco: 'copa_truco'
 };
 
 const getVisualByAvatarId = (avatar?: string | null): AvatarVisual | undefined => {
@@ -166,7 +159,8 @@ export const AvatarBadge = ({ avatar, name, size = 44, className = '' }: AvatarB
                         style={{
                             objectFit: visual.objectFit ?? 'contain',
                             objectPosition: visual.objectPosition ?? 'center',
-                            transform: `scale(${visual.scale ?? 1})`
+                            transform: `scale(${visual.scale ?? 1})`,
+                            imageRendering: 'auto'
                         }}
                         draggable={false}
                     />

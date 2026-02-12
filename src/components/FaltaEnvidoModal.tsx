@@ -130,7 +130,9 @@ export const FaltaEnvidoModal = ({ onClose }: FaltaEnvidoModalProps) => {
                     </div>
                 )}
                 <div className="text-[var(--color-text-muted)] text-sm mt-2">
-                    {opponent.score < 15 ? 'Malas (Gana partido)' : 'Buenas (Falta para 30)'}
+                    {targetScore === 15
+                        ? 'Partido a 15'
+                        : (opponent.score < (targetScore / 2) ? 'Malas (gana partido)' : 'Buenas (falta para 30)')}
                 </div>
             </div>
 

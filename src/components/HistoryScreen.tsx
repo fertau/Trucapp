@@ -630,7 +630,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                                 {summary.streak.length === 0 && <span className="text-white/30 text-sm">Sin datos</span>}
                                 {summary.streak.map((r, i) => (
                                     <span key={`${r}-${i}`} className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black ${r === 'W' ? 'bg-[var(--color-nosotros)]/20 text-[var(--color-nosotros)]' : 'bg-[var(--color-ellos)]/20 text-[var(--color-ellos)]'}`}>
-                                        {r}
+                                        {r === 'W' ? 'G' : 'P'}
                                     </span>
                                 ))}
                             </div>
