@@ -1,8 +1,9 @@
 import { useAuthStore } from '../store/useAuthStore';
 import { useUserStore } from '../store/useUserStore';
 import { useHistoryStore } from '../store/useHistoryStore';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AvatarBadge } from './AvatarBadge';
+import type { MatchState } from '../types';
 
 interface HomeScreenProps {
     onNewMatch: () => void;
@@ -16,8 +17,49 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
     const matches = useHistoryStore(state => state.matches);
     const [tab, setTab] = useState<'PARTIDO' | 'HISTORIAL'>('PARTIDO');
 
-    // Recent matches (last 2)
-    const recentMatches = matches.slice(0, 2);
+    const seriesSummary = useMemo(() => {
+        const grouped = new Map<string, MatchState[]>();
+        matches.forEach((m) => {
+            const seriesId = m.series?.id;
+            if (!seriesId) return;
+            const arr = grouped.get(seriesId) ?? [];
+            arr.push(m);
+            grouped.set(seriesId, arr);
+        });
+
+        const summary = new Map<string, { winsNos: number; winsEll: number; targetWins: number; isFinished: boolean }>();
+        grouped.forEach((arr, seriesId) => {
+            const winsNos = arr.filter((m) => m.winner === 'nosotros').length;
+            const winsEll = arr.filter((m) => m.winner === 'ellos').length;
+            const targetWins = arr[0]?.series?.targetWins ?? 2;
+            summary.set(seriesId, {
+                winsNos,
+                winsEll,
+                targetWins,
+                isFinished: winsNos >= targetWins || winsEll >= targetWins
+            });
+        });
+        return summary;
+    }, [matches]);
+
+    const recentItems = useMemo(() => {
+        const items: Array<{ key: string; type: 'MATCH' | 'SERIES'; match: MatchState }> = [];
+        const seenSeries = new Set<string>();
+
+        for (const match of matches) {
+            const seriesId = match.series?.id;
+            if (seriesId) {
+                if (seenSeries.has(seriesId)) continue;
+                seenSeries.add(seriesId);
+                items.push({ key: `series-${seriesId}`, type: 'SERIES', match });
+            } else {
+                items.push({ key: `match-${match.id}`, type: 'MATCH', match });
+            }
+            if (items.length >= 2) break;
+        }
+
+        return items;
+    }, [matches]);
     const user = players.find(p => p.id === currentUserId);
 
     return (
@@ -46,51 +88,84 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                         </h3>
 
                         <div className="flex flex-col gap-2">
-                            {recentMatches.length === 0 && <p className="text-[var(--color-text-muted)]">No hay partidos recientes.</p>}
+                            {recentItems.length === 0 && <p className="text-[var(--color-text-muted)]">No hay partidos recientes.</p>}
 
-                            {recentMatches.map(m => {
+                            {recentItems.map((item) => {
+                                const m = item.match;
                                 const getPlayerNames = (playerIds: string[]) => {
                                     return playerIds.map(id => players.find(p => p.id === id)?.name || '?').join(', ');
                                 };
+                                const dateText = new Date(m.metadata?.date ?? m.startDate).toLocaleDateString(undefined, {
+                                    day: '2-digit',
+                                    month: '2-digit'
+                                });
+                                const location = (m.metadata?.location || '').trim() || 'Sin sede';
+                                const seriesInfo = m.series?.id ? seriesSummary.get(m.series.id) : null;
+                                const boText = m.series ? `BO${(m.series.targetWins * 2) - 1}` : '';
 
                                 return (
-                                    <div key={m.id} className="flex justify-between items-start bg-[var(--color-surface)] p-3 rounded-[1.25rem] border border-[var(--color-border)] shadow-sm min-h-[106px]">
-                                        <div className="flex flex-col gap-3 flex-1 overflow-hidden">
-                                            <div className="flex justify-between items-start pr-4">
-                                                <div className="flex flex-col gap-0.5 flex-1">
-                                                    <span className={`text-sm font-black uppercase truncate ${m.winner === 'nosotros' ? 'text-[var(--color-nosotros)]' : 'text-white/60'}`}>
-                                                        {m.teams.nosotros.name}
-                                                    </span>
-                                                    {m.mode !== '1v1' && (
-                                                        <span className="text-[10px] font-medium text-white/40 truncate">
-                                                            {getPlayerNames(m.teams.nosotros.players)}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <span className={`text-lg font-black ml-2 ${m.winner === 'nosotros' ? 'text-[var(--color-nosotros)]' : 'text-white/40'}`}>
-                                                    {m.teams.nosotros.score}
-                                                </span>
+                                    <div key={item.key} className="bg-[var(--color-surface)] px-4 py-3 rounded-[1.25rem] border border-[var(--color-border)] shadow-sm">
+                                        <div className="flex items-start justify-between gap-3 mb-2">
+                                            <div className="min-w-0">
+                                                <div className="text-[10px] font-black uppercase tracking-widest text-white/45">{dateText}</div>
+                                                <div className="text-[11px] text-white/55 truncate">{location}</div>
                                             </div>
+                                            <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                                                <span className="px-2 py-1 rounded-full text-[9px] font-black uppercase tracking-wide bg-white/8 border border-white/10 text-white/70">
+                                                    {m.mode}
+                                                </span>
+                                                {item.type === 'SERIES' && seriesInfo && (
+                                                    <span className="px-2 py-1 rounded-full text-[9px] font-black uppercase tracking-wide bg-[var(--color-accent)]/15 border border-[var(--color-accent)]/30 text-[var(--color-accent)]">
+                                                        Serie {boText}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
 
-                                            <div className="flex justify-between items-start pr-4">
-                                                <div className="flex flex-col gap-0.5 flex-1">
-                                                    <span className={`text-sm font-black uppercase truncate ${m.winner === 'ellos' ? 'text-[var(--color-ellos)]' : 'text-white/60'}`}>
-                                                        {m.teams.ellos.name}
-                                                    </span>
-                                                    {m.mode !== '1v1' && (
-                                                        <span className="text-[10px] font-medium text-white/40 truncate">
-                                                            {getPlayerNames(m.teams.ellos.players)}
-                                                        </span>
-                                                    )}
+                                        {item.type === 'SERIES' && seriesInfo ? (
+                                            <>
+                                                <div className="text-base font-black leading-tight">
+                                                    {m.teams.nosotros.name} {seriesInfo.winsNos} - {seriesInfo.winsEll} {m.teams.ellos.name}
                                                 </div>
-                                                <span className={`text-lg font-black ml-2 ${m.winner === 'ellos' ? 'text-[var(--color-ellos)]' : 'text-white/40'}`}>
-                                                    {m.teams.ellos.score}
-                                                </span>
+                                                <div className="text-[10px] font-black uppercase tracking-widest mt-1 text-white/45">
+                                                    {seriesInfo.isFinished ? 'Serie cerrada' : 'Serie en curso'}
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="flex flex-col gap-2">
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                                                        <span className={`text-sm font-black uppercase truncate ${m.winner === 'nosotros' ? 'text-[var(--color-nosotros)]' : 'text-white/65'}`}>
+                                                            {m.teams.nosotros.name}
+                                                        </span>
+                                                        {m.mode !== '1v1' && (
+                                                            <span className="text-[10px] font-medium text-white/40 truncate">
+                                                                {getPlayerNames(m.teams.nosotros.players)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <span className={`text-xl font-black ml-2 ${m.winner === 'nosotros' ? 'text-[var(--color-nosotros)]' : 'text-white/45'}`}>
+                                                        {m.teams.nosotros.score}
+                                                    </span>
+                                                </div>
+
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                                                        <span className={`text-sm font-black uppercase truncate ${m.winner === 'ellos' ? 'text-[var(--color-ellos)]' : 'text-white/65'}`}>
+                                                            {m.teams.ellos.name}
+                                                        </span>
+                                                        {m.mode !== '1v1' && (
+                                                            <span className="text-[10px] font-medium text-white/40 truncate">
+                                                                {getPlayerNames(m.teams.ellos.players)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <span className={`text-xl font-black ml-2 ${m.winner === 'ellos' ? 'text-[var(--color-ellos)]' : 'text-white/45'}`}>
+                                                        {m.teams.ellos.score}
+                                                    </span>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="text-[8px] font-black text-white/20 uppercase tracking-widest pl-2 border-l border-white/5">
-                                            {new Date(m.startDate).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' })}
-                                        </div>
+                                        )}
                                     </div>
                                 );
                             })}

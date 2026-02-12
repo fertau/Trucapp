@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useUserStore } from '../store/useUserStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useHistoryStore } from '../store/useHistoryStore';
@@ -10,6 +10,7 @@ import { hashPin } from '../utils/pinSecurity';
 import { isSuperAdmin } from '../utils/authz';
 import { SocialHub } from './SocialHub';
 import { AvatarBadge, avatarOptions } from './AvatarBadge';
+import { processAvatarFile } from '../utils/avatarUpload';
 
 interface ProfileScreenProps {
     onBack: () => void;
@@ -29,6 +30,7 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
     const [showSocialHub, setShowSocialHub] = useState(false);
     const [showAdminDanger, setShowAdminDanger] = useState(false);
     const [showAllAvatars, setShowAllAvatars] = useState(false);
+    const avatarFileInputRef = useRef<HTMLInputElement | null>(null);
 
     if (!currentUser) {
         return (
@@ -71,6 +73,17 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
 
     const handleAvatarChange = (avatar: string) => {
         updatePlayer(currentUser.id, { avatar });
+    };
+
+    const handleAvatarUpload = async (file?: File | null) => {
+        if (!file) return;
+        try {
+            const avatarDataUrl = await processAvatarFile(file);
+            await updatePlayer(currentUser.id, { avatar: avatarDataUrl });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'No se pudo subir el avatar.';
+            alert(message);
+        }
     };
 
     const handleLogout = () => {
@@ -229,6 +242,24 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
                     {/* Avatar Selection */}
                     <div style={cardStyle}>
                         <h3 style={labelStyle}>Seleccionar Avatar</h3>
+                        <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'center' }}>
+                            <input
+                                ref={avatarFileInputRef}
+                                type="file"
+                                accept="image/*"
+                                style={{ display: 'none' }}
+                                onChange={(e) => {
+                                    void handleAvatarUpload(e.target.files?.[0] ?? null);
+                                    e.currentTarget.value = '';
+                                }}
+                            />
+                            <button
+                                onClick={() => avatarFileInputRef.current?.click()}
+                                style={{ ...btnStyle, background: s.whiteBg, border: `1px solid ${s.whiteBgHover}`, color: s.whiteSoft, padding: '8px 14px', borderRadius: '9999px', fontSize: '10px', letterSpacing: '0.12em' }}
+                            >
+                                SUBIR FOTO
+                            </button>
+                        </div>
                         {!showAllAvatars ? (
                             <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '4px' }}>
                                 {avatarOptions.slice(0, 8).map((av) => (

@@ -1,53 +1,100 @@
 import type { CSSProperties } from 'react';
-import afaEscudoImg from '../assets/avatars-stickers/afa_escudo.png';
-import mateClasicoImg from '../assets/avatars-stickers/mate_clasico.png';
-import maradonaImg from '../assets/avatars-stickers/maradona.png';
-import messiEspaldaImg from '../assets/avatars-stickers/messi_espalda.png';
-import fernetVasoImg from '../assets/avatars-stickers/fernet_vaso.png';
-import empanadaImg from '../assets/avatars-stickers/empanada.png';
-import termoMateImg from '../assets/avatars-stickers/termo_mate.png';
-import fernetBotellaImg from '../assets/avatars-stickers/fernet_botella.png';
-import banderaArgImg from '../assets/avatars-stickers/bandera_arg.png';
-import ruta40Img from '../assets/avatars-stickers/ruta40.png';
-import solArgImg from '../assets/avatars-stickers/sol_arg.png';
-import mapaArgImg from '../assets/avatars-stickers/mapa_arg.png';
-import messiCopaImg from '../assets/avatars-stickers/messi_copa.png';
-import banderaArg2Img from '../assets/avatars-stickers/bandera_arg_2.png';
-import empanadasCartelImg from '../assets/avatars-stickers/empanadas_cartel.png';
-import termoMate2Img from '../assets/avatars-stickers/termo_mate_2.png';
 
 type AvatarVisual = {
     id: string;
     label: string;
     src: string;
-    objectPosition?: string;
+    kind: 'curated' | 'uploaded';
 };
 
-const AVATAR_VISUALS: AvatarVisual[] = [
-    { id: 'afa_escudo', label: 'AFA', src: afaEscudoImg },
-    { id: 'mate_clasico', label: 'Mate', src: mateClasicoImg },
-    { id: 'maradona', label: 'Maradona', src: maradonaImg },
-    { id: 'messi_espalda', label: 'Messi 10', src: messiEspaldaImg },
-    { id: 'fernet_vaso', label: 'Fernet', src: fernetVasoImg },
-    { id: 'empanada', label: 'Empanada', src: empanadaImg },
-    { id: 'termo_mate', label: 'Termo y Mate', src: termoMateImg },
-    { id: 'fernet_botella', label: 'Fernet Botella', src: fernetBotellaImg },
-    { id: 'bandera_arg', label: 'Bandera', src: banderaArgImg },
-    { id: 'ruta40', label: 'Ruta 40', src: ruta40Img },
-    { id: 'sol_arg', label: 'Sol', src: solArgImg },
-    { id: 'mapa_arg', label: 'Argentina', src: mapaArgImg },
-    { id: 'messi_copa', label: 'Messi Copa', src: messiCopaImg },
-    { id: 'bandera_arg_2', label: 'Bandera 2', src: banderaArg2Img },
-    { id: 'empanadas_cartel', label: 'Empanadas', src: empanadasCartelImg },
-    { id: 'termo_mate_2', label: 'Mate Team', src: termoMate2Img },
-];
+const toSlug = (value: string): string =>
+    value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+
+const toLabel = (value: string): string =>
+    value
+        .replace(/[_-]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+
+const getFileBase = (path: string): string => {
+    const last = path.split('/').pop() ?? path;
+    const noExt = last.replace(/\.[^.]+$/, '');
+    return decodeURIComponent(noExt);
+};
+
+const curatedLabelById: Record<string, string> = {
+    afa_escudo: 'AFA',
+    mate_clasico: 'Mate',
+    maradona: 'Maradona',
+    messi_espalda: 'Messi 10',
+    fernet_vaso: 'Fernet',
+    empanada: 'Empanada',
+    termo_mate: 'Termo y Mate',
+    fernet_botella: 'Fernet Botella',
+    bandera_arg: 'Bandera',
+    ruta40: 'Ruta 40',
+    sol_arg: 'Sol',
+    mapa_arg: 'Argentina',
+    messi_copa: 'Messi Copa',
+    bandera_arg_2: 'Bandera 2',
+    empanadas_cartel: 'Empanadas',
+    termo_mate_2: 'Mate Team'
+};
+
+const curatedModules = import.meta.glob('../assets/avatars-stickers/*.{png,jpg,jpeg,webp,avif}', {
+    eager: true,
+    import: 'default'
+}) as Record<string, string>;
+
+const uploadedModules = import.meta.glob('../assets/avatars-library/*.{png,jpg,jpeg,webp,avif}', {
+    eager: true,
+    import: 'default'
+}) as Record<string, string>;
+
+const curatedOptions: AvatarVisual[] = Object.entries(curatedModules)
+    .map(([path, src]) => {
+        const base = getFileBase(path);
+        const id = toSlug(base);
+        return {
+            id,
+            label: curatedLabelById[id] ?? toLabel(base),
+            src,
+            kind: 'curated' as const
+        };
+    })
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+const uploadedOptions: AvatarVisual[] = Object.entries(uploadedModules)
+    .map(([path, src]) => {
+        const base = getFileBase(path);
+        return {
+            id: `upload_${toSlug(base)}`,
+            label: toLabel(base),
+            src,
+            kind: 'uploaded' as const,
+            rawBase: base
+        };
+    })
+    .filter((x) => !/^sheet-\d+$/i.test(x.rawBase))
+    .map(({ rawBase: _rawBase, ...rest }) => rest)
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+const AVATAR_VISUALS: AvatarVisual[] = [...curatedOptions, ...uploadedOptions];
+
+const AVATAR_MAP = Object.fromEntries(AVATAR_VISUALS.map((option) => [option.id, option]));
 
 const AVATAR_ALIASES: Record<string, string> = {
     naipe: 'afa_escudo',
-    espada: 'messi_espalda',
-    basto: 'termo_mate',
+    espada: 'upload_ancho_espada',
+    basto: 'upload_ancho_basto',
     oro: 'sol_arg',
-    copa: 'messi_copa',
+    copa: 'upload_copa',
     pelota: 'messi_espalda',
     mate: 'mate_clasico',
     bandera: 'bandera_arg',
@@ -55,14 +102,12 @@ const AVATAR_ALIASES: Record<string, string> = {
     fuego: 'fernet_vaso',
     estrella: 'sol_arg',
     rayos: 'maradona',
-    naipes_pro: 'empanada',
-    truco: 'afa_escudo',
+    naipes_pro: 'upload_cartas_truco',
+    truco: 'upload_cartas_truco',
     futbol: 'messi_copa',
     fernet: 'fernet_vaso',
     choripan: 'empanada'
 };
-
-const AVATAR_MAP = Object.fromEntries(AVATAR_VISUALS.map((option) => [option.id, option]));
 
 const getVisualByAvatarId = (avatar?: string | null): AvatarVisual | undefined => {
     if (!avatar) return undefined;
@@ -78,6 +123,9 @@ const initialsFromName = (name?: string): string => {
     return parts.map((p) => p[0]?.toUpperCase()).join('') || '?';
 };
 
+export const isCustomAvatarDataUrl = (value?: string | null): boolean =>
+    typeof value === 'string' && value.startsWith('data:image/');
+
 interface AvatarBadgeProps {
     avatar?: string | null;
     name?: string;
@@ -87,6 +135,8 @@ interface AvatarBadgeProps {
 
 export const AvatarBadge = ({ avatar, name, size = 44, className = '' }: AvatarBadgeProps) => {
     const visual = getVisualByAvatarId(avatar);
+    const isCustom = isCustomAvatarDataUrl(avatar);
+
     const style: CSSProperties = {
         width: `${size}px`,
         height: `${size}px`,
@@ -101,15 +151,21 @@ export const AvatarBadge = ({ avatar, name, size = 44, className = '' }: AvatarB
             style={style}
             title={visual?.label ?? name ?? 'Avatar'}
         >
-            {visual ? (
+            {isCustom && avatar ? (
+                <img
+                    src={avatar}
+                    alt={name ?? 'Avatar personalizado'}
+                    className="w-full h-full object-cover"
+                    draggable={false}
+                />
+            ) : visual ? (
                 <img
                     src={visual.src}
                     alt={visual.label}
                     className="w-full h-full object-contain"
                     style={{
-                        objectPosition: visual.objectPosition ?? 'center',
-                        mixBlendMode: 'multiply',
-                        filter: 'saturate(1.04) contrast(1.02)'
+                        mixBlendMode: visual.kind === 'uploaded' ? 'normal' : 'multiply',
+                        filter: visual.kind === 'uploaded' ? 'none' : 'saturate(1.04) contrast(1.02)'
                     }}
                     draggable={false}
                 />

@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useUserStore } from '../store/useUserStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { PinInput } from './PinInput';
 import { hashPin } from '../utils/pinSecurity';
 import { AvatarBadge, avatarOptions } from './AvatarBadge';
+import { processAvatarFile } from '../utils/avatarUpload';
 
 interface SocialHubProps {
     onBack: () => void;
@@ -34,6 +35,7 @@ export const SocialHub = ({ onBack }: SocialHubProps) => {
     const [showPinChange, setShowPinChange] = useState(false);
     const [newPin, setNewPin] = useState('');
     const [pinError, setPinError] = useState('');
+    const avatarFileInputRef = useRef<HTMLInputElement | null>(null);
 
     useEffect(() => {
         if (currentUserId) {
@@ -63,6 +65,17 @@ export const SocialHub = ({ onBack }: SocialHubProps) => {
 
     const handleAvatarChange = (avatar: string) => {
         updatePlayer(currentUser.id, { avatar });
+    };
+
+    const handleAvatarUpload = async (file?: File | null) => {
+        if (!file) return;
+        try {
+            const avatarDataUrl = await processAvatarFile(file);
+            await updatePlayer(currentUser.id, { avatar: avatarDataUrl });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'No se pudo subir el avatar.';
+            alert(message);
+        }
     };
 
     const friendsList = players.filter(p => (currentUser?.friends || []).includes(p.id));
@@ -151,6 +164,24 @@ export const SocialHub = ({ onBack }: SocialHubProps) => {
                         {/* Avatar Picker */}
                         <div className="bg-[var(--color-surface)] rounded-[2.5rem] p-6 border border-[var(--color-border)]">
                             <h3 className="text-[10px] font-black uppercase text-white/20 tracking-[0.2em] mb-4 ml-2">Elegí tu Avatar</h3>
+                            <div className="mb-4 flex justify-center">
+                                <input
+                                    ref={avatarFileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                        void handleAvatarUpload(e.target.files?.[0] ?? null);
+                                        e.currentTarget.value = '';
+                                    }}
+                                />
+                                <button
+                                    onClick={() => avatarFileInputRef.current?.click()}
+                                    className="px-3 py-2 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/15 bg-white/5 text-white/70"
+                                >
+                                    Subir foto
+                                </button>
+                            </div>
                             <div className="grid grid-cols-4 gap-3">
                                 {avatarOptions.map((a) => (
                                     <button
