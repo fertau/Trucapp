@@ -106,7 +106,11 @@ export const AvatarBadge = ({ avatar, name, size = 44, className = '' }: AvatarB
                     src={visual.src}
                     alt={visual.label}
                     className="w-full h-full object-contain"
-                    style={{ objectPosition: visual.objectPosition ?? 'center' }}
+                    style={{
+                        objectPosition: visual.objectPosition ?? 'center',
+                        mixBlendMode: 'multiply',
+                        filter: 'saturate(1.04) contrast(1.02)'
+                    }}
                     draggable={false}
                 />
             ) : avatar ? (
