@@ -6,6 +6,8 @@ import { formatDateInputLocal, parseDateInputLocal } from '../utils/date';
 
 interface TeamConfigurationProps {
     players: Player[];
+    requiredCount: number; // 2, 4 o 6
+    onBack: () => void;
     onStartMatch: (
         teams: { nosotros: Player[], ellos: Player[] },
         metadata: { location: string, date: number, teamNames?: { nosotros: string, ellos: string } },
@@ -15,7 +17,7 @@ interface TeamConfigurationProps {
     ) => void;
 }
 
-export const TeamConfiguration = ({ players, onStartMatch }: TeamConfigurationProps) => {
+export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch }: TeamConfigurationProps) => {
     // We use a pool for unassigned players
     const [pool, setPool] = useState<Player[]>(() => players);
     const [nosotros, setNosotros] = useState<Player[]>([]);
@@ -58,8 +60,8 @@ export const TeamConfiguration = ({ players, onStartMatch }: TeamConfigurationPr
     };
 
     const getLimit = () => {
-        if (players.length <= 2) return 1;
-        if (players.length <= 4) return 2;
+        if (requiredCount === 2) return 1;
+        if (requiredCount === 4) return 2;
         return 3;
     };
 
@@ -109,6 +111,18 @@ export const TeamConfiguration = ({ players, onStartMatch }: TeamConfigurationPr
 
     return (
         <div className="flex flex-col h-full bg-[var(--color-bg)] p-6 overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+                <button
+                    type="button"
+                    onClick={onBack}
+                    className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-text-muted)] bg-[var(--color-surface)] border border-[var(--color-border)] px-3 py-2 rounded-full"
+                >
+                    ← Volver
+                </button>
+                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-text-muted)]">
+                    {requiredCount === 2 ? '1v1' : requiredCount === 4 ? '2v2' : '3v3'}
+                </div>
+            </div>
             <h2 className="text-2xl font-black mb-1 uppercase italic tracking-tighter text-center">ARMAR EQUIPOS</h2>
             <p className="text-[10px] font-bold text-[var(--color-text-muted)] text-center mb-8 uppercase tracking-[0.2em]">Arrastrar para asignar</p>
 

@@ -50,12 +50,8 @@ function App() {
     const params = new URLSearchParams(window.location.search);
     const sharedMatchId = params.get('matchId');
     if (sharedMatchId) return 'MATCH';
-
-    const savedStep = localStorage.getItem('trucapp-app-step');
-    if (savedStep === 'MATCH' && !useMatchStore.getState().id) return 'HOME';
-    if (savedStep === 'STATS') return 'HOME'; // Migration: STATS is now part of HISTORY
-    if (savedStep === 'LEADERBOARD' || savedStep === 'SOCIAL') return 'HISTORY';
-    return (savedStep as AppStep) || 'HOME';
+    // UX request: al reabrir PWA, arrancar siempre en inicio.
+    return 'HOME';
   });
 
   const [showSplash, setShowSplash] = useState(() => !sessionStorage.getItem('trucapp-splash-seen'));
@@ -161,6 +157,12 @@ function App() {
     targetScore?: number,
     options?: { startBestOf3?: boolean }
   ) => {
+    const expectedPlayersPerTeam = playerCount === 2 ? 1 : playerCount === 4 ? 2 : 3;
+    if (teams.nosotros.length !== expectedPlayersPerTeam || teams.ellos.length !== expectedPlayersPerTeam) {
+      alert(`Para ${playerCount === 2 ? '1v1' : playerCount === 4 ? '2v2' : '3v3'} debés tener ${expectedPlayersPerTeam} jugador(es) por equipo antes de comenzar.`);
+      return;
+    }
+
     if (playerCount === 6) {
       setTeamsConfig(teams);
       setStep('PICAPICA_SETUP');
@@ -322,7 +324,12 @@ function App() {
   if (effectiveStep === 'SETUP_TEAMS') {
     return (
       <Suspense fallback={<ScreenLoader />}>
-        <TeamConfiguration players={selectedPlayers} onStartMatch={startMatch} />
+        <TeamConfiguration
+          players={selectedPlayers}
+          requiredCount={playerCount}
+          onBack={() => setStep('SETUP_PLAYERS_SELECT')}
+          onStartMatch={startMatch}
+        />
       </Suspense>
     );
   }
