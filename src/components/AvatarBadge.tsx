@@ -30,8 +30,7 @@ const fileBySlug = Object.fromEntries(
 const pick = (slug: string): string => fileBySlug[slug] ?? '';
 
 const AVATAR_VISUALS: AvatarVisual[] = [
-    { id: 'capitan', label: 'Capitan', src: pick('river_letras') },
-    { id: 'campeon', label: 'Campeon', src: pick('copa_fifa') },
+    { id: 'capitan', label: 'CARP', src: pick('river_letras') },
     { id: 'afa', label: 'AFA', src: pick('afa') },
     { id: 'ancho_basto', label: 'Ancho Basto', src: pick('ancho_basto') },
     { id: 'ancho_espada', label: 'Ancho Espada', src: pick('ancho_espada') },
@@ -44,7 +43,6 @@ const AVATAR_VISUALS: AvatarVisual[] = [
     { id: 'leon_river', label: 'Leon River', src: pick('leon_river') },
     { id: 'mate_team', label: 'Mate Team', src: pick('mate_termo') },
     { id: 'academia', label: 'Academia', src: pick('racing_escudo') },
-    { id: 'geo', label: 'Geo', src: pick('geo_2') },
     { id: 'geo_violeta', label: 'Geo Violeta', src: pick('geo_violeta') },
 ].filter((a) => Boolean(a.src));
 
@@ -62,17 +60,19 @@ const AVATAR_ALIASES: Record<string, string> = {
     estadio: 'river_escudo',
     fuego: 'fernet',
     estrella: 'sol_argento',
-    rayos: 'campeon',
+    rayos: 'copa_mundo',
     naipes_pro: 'cartas_truco',
     truco: 'cartas_truco',
-    futbol: 'campeon',
+    futbol: 'copa_mundo',
     fernet: 'fernet',
     choripan: 'fernet',
     afa_escudo: 'afa',
     afa: 'afa',
-    maradona: 'campeon',
+    maradona: 'copa_mundo',
     messi_espalda: 'capitan',
-    messi_copa: 'campeon',
+    messi_copa: 'copa_mundo',
+    campeon: 'copa_mundo',
+    geo: 'geo_violeta',
     fernet_vaso: 'fernet',
     fernet_cortado: 'fernet',
     fernet_branca: 'fernet',
