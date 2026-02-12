@@ -48,7 +48,16 @@ export const useHistoryStore = create<HistoryStore>((set) => ({
                 const matchId = data.id || d.id;
                 if (!matchId || seen.has(matchId)) return;
                 seen.add(matchId);
-                loadedMatches.push(withNormalizedMatchIdentity({ ...data, id: matchId }));
+                const normalized = withNormalizedMatchIdentity({ ...data, id: matchId });
+                loadedMatches.push(normalized);
+
+                const needsDateRepair = data.metadata?.customDate && data.metadata?.date !== normalized.metadata?.date;
+                const needsTeamRefsRepair = !data.teamRefs;
+                if (needsDateRepair || needsTeamRefsRepair) {
+                    void setDoc(doc(db, 'matches', matchId), normalized, { merge: true }).catch((err) => {
+                        console.error('Error repairing legacy match fields:', err);
+                    });
+                }
             });
 
             const lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1] ?? null;
@@ -85,7 +94,16 @@ export const useHistoryStore = create<HistoryStore>((set) => ({
                 const data = d.data() as MatchState;
                 const matchId = data.id || d.id;
                 if (!matchId) return;
-                loadedMatches.push(withNormalizedMatchIdentity({ ...data, id: matchId }));
+                const normalized = withNormalizedMatchIdentity({ ...data, id: matchId });
+                loadedMatches.push(normalized);
+
+                const needsDateRepair = data.metadata?.customDate && data.metadata?.date !== normalized.metadata?.date;
+                const needsTeamRefsRepair = !data.teamRefs;
+                if (needsDateRepair || needsTeamRefsRepair) {
+                    void setDoc(doc(db, 'matches', matchId), normalized, { merge: true }).catch((err) => {
+                        console.error('Error repairing legacy match fields:', err);
+                    });
+                }
             });
 
             const nextLastVisible = querySnapshot.docs[querySnapshot.docs.length - 1] ?? lastVisible;

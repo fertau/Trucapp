@@ -5,6 +5,8 @@ const normalizeIds = (ids: string[]): string[] => ids.filter(Boolean).slice().so
 export const getMatchEffectiveDate = (match: MatchState): number => {
     const metaDate = match.metadata?.date;
     if (typeof metaDate === 'number' && Number.isFinite(metaDate)) return metaDate;
+    const customDate = match.metadata?.customDate;
+    if (typeof customDate === 'number' && Number.isFinite(customDate)) return customDate;
     return match.startDate;
 };
 
