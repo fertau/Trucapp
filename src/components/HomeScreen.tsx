@@ -17,6 +17,9 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
     const players = useUserStore(state => state.players);
     const matches = useHistoryStore(state => state.matches);
     const [tab, setTab] = useState<'PARTIDO' | 'HISTORIAL'>('PARTIDO');
+    const validFinishedMatches = useMemo(() => (
+        matches.filter((m) => m.isFinished && (m.teams.nosotros.score + m.teams.ellos.score > 0))
+    ), [matches]);
 
     const seriesSummary = useMemo(() => {
         const grouped = new Map<string, MatchState[]>();
@@ -47,7 +50,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
         const items: Array<{ key: string; type: 'MATCH' | 'SERIES'; match: MatchState }> = [];
         const seenSeries = new Set<string>();
 
-        for (const match of matches) {
+        for (const match of validFinishedMatches) {
             const seriesId = match.series?.id;
             if (seriesId) {
                 if (seenSeries.has(seriesId)) continue;
@@ -58,9 +61,8 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
             }
             if (items.length >= 2) break;
         }
-
         return items;
-    }, [matches]);
+    }, [validFinishedMatches]);
     const user = players.find(p => p.id === currentUserId);
 
     return (
@@ -176,7 +178,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                             Novedades
                         </h3>
                         <div className="flex flex-col gap-2">
-                            {matches.slice(0, 3).map((m) => {
+                            {validFinishedMatches.slice(0, 3).map((m) => {
                                 const wasEdited = Boolean(m.editedFlags?.resultEdited);
                                 return (
                                     <div key={`news-${m.id}`} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl px-4 py-2.5">
@@ -192,7 +194,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                                     </div>
                                 );
                             })}
-                            {matches.length === 0 && <p className="text-[var(--color-text-muted)]">Sin novedades todavía.</p>}
+                            {validFinishedMatches.length === 0 && <p className="text-[var(--color-text-muted)]">Sin novedades todavía.</p>}
                         </div>
                     </div>
                 )}

@@ -6,19 +6,16 @@ import type { MatchEditField, MatchMode, MatchState, TeamId } from '../types';
 import { formatDateInputLocal, parseDateInputLocal } from '../utils/date';
 import { canUserEditMatch } from '../utils/matchValidation';
 import { getMatchEffectiveDate, getTeamRefKey, getTeamRefLabel } from '../utils/matchIdentity';
-import { AvatarBadge } from './AvatarBadge';
 
 interface HistoryScreenProps {
     onBack: () => void;
     initialTab?: HistoryTab;
 }
 
-type HistoryTab = 'SUMMARY' | 'MATCHES' | 'H2H' | 'RANKING';
+type HistoryTab = 'SUMMARY' | 'MATCHES';
 type FilterMode = 'ALL' | MatchMode;
 type Scope = 'MINE' | 'GLOBAL';
 type ResultFilter = 'ALL' | 'W' | 'L';
-type RankingType = 'PLAYERS' | 'PAIRS';
-type AnalysisWindow = 'ALL' | '30D' | '90D';
 type MatchListView = 'SERIES' | 'MATCHES';
 type StatsModeTab = '1v1' | '2v2' | 'GLOBAL';
 type HistoryFocus = 'YO_1V1' | 'YO_2V2' | 'YO_3V3' | 'MI_EQUIPO' | 'CLASICOS';
@@ -47,9 +44,7 @@ const isParticipant = (match: MatchState, userId: string | null): boolean => {
 
 const TAB_META: Record<HistoryTab, { title: string; hint: string }> = {
     SUMMARY: { title: 'Resumen', hint: 'Tus indicadores clave y rendimiento reciente.' },
-    MATCHES: { title: 'Partidos', hint: 'Listado de partidos con filtros combinables.' },
-    H2H: { title: 'Enfrentamientos', hint: 'Compará resultados contra rivales o equipos.' },
-    RANKING: { title: 'Ranking', hint: 'Tabla de posiciones por jugadores o parejas.' }
+    MATCHES: { title: 'Partidos', hint: 'Historial de partidos con filtros combinables.' }
 };
 
 export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenProps) => {
@@ -72,10 +67,8 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
     const [opponentId, setOpponentId] = useState<string>('ALL');
     const [opponentGroupKey, setOpponentGroupKey] = useState<string>('ALL');
     const [search, setSearch] = useState('');
-    const [rankingType, setRankingType] = useState<RankingType>('PLAYERS');
     const [statsMode, setStatsMode] = useState<StatsModeTab>('1v1');
-    const [analysisWindow, setAnalysisWindow] = useState<AnalysisWindow>('ALL');
-    const [rankingMinMatches, setRankingMinMatches] = useState<number>(3);
+    const [isClassicOpen, setIsClassicOpen] = useState(false);
     const [matchListView, setMatchListView] = useState<MatchListView>('SERIES');
     const [openSeriesId, setOpenSeriesId] = useState<string | null>(null);
     const [selectedMatch, setSelectedMatch] = useState<MatchState | null>(null);
@@ -131,19 +124,9 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
 
     const filteredMatches = useMemo(() => {
         const text = search.trim().toLowerCase();
-        const now = Date.now();
-        const sourceByWindow = tab === 'H2H' && analysisWindow !== 'ALL'
-            ? scopeMatches.filter((m) => {
-                const ts = getMatchEffectiveDate(m);
-                const from = analysisWindow === '30D'
-                    ? now - (30 * 24 * 60 * 60 * 1000)
-                    : now - (90 * 24 * 60 * 60 * 1000);
-                return ts >= from && ts <= now;
-            })
-            : scopeMatches;
         const sourceModeMatches = mode === 'ALL'
-            ? sourceByWindow
-            : sourceByWindow.filter((m) => m.mode === mode);
+            ? scopeMatches
+            : scopeMatches.filter((m) => m.mode === mode);
 
         return sourceModeMatches.filter((m) => {
             const userTeam = currentUserId ? getTeamIdForUser(m, currentUserId) : null;
@@ -184,7 +167,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
 
             return true;
         });
-    }, [tab, analysisWindow, scopeMatches, mode, scope, currentUserId, opponentId, opponentGroupKey, result, search, getPlayerName]);
+    }, [scopeMatches, mode, scope, currentUserId, opponentId, opponentGroupKey, result, search, getPlayerName]);
 
     const statsScopedMatches = useMemo(() => {
         if (!currentUserId) return [];
@@ -198,18 +181,6 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
     const statsScopedMatchesSorted = useMemo(() => (
         [...statsScopedMatches].sort((a, b) => getMatchEffectiveDate(a) - getMatchEffectiveDate(b))
     ), [statsScopedMatches]);
-
-    const analysisScopedMatches = useMemo(() => {
-        if (analysisWindow === 'ALL') return scopeMatches;
-        const now = Date.now();
-        const from = analysisWindow === '30D'
-            ? now - (30 * 24 * 60 * 60 * 1000)
-            : now - (90 * 24 * 60 * 60 * 1000);
-        return scopeMatches.filter((m) => {
-            const ts = getMatchEffectiveDate(m);
-            return ts >= from && ts <= now;
-        });
-    }, [scopeMatches, analysisWindow]);
 
     const summaryStats = useMemo(() => {
         if (!currentUserId) {
@@ -345,6 +316,10 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
         return classicKey;
     }, [classicKey, classicOptions]);
 
+    useEffect(() => {
+        setIsClassicOpen(false);
+    }, [historyFocus, activeClassicKey]);
+
     const historyFocusMatches = useMemo(() => {
         if (!currentUserId) return [] as MatchState[];
         if (historyFocus === 'YO_1V1') return myAllMatchesSorted.filter((m) => m.mode === '1v1');
@@ -403,135 +378,60 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
         });
     }, [historyFocusMatches, currentUserId, getPlayerName]);
 
-    const globalPlayerStats = useMemo(() => {
-        const selectedModeMatches = matches.filter((m) => statsMode === 'GLOBAL' || m.mode === statsMode);
-        const stats: Record<string, { total: number; wins: number; losses: number; gf: number; gc: number }> = {};
-
-        selectedModeMatches.forEach((m) => {
-            const apply = (side: TeamId) => {
-                const opp = getOppositeTeam(side);
-                const playersInTeam = m.teams[side].players;
-                const teamScore = m.teams[side].score;
-                const oppScore = m.teams[opp].score;
-                playersInTeam.forEach((pid) => {
-                    stats[pid] = stats[pid] ?? { total: 0, wins: 0, losses: 0, gf: 0, gc: 0 };
-                    stats[pid].total += 1;
-                    stats[pid].gf += teamScore;
-                    stats[pid].gc += oppScore;
-                    if (m.winner === side) stats[pid].wins += 1;
-                    else stats[pid].losses += 1;
-                });
-            };
-            apply('nosotros');
-            apply('ellos');
-        });
-
-        return stats;
-    }, [matches, statsMode]);
-
-    const summaryRanking = useMemo(() => {
-        const rows = Object.entries(globalPlayerStats)
-            .map(([playerId, s]) => {
-                const score = s.wins;
-                const winRate = s.total ? Math.round((s.wins / s.total) * 100) : 0;
-                return {
-                    playerId,
-                    score,
-                    winRate,
-                    total: s.total,
-                    wins: s.wins,
-                    losses: s.losses,
-                    gf: s.gf,
-                    gc: s.gc
-                };
-            })
-            .filter((r) => r.total > 0)
-            .sort((a, b) => b.score - a.score || b.winRate - a.winRate || b.wins - a.wins);
-
-        const top3 = rows.slice(0, 3);
-        const myIndex = currentUserId ? rows.findIndex((r) => r.playerId === currentUserId) : -1;
-        return { rows, top3, myIndex };
-    }, [globalPlayerStats, currentUserId]);
-
-    const rankings = useMemo(() => {
-        const source = mode === 'ALL' ? analysisScopedMatches : analysisScopedMatches.filter((m) => m.mode === mode);
-
-        if (rankingType === 'PLAYERS') {
-            const stats: Record<string, { wins: number; total: number }> = {};
-            source.forEach((m) => {
-                if (!m.winner) return;
-                m.teams.nosotros.players.forEach((id) => {
-                    stats[id] = stats[id] ?? { wins: 0, total: 0 };
-                    stats[id].total += 1;
-                    if (m.winner === 'nosotros') stats[id].wins += 1;
-                });
-                m.teams.ellos.players.forEach((id) => {
-                    stats[id] = stats[id] ?? { wins: 0, total: 0 };
-                    stats[id].total += 1;
-                    if (m.winner === 'ellos') stats[id].wins += 1;
-                });
-            });
-
-            return Object.entries(stats)
-                .map(([id, s]) => ({
-                    id,
-                    label: getPlayerName(id),
-                    total: s.total,
-                    wins: s.wins,
-                    winRate: s.total ? Math.round((s.wins / s.total) * 100) : 0
-                }))
-                .filter((x) => x.total >= rankingMinMatches)
-                .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins);
-        }
-
-        const pairStats: Record<string, { wins: number; total: number; label: string }> = {};
-        source.forEach((m) => {
-            if (!m.winner) return;
-            if (m.pairs?.nosotros) {
-                const id = m.pairs.nosotros;
-                pairStats[id] = pairStats[id] ?? { wins: 0, total: 0, label: m.teams.nosotros.name };
-                pairStats[id].total += 1;
-                if (m.winner === 'nosotros') pairStats[id].wins += 1;
-            }
-            if (m.pairs?.ellos) {
-                const id = m.pairs.ellos;
-                pairStats[id] = pairStats[id] ?? { wins: 0, total: 0, label: m.teams.ellos.name };
-                pairStats[id].total += 1;
-                if (m.winner === 'ellos') pairStats[id].wins += 1;
-            }
-        });
-
-        return Object.entries(pairStats)
-            .map(([id, s]) => ({
-                id,
-                label: s.label,
-                total: s.total,
-                wins: s.wins,
-                winRate: s.total ? Math.round((s.wins / s.total) * 100) : 0
-            }))
-            .filter((x) => x.total >= rankingMinMatches)
-            .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins);
-    }, [analysisScopedMatches, mode, rankingType, getPlayerName, rankingMinMatches]);
-
-    const h2hSummary = useMemo(() => {
+    const classicSummary = useMemo(() => {
         if (!currentUserId) return { total: 0, wins: 0, losses: 0, winRate: 0 };
         let wins = 0;
         let losses = 0;
-        filteredMatches.forEach((m) => {
+        historyFocusMatches.forEach((m) => {
             const myTeam = getTeamIdForUser(m, currentUserId);
             if (!myTeam) return;
-            const oppTeam = getOppositeTeam(myTeam);
             if (m.winner === myTeam) wins++;
-            else if (m.winner === oppTeam) losses++;
+            else losses++;
         });
         const total = wins + losses;
         return {
             total,
             wins,
             losses,
-            winRate: total ? Math.round((wins / total) * 100) : 0
+            winRate: total > 0 ? Math.round((wins / total) * 100) : 0
         };
-    }, [filteredMatches, currentUserId]);
+    }, [historyFocusMatches, currentUserId]);
+
+    const classicSeriesGroups = useMemo(() => {
+        if (historyFocus !== 'CLASICOS') return [] as Array<{
+            id: string;
+            first: MatchState;
+            matches: MatchState[];
+            winsMine: number;
+            winsRival: number;
+        }>;
+        if (!currentUserId) return [];
+
+        const grouped = new Map<string, MatchState[]>();
+        historyFocusMatches
+            .filter((m) => Boolean(m.series?.id))
+            .forEach((m) => {
+                const sid = m.series!.id;
+                const arr = grouped.get(sid) ?? [];
+                arr.push(m);
+                grouped.set(sid, arr);
+            });
+
+        return Array.from(grouped.entries())
+            .map(([id, arr]) => {
+                const matches = [...arr].sort((a, b) => getMatchEffectiveDate(a) - getMatchEffectiveDate(b));
+                let winsMine = 0;
+                let winsRival = 0;
+                matches.forEach((m) => {
+                    const myTeam = getTeamIdForUser(m, currentUserId);
+                    if (!myTeam) return;
+                    if (m.winner === myTeam) winsMine++;
+                    else winsRival++;
+                });
+                return { id, first: matches[0], matches, winsMine, winsRival };
+            })
+            .sort((a, b) => getMatchEffectiveDate(b.matches[b.matches.length - 1]) - getMatchEffectiveDate(a.matches[a.matches.length - 1]));
+    }, [historyFocus, historyFocusMatches, currentUserId]);
 
     const groupedSeries = useMemo(() => {
         const map = new Map<string, MatchState[]>();
@@ -650,7 +550,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
             </div>
 
             <div className="flex gap-2 mb-4 overflow-x-auto no-scrollbar">
-                {(['SUMMARY', 'MATCHES', 'H2H', 'RANKING'] as const).map((t) => (
+                {(['SUMMARY', 'MATCHES'] as const).map((t) => (
                     <button
                         key={t}
                         onClick={() => setTab(t)}
@@ -666,7 +566,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                 <div className="text-[11px] text-white/55">{TAB_META[tab].hint}</div>
             </div>
 
-            {tab !== 'SUMMARY' && (
+            {tab === 'MATCHES' && (
                 <>
                     <div className="flex gap-2 mb-4 overflow-x-auto no-scrollbar">
                         {(['MINE', 'GLOBAL'] as const).map((s) => (
@@ -829,12 +729,12 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                             )}
 
                             <div className="flex flex-col gap-2">
-                                {compactHistory.length === 0 && (
+                                {historyFocus !== 'CLASICOS' && compactHistory.length === 0 && (
                                     <div className="text-sm text-white/30">
-                                        {historyFocus === 'CLASICOS' ? 'No hay clasicos (minimo 3 PJ por cruce).' : 'Sin partidos para esta vista.'}
+                                        Sin partidos para esta vista.
                                     </div>
                                 )}
-                                {compactHistory.map((row) => (
+                                {historyFocus !== 'CLASICOS' && compactHistory.map((row) => (
                                     <button key={row.id} onClick={() => setSelectedMatch(matches.find((m) => m.id === row.id) ?? null)} className="text-left bg-white/5 border border-white/10 rounded-xl px-3 py-2">
                                         <div className="text-[12px] font-black flex items-center gap-2">
                                             <span className={row.code === 'G' ? 'text-[var(--color-nosotros)]' : 'text-[var(--color-ellos)]'}>{row.code}</span>
@@ -843,48 +743,61 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                                         <div className="text-[10px] text-white/45 uppercase tracking-wider mt-1">{row.line2}</div>
                                     </button>
                                 ))}
-                            </div>
-                        </div>
 
-                        <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] p-5">
-                            <div className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-black mb-3">Ranking</div>
-                            <div className="grid grid-cols-3 gap-2 mb-3">
-                                {summaryRanking.top3.map((entry, idx) => {
-                                    const player = players.find((p) => p.id === entry.playerId);
-                                    const displayName = player?.nickname || player?.name || entry.playerId;
-                                    return (
-                                        <div key={entry.playerId} className="bg-white/5 border border-white/10 rounded-2xl p-3 text-center">
-                                            <div className="text-[10px] text-white/40 font-black mb-2">#{idx + 1}</div>
-                                            <div className="flex justify-center mb-2">
-                                                <AvatarBadge avatar={player?.avatar} name={displayName} size={52} />
+                                {historyFocus === 'CLASICOS' && (
+                                    <>
+                                        <button
+                                            onClick={() => setIsClassicOpen((v) => !v)}
+                                            className="text-left bg-white/5 border border-white/10 rounded-xl px-3 py-3"
+                                        >
+                                            <div className="text-[10px] text-white/45 uppercase tracking-widest font-black mb-1">
+                                                Resumen del clasico
                                             </div>
-                                            <div className="text-[11px] font-black truncate">{displayName}</div>
-                                            <div className="font-mono text-xl font-black text-[var(--color-accent)]">{entry.score}</div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                            <div className="flex flex-col gap-2">
-                                {summaryRanking.rows.slice(0, 10).map((entry, idx) => {
-                                    const player = players.find((p) => p.id === entry.playerId);
-                                    const displayName = player?.nickname || player?.name || entry.playerId;
-                                    const isMe = currentUserId === entry.playerId;
-                                    return (
-                                        <div key={entry.playerId} className={`rounded-xl px-3 py-2 border ${isMe ? 'bg-[var(--color-accent)]/15 border-[var(--color-accent)]/40' : 'bg-white/5 border-white/10'}`}>
-                                            <div className="flex items-center justify-between text-xs">
-                                                <span className="font-black">#{idx + 1} · {displayName}</span>
-                                                <span className="font-black font-mono">{entry.score}</span>
+                                            <div className="flex items-center justify-between text-sm font-black">
+                                                <span>PJ {classicSummary.total} · G {classicSummary.wins} · P {classicSummary.losses}</span>
+                                                <span className="font-mono">{classicSummary.winRate}%</span>
                                             </div>
-                                        </div>
-                                    );
-                                })}
-                                {summaryRanking.myIndex >= 10 && currentUserId && (
-                                    <div className="rounded-xl px-3 py-2 border bg-[var(--color-accent)]/15 border-[var(--color-accent)]/40">
-                                        <div className="flex items-center justify-between text-xs">
-                                            <span className="font-black">#{summaryRanking.myIndex + 1} · {getPlayerName(currentUserId)}</span>
-                                            <span className="font-black font-mono">{summaryRanking.rows[summaryRanking.myIndex]?.score ?? 0}</span>
-                                        </div>
-                                    </div>
+                                            <div className="text-[10px] text-white/45 uppercase tracking-wider mt-2">
+                                                {isClassicOpen ? 'Ocultar detalle' : 'Ver detalle'}
+                                            </div>
+                                        </button>
+
+                                        {!isClassicOpen && classicSummary.total === 0 && (
+                                            <div className="text-sm text-white/30">No hay clasicos (minimo 3 PJ por cruce).</div>
+                                        )}
+
+                                        {isClassicOpen && classicSummary.total > 0 && classicSeriesGroups.length > 0 && (
+                                            <div className="flex flex-col gap-2">
+                                                {classicSeriesGroups.map((serie) => (
+                                                    <div key={serie.id} className="bg-white/5 border border-white/10 rounded-xl px-3 py-3">
+                                                        <div className="text-[10px] text-white/45 uppercase tracking-widest font-black">
+                                                            Serie · {serie.matches[0].mode}
+                                                        </div>
+                                                        <div className="text-sm font-black mt-1">
+                                                            {serie.first.teams.nosotros.name} {serie.winsMine} - {serie.winsRival} {serie.first.teams.ellos.name}
+                                                        </div>
+                                                        <div className="text-[10px] text-white/45 mt-1">
+                                                            {serie.matches.length} partidos · {new Date(getMatchEffectiveDate(serie.matches[serie.matches.length - 1])).toLocaleDateString()}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {isClassicOpen && classicSummary.total > 0 && classicSeriesGroups.length === 0 && (
+                                            <div className="flex flex-col gap-2">
+                                                {compactHistory.map((row) => (
+                                                    <button key={row.id} onClick={() => setSelectedMatch(matches.find((m) => m.id === row.id) ?? null)} className="text-left bg-white/5 border border-white/10 rounded-xl px-3 py-2">
+                                                        <div className="text-[12px] font-black flex items-center gap-2">
+                                                            <span className={row.code === 'G' ? 'text-[var(--color-nosotros)]' : 'text-[var(--color-ellos)]'}>{row.code}</span>
+                                                            <span className="truncate">{row.line1}</span>
+                                                        </div>
+                                                        <div className="text-[10px] text-white/45 uppercase tracking-wider mt-1">{row.line2}</div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </>
                                 )}
                             </div>
                         </div>
@@ -1051,84 +964,6 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                     </div>
                 )}
 
-                {!isLoading && tab === 'H2H' && (
-                    <div className="flex flex-col gap-3 animate-in slide-in-from-bottom duration-300">
-                        <div className="flex gap-2 overflow-x-auto no-scrollbar">
-                            {(['ALL', '30D', '90D'] as const).map((w) => (
-                                <button
-                                    key={w}
-                                    onClick={() => setAnalysisWindow(w)}
-                                    className={`px-3 py-2 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap border ${analysisWindow === w ? 'bg-white text-black border-white' : 'bg-white/5 text-white/40 border-white/10'}`}
-                                >
-                                    {w === 'ALL' ? 'Todo' : w}
-                                </button>
-                            ))}
-                        </div>
-                        <div className="text-xs text-white/50">Filtrá por rival y modo para ver el cara a cara.</div>
-                        <select value={opponentId} onChange={(e) => setOpponentId(e.target.value)} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-xs font-bold">
-                            <option value="ALL">Seleccionar rival</option>
-                            {availableOpponents.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-                        </select>
-                        {(mode === '2v2' || mode === '3v3') && scope === 'MINE' && (
-                            <select value={opponentGroupKey} onChange={(e) => setOpponentGroupKey(e.target.value)} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-xs font-bold">
-                                <option value="ALL">Seleccionar equipo rival</option>
-                                {availableOpponentGroups.map((g) => <option key={g.id} value={g.id}>{g.label}</option>)}
-                            </select>
-                        )}
-                        <div className="bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] p-4">
-                            <div className="text-xs text-white/40 mb-2 uppercase font-black">Resultados en el filtro actual</div>
-                            <div className="text-2xl font-black">{h2hSummary.total} partidos</div>
-                            <div className="text-sm text-white/60 mt-2">
-                                G: {h2hSummary.wins} | P: {h2hSummary.losses}
-                            </div>
-                            <div className="text-sm text-white/60 mt-1">Efectividad: {h2hSummary.winRate}%</div>
-                        </div>
-                    </div>
-                )}
-
-                {!isLoading && tab === 'RANKING' && (
-                    <div className="flex flex-col gap-3 animate-in slide-in-from-bottom duration-300">
-                        <div className="flex gap-2 overflow-x-auto no-scrollbar">
-                            {(['ALL', '30D', '90D'] as const).map((w) => (
-                                <button
-                                    key={w}
-                                    onClick={() => setAnalysisWindow(w)}
-                                    className={`px-3 py-2 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap border ${analysisWindow === w ? 'bg-white text-black border-white' : 'bg-white/5 text-white/40 border-white/10'}`}
-                                >
-                                    {w === 'ALL' ? 'Todo' : w}
-                                </button>
-                            ))}
-                        </div>
-                        <div className="flex gap-2 overflow-x-auto no-scrollbar">
-                            {[1, 3, 5].map((min) => (
-                                <button
-                                    key={min}
-                                    onClick={() => setRankingMinMatches(min)}
-                                    className={`px-3 py-2 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap border ${rankingMinMatches === min ? 'bg-[var(--color-accent)] text-black border-[var(--color-accent)]' : 'bg-white/5 text-white/50 border-white/10'}`}
-                                >
-                                    Min {min} PJ
-                                </button>
-                            ))}
-                        </div>
-                        <div className="flex bg-[var(--color-surface)] p-1 rounded-xl border border-[var(--color-border)]">
-                            <button onClick={() => setRankingType('PLAYERS')} className={`flex-1 py-2 rounded-lg text-xs font-black ${rankingType === 'PLAYERS' ? 'bg-white text-black' : 'text-white/50'}`}>Jugadores</button>
-                            <button onClick={() => setRankingType('PAIRS')} className={`flex-1 py-2 rounded-lg text-xs font-black ${rankingType === 'PAIRS' ? 'bg-white text-black' : 'text-white/50'}`}>Parejas</button>
-                        </div>
-                        {rankings.length === 0 && <div className="text-center text-white/30 py-8 text-sm">Sin datos para ranking.</div>}
-                        {rankings.map((item, index) => (
-                            <div key={item.id} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 flex justify-between items-center">
-                                <div>
-                                    <div className="text-xs text-white/40">#{index + 1}</div>
-                                    <div className="font-black">{item.label}</div>
-                                </div>
-                                <div className="text-right">
-                                    <div className="text-xl font-black">{item.winRate}%</div>
-                                    <div className="text-[10px] text-white/40">{item.total} PJ | {item.wins} G | {item.total - item.wins} P</div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
             </div>
 
             {selectedMatch && (

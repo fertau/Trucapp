@@ -22,7 +22,7 @@ import './index.css';
 type AppStep = 'AUTH' | 'HOME' | 'SETUP_PLAYERS_COUNT' | 'SETUP_PLAYERS_SELECT' | 'SETUP_TEAMS' |
   'MATCH' | 'HISTORY' | 'PROFILE' |
   'PICAPICA_SETUP' | 'PICAPICA_HUB';
-type HistoryTab = 'SUMMARY' | 'MATCHES' | 'H2H' | 'RANKING';
+type HistoryTab = 'SUMMARY' | 'MATCHES';
 
 import { AccountSelector } from './components/AccountSelector';
 
