@@ -360,7 +360,7 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
                         onClick={() => setStartBestOf3((v) => !v)}
                         className={`w-full rounded-2xl border px-4 py-3 text-left transition-all ${startBestOf3 ? 'bg-[var(--color-accent)]/15 border-[var(--color-accent)]/40 text-[var(--color-accent)]' : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text-secondary)]'}`}
                     >
-                        <div className="text-sm font-black uppercase tracking-wide">Serie BO3 (mejor de 3)</div>
+                        <div className="text-sm font-black uppercase tracking-wide">Serie al mejor de 3</div>
                         <div className="text-[11px] opacity-80 mt-1">
                             {startBestOf3 ? 'Activado: se encadenan hasta 2 victorias.' : 'Desactivado: partido suelto.'}
                         </div>

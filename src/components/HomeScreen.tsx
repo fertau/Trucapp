@@ -4,7 +4,7 @@ import { useHistoryStore } from '../store/useHistoryStore';
 import { useMemo, useState } from 'react';
 import { AvatarBadge } from './AvatarBadge';
 import type { MatchState, TeamId } from '../types';
-import { getMatchEffectiveDate, getTeamRefKey, getTeamRefLabel } from '../utils/matchIdentity';
+import { getMatchEffectiveDate, getTeamRefLabel } from '../utils/matchIdentity';
 import { formatDateDisplay, formatDateTimeDisplay } from '../utils/date';
 
 interface HomeScreenProps {
@@ -77,6 +77,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
 
     const activeRivalry = useMemo(() => {
         if (!currentUserId) return null;
+        const playersKey = (ids: string[]) => [...ids].sort().join('|');
         const buckets = new Map<string, {
             mode: MatchState['mode'];
             label: string;
@@ -94,7 +95,9 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
             const mySide = getTeamIdForUser(m, currentUserId);
             if (!mySide) return;
             const oppSide: TeamId = mySide === 'nosotros' ? 'ellos' : 'nosotros';
-            const key = `${m.mode}:${getTeamRefKey(m, mySide)}:${getTeamRefKey(m, oppSide)}`;
+            const myPlayersKey = playersKey(m.teams[mySide].players);
+            const oppPlayersKey = playersKey(m.teams[oppSide].players);
+            const key = `${m.mode}:${myPlayersKey}:${oppPlayersKey}`;
             const label = m.mode === '1v1'
                 ? `1v1 vs ${m.teams[oppSide].players.map((id) => players.find((p) => p.id === id)?.name ?? id).join(' / ')}`
                 : `${m.mode} · ${getTeamRefLabel(m, mySide)} vs ${getTeamRefLabel(m, oppSide)}`;

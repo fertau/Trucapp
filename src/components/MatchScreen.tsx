@@ -361,7 +361,7 @@ const WinnerCelebration = ({ winner, teams, onFinish }: { winner: TeamId, teams:
 
                 {seriesProgress && (
                     <div className="mb-8 text-center bg-white/5 border border-white/10 rounded-2xl px-6 py-4 w-full">
-                        <div className="text-[10px] uppercase tracking-widest text-white/50 font-black mb-1">Serie BO3</div>
+                        <div className="text-[10px] uppercase tracking-widest text-white/50 font-black mb-1">Serie al mejor de 3</div>
                         <div className="text-xl font-black">
                             {teams.nosotros.name} {seriesProgress.winsNos} - {seriesProgress.winsEll} {teams.ellos.name}
                         </div>
