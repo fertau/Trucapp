@@ -105,7 +105,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                 form: []
             };
             const result: 'G' | 'P' = m.winner === mySide ? 'G' : 'P';
-            const nextForm = prev.form.length < 8 ? [...prev.form, result] : prev.form;
+            const cappedForm = prev.form.length < 10 ? [...prev.form, result] : prev.form;
             buckets.set(key, {
                 mode: m.mode,
                 label,
@@ -113,7 +113,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                 wins: prev.wins + (result === 'G' ? 1 : 0),
                 losses: prev.losses + (result === 'P' ? 1 : 0),
                 lastPlayedAt: Math.max(prev.lastPlayedAt, getMatchEffectiveDate(m)),
-                form: nextForm
+                form: cappedForm
             });
         });
 
@@ -173,39 +173,53 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                         {activeRivalry && (
                             <button
                                 onClick={onHistory}
-                                className="w-full text-left bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl px-4 py-4"
+                                className="w-full text-left bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl px-4 py-4 relative overflow-hidden"
                             >
+                                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(74,222,128,0.14),transparent_44%),radial-gradient(circle_at_100%_100%,rgba(255,255,255,0.04),transparent_40%)]" />
+                                <div className="relative">
                                 <div className="flex items-center justify-between gap-3">
                                     <div className="text-[10px] font-black uppercase tracking-widest text-[var(--color-accent)]">Rivalidad activa</div>
                                     <span className="inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/15 bg-white/5 text-white/75">
                                         {activeRivalry.mode}
                                     </span>
                                 </div>
-                                <div className="text-[28px] font-black leading-none mt-2 tabular-nums">
+                                <div className="text-[32px] font-black leading-none mt-2 tabular-nums">
                                     {activeRivalry.count} <span className="text-[15px] font-bold text-white/65">PJ</span>
                                 </div>
                                 <div className="text-sm font-black leading-tight mt-1">{activeRivalry.label.replace(`${activeRivalry.mode} · `, '')}</div>
-                                <div className="mt-2 flex items-center gap-3 text-[13px] font-black">
-                                    <span className="text-[var(--color-nosotros)]">G {activeRivalry.wins}</span>
-                                    <span className="text-white/30">·</span>
-                                    <span className="text-[var(--color-ellos)]">P {activeRivalry.losses}</span>
-                                </div>
-                                <div className="mt-3 flex items-center justify-center gap-1.5">
+                                <div className="text-[10px] uppercase tracking-[0.2em] text-white/45 font-black mt-3 text-center">Ultimos 10</div>
+                                <div className="mt-2 flex items-center justify-center gap-1.5">
                                     {Array.from({ length: 10 }).map((_, idx) => {
                                         const item = activeRivalry.form[idx];
                                         const cls = item === 'G'
-                                            ? 'bg-[var(--color-nosotros)]/20 border-[var(--color-nosotros)]/45'
+                                            ? 'bg-[var(--color-nosotros)] border-[var(--color-nosotros)]/90 shadow-[0_0_10px_rgba(74,222,128,0.4)]'
                                             : item === 'P'
-                                                ? 'bg-[var(--color-ellos)]/20 border-[var(--color-ellos)]/45'
-                                                : 'bg-white/5 border-white/10';
+                                                ? 'bg-[var(--color-ellos)] border-[var(--color-ellos)]/90 shadow-[0_0_10px_rgba(251,191,36,0.35)]'
+                                                : 'bg-white/5 border-white/15';
                                         return (
                                             <span
                                                 key={`home-form-slot-${idx}`}
-                                                className={`w-5 h-5 rounded-md border ${cls}`}
+                                                className={`w-4 h-4 rounded-full border ${cls}`}
                                                 title={item ? `Partido ${idx + 1}: ${item}` : `Partido ${idx + 1}: sin dato`}
                                             />
                                         );
                                     })}
+                                </div>
+                                <div className="w-full h-px bg-white/10 my-3" />
+                                <div className="grid grid-cols-3 gap-2">
+                                    <div className="text-center">
+                                        <div className="text-[26px] font-black font-mono leading-none text-white">{activeRivalry.count}</div>
+                                        <div className="text-[10px] uppercase tracking-widest font-black text-white/50 mt-1">PJ</div>
+                                    </div>
+                                    <div className="text-center">
+                                        <div className="text-[26px] font-black font-mono leading-none text-[var(--color-nosotros)]">{activeRivalry.wins}</div>
+                                        <div className="text-[10px] uppercase tracking-widest font-black text-white/50 mt-1">G</div>
+                                    </div>
+                                    <div className="text-center">
+                                        <div className="text-[26px] font-black font-mono leading-none text-[var(--color-ellos)]">{activeRivalry.losses}</div>
+                                        <div className="text-[10px] uppercase tracking-widest font-black text-white/50 mt-1">P</div>
+                                    </div>
+                                </div>
                                 </div>
                             </button>
                         )}
