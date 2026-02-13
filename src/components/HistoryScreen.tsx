@@ -619,7 +619,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                 )}
 
                 {!isLoading && tab === 'SUMMARY' && (
-                    <div className="flex flex-col gap-4 animate-in slide-in-from-bottom duration-300">
+                    <div className="flex flex-col gap-3 animate-in slide-in-from-bottom duration-300">
                         <div className="flex gap-2 overflow-x-auto no-scrollbar">
                             {STATS_MODE_TABS.map((sm) => (
                                 <button
@@ -632,38 +632,41 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                             ))}
                         </div>
 
-                        <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] p-5">
-                            <div className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-black mb-3">Resumen {statsMode}</div>
+                        <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] p-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="text-[10px] text-white/40 uppercase tracking-[0.18em] font-black">Resumen {statsMode}</div>
+                                <div className="text-[10px] text-white/45 font-black uppercase tracking-wider">{summaryStats.total} PJ</div>
+                            </div>
                             <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-white/5 rounded-2xl p-4">
-                                    <div className="text-[11px] text-white/50 font-black uppercase">PJ</div>
-                                    <div className="text-3xl font-black font-mono leading-tight">{summaryStats.total}</div>
+                                <div className="bg-white/5 rounded-2xl p-3">
+                                    <div className="text-[10px] text-white/50 font-black uppercase tracking-wider">PJ</div>
+                                    <div className="text-[30px] font-black font-mono leading-tight mt-0.5">{summaryStats.total}</div>
                                 </div>
-                                <div className="bg-white/5 rounded-2xl p-4">
-                                    <div className="text-[11px] text-white/50 font-black uppercase">G/P</div>
-                                    <div className="text-2xl font-black font-mono leading-tight">{summaryStats.wins}/{summaryStats.losses}</div>
+                                <div className="bg-white/5 rounded-2xl p-3">
+                                    <div className="text-[10px] text-white/50 font-black uppercase tracking-wider">G/P</div>
+                                    <div className="text-[26px] font-black font-mono leading-tight mt-0.5">{summaryStats.wins}/{summaryStats.losses}</div>
                                 </div>
-                                <div className="bg-white/5 rounded-2xl p-4">
-                                    <div className="text-[11px] text-white/50 font-black uppercase">GD</div>
-                                    <div className={`text-3xl font-black font-mono leading-tight ${summaryStats.gd >= 0 ? 'text-[var(--color-nosotros)]' : 'text-[var(--color-ellos)]'}`}>
+                                <div className="bg-white/5 rounded-2xl p-3">
+                                    <div className="text-[10px] text-white/50 font-black uppercase tracking-wider">GD</div>
+                                    <div className={`text-[30px] font-black font-mono leading-tight mt-0.5 ${summaryStats.gd >= 0 ? 'text-[var(--color-nosotros)]' : 'text-[var(--color-ellos)]'}`}>
                                         {summaryStats.gd >= 0 ? `+${summaryStats.gd}` : summaryStats.gd}
                                     </div>
                                 </div>
-                                <div className="bg-white/5 rounded-2xl p-4">
-                                    <div className="text-[11px] text-white/50 font-black uppercase">Win%</div>
-                                    <div className="text-3xl font-black font-mono leading-tight">{summaryStats.winRate}%</div>
+                                <div className="bg-white/5 rounded-2xl p-3">
+                                    <div className="text-[10px] text-white/50 font-black uppercase tracking-wider">Win%</div>
+                                    <div className="text-[30px] font-black font-mono leading-tight mt-0.5">{summaryStats.winRate}%</div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] p-5">
-                            <div className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-black mb-3">Historial principal</div>
-                            <div className="flex gap-2 overflow-x-auto no-scrollbar mb-3">
+                        <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] p-4">
+                            <div className="text-[10px] text-white/40 uppercase tracking-[0.18em] font-black mb-3">Historial principal</div>
+                            <div className="flex gap-2 overflow-x-auto no-scrollbar mb-2">
                                 {HISTORY_FOCUS_TABS.map((hf) => (
                                     <button
                                         key={hf.key}
                                         onClick={() => setHistoryFocus(hf.key)}
-                                        className={`px-3 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border whitespace-nowrap ${historyFocus === hf.key ? 'bg-[var(--color-accent)] text-black border-[var(--color-accent)]' : 'bg-white/5 text-white/45 border-white/10'}`}
+                                        className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border whitespace-nowrap ${historyFocus === hf.key ? 'bg-[var(--color-accent)] text-black border-[var(--color-accent)]' : 'bg-white/5 text-white/45 border-white/10'}`}
                                     >
                                         {hf.label}
                                     </button>
@@ -699,18 +702,26 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                             <div className="flex flex-col gap-2">
                                 <button
                                     onClick={() => setIsClassicOpen((v) => !v)}
-                                    className="text-left bg-white/5 border border-white/10 rounded-xl px-3 py-3"
+                                    className="text-left bg-white/5 border border-white/10 rounded-2xl px-3 py-3"
                                 >
-                                    <div className="text-[10px] text-white/45 uppercase tracking-widest font-black mb-1">
+                                    <div className="text-[10px] text-white/45 uppercase tracking-[0.14em] font-black mb-1">
                                         Ficha resumen
                                     </div>
-                                    <div className="flex items-center justify-between text-sm font-black">
+                                    <div className="flex items-center justify-between text-[13px] font-black">
                                         <span>PJ {historySummary.total} · G {historySummary.wins} · P {historySummary.losses}</span>
-                                        <span className="font-mono">{historySummary.winRate}%</span>
+                                        <span className="font-mono text-base">{historySummary.winRate}%</span>
                                     </div>
                                     {historyForm.length > 0 && (
-                                        <div className="text-[10px] text-white/55 uppercase tracking-wider mt-2">
-                                            Forma: {historyForm.join(' · ')}
+                                        <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                                            <span className="text-[10px] text-white/45 uppercase tracking-wider font-black mr-1">Forma</span>
+                                            {historyForm.map((item, idx) => (
+                                                <span
+                                                    key={`${item}-${idx}`}
+                                                    className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black ${item === 'G' ? 'bg-[var(--color-nosotros)]/20 text-[var(--color-nosotros)]' : 'bg-[var(--color-ellos)]/20 text-[var(--color-ellos)]'}`}
+                                                >
+                                                    {item}
+                                                </span>
+                                            ))}
                                         </div>
                                     )}
                                     <div className="text-[10px] text-white/45 uppercase tracking-wider mt-2">
@@ -727,7 +738,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                                 {isClassicOpen && historySummary.total > 0 && historyFocus === 'CLASICOS' && classicSeriesGroups.length > 0 && (
                                     <div className="flex flex-col gap-2">
                                         {classicSeriesGroups.map((serie) => (
-                                            <div key={serie.id} className="bg-white/5 border border-white/10 rounded-xl px-3 py-3">
+                                            <div key={serie.id} className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5">
                                                 <div className="text-[10px] text-white/45 uppercase tracking-widest font-black">
                                                     Serie · {serie.matches[0].mode}
                                                 </div>
@@ -745,12 +756,12 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                                 {isClassicOpen && historySummary.total > 0 && (historyFocus !== 'CLASICOS' || classicSeriesGroups.length === 0) && (
                                     <div className="flex flex-col gap-2">
                                         {compactHistory.map((row) => (
-                                            <button key={row.id} onClick={() => setSelectedMatch(matches.find((m) => m.id === row.id) ?? null)} className="text-left bg-white/5 border border-white/10 rounded-xl px-3 py-2">
-                                                <div className="text-[12px] font-black flex items-center gap-2">
-                                                    <span className={row.code === 'G' ? 'text-[var(--color-nosotros)]' : 'text-[var(--color-ellos)]'}>{row.code}</span>
+                                            <button key={row.id} onClick={() => setSelectedMatch(matches.find((m) => m.id === row.id) ?? null)} className="text-left bg-white/5 border border-white/10 rounded-xl px-3 py-2.5">
+                                                <div className="text-[12px] font-black flex items-center gap-2.5">
+                                                    <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] ${row.code === 'G' ? 'bg-[var(--color-nosotros)]/20 text-[var(--color-nosotros)]' : 'bg-[var(--color-ellos)]/20 text-[var(--color-ellos)]'}`}>{row.code}</span>
                                                     <span className="truncate">{row.line1}</span>
                                                 </div>
-                                                <div className="text-[10px] text-white/45 uppercase tracking-wider mt-1">{row.line2}</div>
+                                                <div className="text-[10px] text-white/45 uppercase tracking-[0.08em] mt-1">{row.line2}</div>
                                             </button>
                                         ))}
                                     </div>
@@ -815,6 +826,11 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                         )}
 
                         {filteredMatches.length === 0 && <div className="text-center text-white/30 py-8 text-sm">No hay partidos con esos filtros.</div>}
+                        {filteredMatches.length > 0 && (
+                            <div className="text-[10px] uppercase tracking-[0.16em] text-white/45 font-black px-1">
+                                {filteredMatches.length} resultado{filteredMatches.length === 1 ? '' : 's'}
+                            </div>
+                        )}
 
                         {matchListView === 'SERIES' && groupedSeries.length > 0 && (
                             <div className="flex flex-col gap-3">
