@@ -440,7 +440,14 @@ function App() {
 
   if (effectiveStep === 'SETUP_PLAYERS_COUNT') {
     return (
-      <div className="flex flex-col h-full bg-[var(--color-bg)] p-8 justify-center items-center relative">
+      <div className="flex flex-col h-full bg-[var(--color-bg)] p-8 justify-center items-center relative safe-px safe-pt safe-pb">
+        <button
+          onClick={() => setStep('HOME')}
+          className="absolute top-6 left-6 text-[var(--color-text-muted)] font-black text-[10px] uppercase tracking-[0.3em] bg-white/5 py-2 px-4 rounded-full active:scale-95 transition-all z-20"
+        >
+          ← VOLVER
+        </button>
+
         <h2 className="text-2xl font-bold mb-8">¿Cuántos juegan?</h2>
 
         <div className="flex flex-col gap-4 w-full max-w-xs">
@@ -463,10 +470,7 @@ function App() {
             6 jugadores (3v3 Pica-Pica)
           </button>
 
-          <button
-            onClick={() => setStep('HOME')}
-            className="mt-8 text-[var(--color-text-muted)]"
-          >
+          <button onClick={() => setStep('HOME')} className="mt-8 text-[var(--color-text-muted)]">
             Cancelar
           </button>
         </div>
