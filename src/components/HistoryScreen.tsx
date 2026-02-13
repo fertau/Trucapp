@@ -1719,9 +1719,7 @@ const MatchDetailDrawer = ({ match, currentUserId, getPlayerName, locationSugges
                         <label className="text-[10px] uppercase text-white/40 font-black">Fecha</label>
                         <input
                             disabled={!isEditing}
-                            type="text"
-                            inputMode="numeric"
-                            placeholder="DD/MM/AA"
+                            type="date"
                             value={date}
                             onChange={(e) => setDate(e.target.value)}
                             className="w-full mt-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-sm disabled:opacity-60"

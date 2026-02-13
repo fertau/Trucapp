@@ -239,7 +239,7 @@ function App() {
             const nextGameNumber = all.length + 1;
             const nextMetadata = {
               location: matchState.metadata?.location ?? 'Sin ubicación',
-              date: Date.now()
+              date: matchState.metadata?.date ?? Date.now()
             };
 
             resetMatch(matchState.mode);
@@ -324,7 +324,7 @@ function App() {
             useMatchStore.getState().setTeamName('ellos', baseMatch.teams.ellos.name);
             setPlayers('nosotros', baseMatch.teams.nosotros.players);
             setPlayers('ellos', baseMatch.teams.ellos.players);
-            setMetadata(baseMatch.metadata?.location ?? 'Sin ubicación', Date.now());
+            setMetadata(baseMatch.metadata?.location ?? 'Sin ubicación', baseMatch.metadata?.date ?? Date.now());
             if (baseMatch.pairs?.nosotros) setPairId('nosotros', baseMatch.pairs.nosotros);
             if (baseMatch.pairs?.ellos) setPairId('ellos', baseMatch.pairs.ellos);
 

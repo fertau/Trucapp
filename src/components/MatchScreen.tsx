@@ -243,9 +243,7 @@ const ManualScoreModal = ({ nosotros, ellos, onClose, onConfirm }: {
                     <div className="flex flex-col gap-1">
                         <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">Fecha</label>
                         <input
-                            type="text"
-                            inputMode="numeric"
-                            placeholder="DD/MM/AA"
+                            type="date"
                             className="bg-[var(--color-bg)] border border-[var(--color-border)] p-3 rounded-xl text-sm font-bold w-full focus:border-[var(--color-accent)] outline-none"
                             value={date}
                             onChange={(e) => setDate(e.target.value)}

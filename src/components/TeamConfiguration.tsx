@@ -375,9 +375,7 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
                     <div className="flex flex-col gap-1.5">
                         <label className="text-[9px] font-black uppercase text-[var(--color-text-muted)] ml-2">Fecha (Opcional)</label>
                         <input
-                            type="text"
-                            inputMode="numeric"
-                            placeholder="DD/MM/AA"
+                            type="date"
                             className="bg-[var(--color-surface)] border border-[var(--color-border)] p-4 rounded-2xl w-full font-bold text-sm outline-none focus:border-[var(--color-accent)]"
                             value={customDate}
                             onChange={(e) => setCustomDate(e.target.value)}
