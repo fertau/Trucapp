@@ -17,8 +17,10 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
     const currentUserId = useAuthStore(state => state.currentUserId);
     const players = useUserStore(state => state.players);
     const matches = useHistoryStore(state => state.matches);
+    const isHistoryLoading = useHistoryStore(state => state.isLoading);
     const [tab, setTab] = useState<'PARTIDO' | 'HISTORIAL'>('PARTIDO');
     const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('trucapp-onboarding-v1'));
+    const showHomeSkeleton = isHistoryLoading && matches.length === 0;
     const validFinishedMatches = useMemo(() => (
         matches.filter((m) => m.isFinished && (m.teams.nosotros.score + m.teams.ellos.score > 0))
     ), [matches]);
@@ -135,9 +137,20 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto pb-36 scroll-safe pr-2">
+            <div className="flex-1 overflow-y-auto pb-36 scroll-safe custom-scrollbar pr-2">
                 {tab === 'PARTIDO' && (
-                    <div className="flex flex-col gap-4 animate-in slide-in-from-bottom duration-300">
+                    <div className="flex flex-col gap-4 tab-content-enter">
+                        {showHomeSkeleton && (
+                            <div className="flex flex-col gap-3">
+                                <div className="h-14 skeleton-block rounded-2xl" />
+                                <div className="h-56 skeleton-block rounded-3xl" />
+                                <div className="h-36 skeleton-block rounded-3xl" />
+                                <div className="h-24 skeleton-block rounded-2xl" />
+                            </div>
+                        )}
+
+                        {!showHomeSkeleton && (
+                            <>
                         {showOnboarding && (
                             <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4">
                                 <div className="flex items-start justify-between gap-3 mb-2">
@@ -162,7 +175,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
 
                         <button
                             onClick={onNewMatch}
-                            className="bg-[var(--color-accent)] text-white py-5 rounded-lg font-bold text-xl shadow-lg shadow-blue-900/20 active:scale-[0.98] transition-all"
+                            className="bg-[var(--color-accent)] text-white py-5 rounded-lg font-bold text-xl shadow-lg shadow-blue-900/20 active:scale-[0.98] transition-all card-smooth"
                         >
                             NUEVO PARTIDO
                         </button>
@@ -174,7 +187,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                         {activeRivalry && (
                             <button
                                 onClick={onHistory}
-                                className="w-full text-left bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl px-4 py-4 relative overflow-hidden"
+                                className="w-full text-left bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl px-4 py-4 relative overflow-hidden card-smooth"
                             >
                                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(74,222,128,0.14),transparent_44%),radial-gradient(circle_at_100%_100%,rgba(255,255,255,0.04),transparent_40%)]" />
                                 <div className="relative">
@@ -245,7 +258,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                                 const boText = m.series ? `BO${(m.series.targetWins * 2) - 1}` : '';
 
                                 return (
-                                    <div key={item.key} className="bg-[var(--color-surface)] px-4 py-3 rounded-[1.25rem] border border-[var(--color-border)] shadow-sm">
+                                    <div key={item.key} className="bg-[var(--color-surface)] px-4 py-3 rounded-[1.25rem] border border-[var(--color-border)] shadow-sm card-smooth">
                                         <div className="flex items-start justify-between gap-3 mb-2">
                                             <div className="min-w-0">
                                                 <div className="text-[10px] font-black uppercase tracking-widest text-white/45">{dateText}</div>
@@ -319,7 +332,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                             {validFinishedMatches.slice(0, 3).map((m) => {
                                 const wasEdited = Boolean(m.editedFlags?.resultEdited);
                                 return (
-                                    <div key={`news-${m.id}`} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl px-4 py-2.5">
+                                    <div key={`news-${m.id}`} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl px-4 py-2.5 card-smooth">
                                         {wasEdited && (
                                             <div className="text-[10px] uppercase tracking-widest text-white/40 font-black">
                                                 Resultado editado
@@ -336,6 +349,8 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                             })}
                             {validFinishedMatches.length === 0 && <p className="text-[var(--color-text-muted)]">Sin novedades todavía.</p>}
                         </div>
+                            </>
+                        )}
                     </div>
                 )}
 
@@ -358,7 +373,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                                     setTab(item.id);
                                     if (item.id === 'HISTORIAL') onHistory();
                                 }}
-                                className={`min-h-11 py-3 rounded-xl text-xs font-black uppercase tracking-widest border transition-all ${tab === item.id
+                                className={`min-h-11 py-3 rounded-xl text-xs font-black uppercase tracking-widest border transition-all card-smooth ${tab === item.id
                                     ? 'bg-[var(--color-accent)] text-black border-[var(--color-accent)]'
                                     : 'bg-white/5 text-white/55 border-white/10'
                                     }`}

@@ -137,7 +137,7 @@ const ScoreSettingsModal = ({ currentTarget, currentNos, currentEll, onClose, on
     };
 
     return (
-        <div className="fixed inset-0 z-[120] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[120] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm safe-pt safe-pb safe-px">
             <div className="w-full max-w-xs rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
                 <h3 className="text-lg font-black uppercase tracking-wide mb-1">Configurar Partido</h3>
                 <p className="text-[11px] text-[var(--color-text-muted)] uppercase tracking-wider mb-4">Puntos objetivo</p>
@@ -201,7 +201,7 @@ const ManualScoreModal = ({ nosotros, ellos, onClose, onConfirm }: {
     };
 
     return (
-        <div className="fixed inset-0 z-[100] bg-black/80 flex flex-col items-center justify-center p-6 backdrop-blur-sm overflow-y-auto">
+        <div className="fixed inset-0 z-[100] bg-black/80 flex flex-col items-center justify-center p-6 backdrop-blur-sm overflow-y-auto custom-scrollbar safe-pt safe-pb safe-px">
             <div className="bg-[var(--color-surface)] border border-[var(--color-border)] p-6 rounded-3xl w-full max-w-sm shadow-2xl animate-in zoom-in duration-300 my-8">
                 <h2 className="text-xl font-black mb-1 uppercase tracking-tighter">RESULTADO FINAL</h2>
                 <p className="text-xs font-bold text-[var(--color-text-muted)] mb-6 uppercase tracking-widest">Ingreso manual detallado</p>

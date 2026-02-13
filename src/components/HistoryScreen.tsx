@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type TouchEventHandler } from 'react';
 import { useHistoryStore } from '../store/useHistoryStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useUserStore } from '../store/useUserStore';
@@ -94,6 +94,8 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
     const [favoriteClassicKeys, setFavoriteClassicKeys] = useState<string[]>([]);
     const [savedViews, setSavedViews] = useState<SavedHistoryView[]>([]);
     const loadMoreAnchorRef = useRef<HTMLDivElement | null>(null);
+    const edgeSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
+    const edgeSwipeTriggeredRef = useRef(false);
 
     useEffect(() => {
         setTab(initialTab);
@@ -714,10 +716,43 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
         return () => observer.disconnect();
     }, [tab, hasMore, isLoadingMore, loadMoreMatches, canAutoLoadMore]);
 
+    const onRootTouchStart: TouchEventHandler<HTMLDivElement> = (e) => {
+        if (selectedMatch || selectedSeriesId) return;
+        const t = e.touches[0];
+        if (!t) return;
+        if (t.clientX > 28) {
+            edgeSwipeStartRef.current = null;
+            edgeSwipeTriggeredRef.current = false;
+            return;
+        }
+        edgeSwipeStartRef.current = { x: t.clientX, y: t.clientY };
+        edgeSwipeTriggeredRef.current = false;
+    };
+
+    const onRootTouchMove: TouchEventHandler<HTMLDivElement> = (e) => {
+        if (!edgeSwipeStartRef.current || edgeSwipeTriggeredRef.current) return;
+        const t = e.touches[0];
+        if (!t) return;
+        const dx = t.clientX - edgeSwipeStartRef.current.x;
+        const dy = Math.abs(t.clientY - edgeSwipeStartRef.current.y);
+        if (dx > 82 && dy < 36) {
+            edgeSwipeTriggeredRef.current = true;
+            onBack();
+        }
+    };
+
+    const onRootTouchEnd: TouchEventHandler<HTMLDivElement> = () => {
+        edgeSwipeStartRef.current = null;
+        edgeSwipeTriggeredRef.current = false;
+    };
+
     return (
         <div
-            className="full-screen bg-[var(--color-bg)] flex flex-col p-5 overflow-hidden"
+            className="full-screen bg-[var(--color-bg)] flex flex-col p-5 overflow-hidden safe-px"
             style={{ paddingTop: 'max(20px, env(safe-area-inset-top))', paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
+            onTouchStart={onRootTouchStart}
+            onTouchMove={onRootTouchMove}
+            onTouchEnd={onRootTouchEnd}
         >
             <div className="flex items-center justify-between mb-6">
                 <button onClick={onBack} className="text-[var(--color-text-muted)] font-black text-[10px] uppercase tracking-[0.3em] bg-white/5 py-2 px-4 rounded-full active:scale-95 transition-all">
@@ -733,7 +768,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                     <button
                         key={t}
                         onClick={() => setTab(t)}
-                        className={`px-3 py-2 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap border ${tab === t ? 'bg-white text-black border-white' : 'bg-white/5 text-white/40 border-white/10'}`}
+                        className={`px-3 py-2 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap border card-smooth ${tab === t ? 'bg-white text-black border-white' : 'bg-white/5 text-white/40 border-white/10'}`}
                     >
                         {TAB_META[t].title}
                     </button>
@@ -832,17 +867,18 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                 </>
             )}
 
-            <div className="flex-1 overflow-y-auto pb-10 custom-scrollbar scroll-safe pr-2">
+            <div className="flex-1 overflow-y-auto pb-10 custom-scrollbar scroll-safe pr-3">
                 {isLoading && (
-                    <div className="space-y-3 animate-pulse">
-                        <div className="h-20 rounded-2xl bg-white/5" />
-                        <div className="h-20 rounded-2xl bg-white/5" />
-                        <div className="h-20 rounded-2xl bg-white/5" />
+                    <div className="space-y-3">
+                        <div className="h-24 skeleton-block rounded-3xl" />
+                        <div className="h-40 skeleton-block rounded-3xl" />
+                        <div className="h-20 skeleton-block rounded-2xl" />
+                        <div className="h-20 skeleton-block rounded-2xl" />
                     </div>
                 )}
 
                 {!isLoading && tab === 'SUMMARY' && (
-                    <div className="flex flex-col gap-3 animate-in slide-in-from-bottom duration-300">
+                    <div className="flex flex-col gap-3 tab-content-enter">
                         <div className="flex gap-2 overflow-x-auto no-scrollbar">
                             {STATS_MODE_TABS.map((sm) => (
                                 <button
@@ -855,7 +891,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                             ))}
                         </div>
 
-                        <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] p-4 relative overflow-hidden">
+                        <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] p-4 relative overflow-hidden card-smooth">
                             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(74,222,128,0.14),transparent_44%),radial-gradient(circle_at_100%_100%,rgba(255,255,255,0.04),transparent_40%)]" />
                             <div className="relative">
                             <div className="flex items-center justify-between mb-3">
@@ -902,7 +938,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                             </div>
                         </div>
 
-                        <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] p-4">
+                        <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] p-4 card-smooth">
                             <div className="text-[10px] text-white/40 uppercase tracking-[0.18em] font-black mb-3">Historial principal</div>
                             <div className="flex gap-2 overflow-x-auto no-scrollbar mb-2">
                                 {HISTORY_FOCUS_TABS.map((hf) => (
@@ -1117,7 +1153,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                 )}
 
                 {!isLoading && tab === 'MATCHES' && (
-                    <div className="flex flex-col gap-3 animate-in slide-in-from-bottom duration-300">
+                    <div className="flex flex-col gap-3 tab-content-enter">
                         <input
                             type="text"
                             value={search}
@@ -1129,13 +1165,13 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                         <div className="flex bg-[var(--color-surface)] p-1 rounded-xl border border-[var(--color-border)]">
                             <button
                                 onClick={() => setMatchListView('SERIES')}
-                                className={`flex-1 py-2 rounded-lg text-xs font-black ${matchListView === 'SERIES' ? 'bg-white text-black' : 'text-white/50'}`}
+                                className={`flex-1 py-2 rounded-lg text-xs font-black card-smooth ${matchListView === 'SERIES' ? 'bg-white text-black' : 'text-white/50'}`}
                             >
                                 Series
                             </button>
                             <button
                                 onClick={() => setMatchListView('MATCHES')}
-                                className={`flex-1 py-2 rounded-lg text-xs font-black ${matchListView === 'MATCHES' ? 'bg-white text-black' : 'text-white/50'}`}
+                                className={`flex-1 py-2 rounded-lg text-xs font-black card-smooth ${matchListView === 'MATCHES' ? 'bg-white text-black' : 'text-white/50'}`}
                             >
                                 Partidos
                             </button>
@@ -1187,7 +1223,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                                     const lastLocation = lastMatch.metadata?.location?.trim() || 'Sin sede';
                                     const canQuickStart = scope === 'MINE' && !!currentUserId && isParticipant(first, currentUserId);
                                     return (
-                                        <div key={sid} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl overflow-hidden">
+                                        <div key={sid} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl overflow-hidden card-smooth">
                                             <button
                                                 onClick={() => setOpenSeriesId((v) => (v === sid ? null : sid))}
                                                 className="w-full text-left p-3"
@@ -1271,7 +1307,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                                 <button
                                     key={m.id}
                                     onClick={() => setSelectedMatch(m)}
-                                    className="w-full text-left bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 active:scale-[0.99] transition-transform"
+                                    className="w-full text-left bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 active:scale-[0.99] transition-transform card-smooth"
                                 >
                                     <div className="flex justify-between items-center mb-2">
                                         <span className="text-[10px] uppercase text-white/40 font-black tracking-widest">{m.mode}</span>
@@ -1391,6 +1427,8 @@ const SeriesDetailDrawer = ({
 }: SeriesDetailDrawerProps) => {
     const [isSavingSeries, setIsSavingSeries] = useState(false);
     const [seriesName, setSeriesName] = useState(series.seriesName);
+    const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+    const swipeTriggeredRef = useRef(false);
 
     const mySide = currentUserId ? getTeamIdForUser(series.first, currentUserId) : null;
     const filteredTimeline = useMemo(() => {
@@ -1401,11 +1439,38 @@ const SeriesDetailDrawer = ({
         });
     }, [series.matches, mySide, resultFilter]);
 
+    const onDrawerTouchStart: TouchEventHandler<HTMLDivElement> = (e) => {
+        const t = e.touches[0];
+        if (!t) return;
+        swipeStartRef.current = { x: t.clientX, y: t.clientY };
+        swipeTriggeredRef.current = false;
+    };
+
+    const onDrawerTouchMove: TouchEventHandler<HTMLDivElement> = (e) => {
+        if (!swipeStartRef.current || swipeTriggeredRef.current) return;
+        const t = e.touches[0];
+        if (!t) return;
+        const dy = t.clientY - swipeStartRef.current.y;
+        const dx = Math.abs(t.clientX - swipeStartRef.current.x);
+        if (dy > 96 && dx < 42) {
+            swipeTriggeredRef.current = true;
+            onClose();
+        }
+    };
+
+    const onDrawerTouchEnd: TouchEventHandler<HTMLDivElement> = () => {
+        swipeStartRef.current = null;
+        swipeTriggeredRef.current = false;
+    };
+
     return (
         <div className="fixed inset-0 z-[121] bg-black/70 backdrop-blur-sm flex items-end">
             <div
-                className="w-full bg-[var(--color-bg)] border-t border-[var(--color-border)] rounded-t-3xl p-5 max-h-[88vh] overflow-y-auto"
-                style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
+                className="w-full bg-[var(--color-bg)] border-t border-[var(--color-border)] rounded-t-3xl p-5 max-h-[88vh] overflow-y-auto custom-scrollbar safe-px safe-pb"
+                style={{ paddingTop: 'max(12px, env(safe-area-inset-top))', paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
+                onTouchStart={onDrawerTouchStart}
+                onTouchMove={onDrawerTouchMove}
+                onTouchEnd={onDrawerTouchEnd}
             >
                 <div className="sticky top-0 z-10 bg-[var(--color-bg)] pb-3">
                     <div className="flex justify-between items-center mb-3">
@@ -1531,6 +1596,8 @@ const MatchDetailDrawer = ({ match, currentUserId, getPlayerName, locationSugges
     const [scoreNos, setScoreNos] = useState(match.teams.nosotros.score);
     const [scoreEll, setScoreEll] = useState(match.teams.ellos.score);
     const [winner, setWinner] = useState<TeamId | null>(match.winner ?? null);
+    const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+    const swipeTriggeredRef = useRef(false);
 
     const canEdit = isParticipant(match, currentUserId);
     const editTitle = useMemo(() => {
@@ -1539,6 +1606,30 @@ const MatchDetailDrawer = ({ match, currentUserId, getPlayerName, locationSugges
         const fields = last.fields.map((f) => `${f.key}: ${f.before ?? '-'} -> ${f.after ?? '-'}`).join(' | ');
         return `Editado por ${getPlayerName(last.byUserId)} el ${formatDateTimeDisplay(last.at)}. ${fields}`;
     }, [match.edits, getPlayerName]);
+
+    const onDrawerTouchStart: TouchEventHandler<HTMLDivElement> = (e) => {
+        const t = e.touches[0];
+        if (!t) return;
+        swipeStartRef.current = { x: t.clientX, y: t.clientY };
+        swipeTriggeredRef.current = false;
+    };
+
+    const onDrawerTouchMove: TouchEventHandler<HTMLDivElement> = (e) => {
+        if (!swipeStartRef.current || swipeTriggeredRef.current) return;
+        const t = e.touches[0];
+        if (!t) return;
+        const dy = t.clientY - swipeStartRef.current.y;
+        const dx = Math.abs(t.clientX - swipeStartRef.current.x);
+        if (dy > 96 && dx < 42) {
+            swipeTriggeredRef.current = true;
+            onClose();
+        }
+    };
+
+    const onDrawerTouchEnd: TouchEventHandler<HTMLDivElement> = () => {
+        swipeStartRef.current = null;
+        swipeTriggeredRef.current = false;
+    };
 
     const handleShare = async () => {
         const shareText = [
@@ -1652,8 +1743,11 @@ const MatchDetailDrawer = ({ match, currentUserId, getPlayerName, locationSugges
     return (
         <div className="fixed inset-0 z-[120] bg-black/70 backdrop-blur-sm flex items-end">
             <div
-                className="w-full bg-[var(--color-bg)] border-t border-[var(--color-border)] rounded-t-3xl p-5 max-h-[85vh] overflow-y-auto"
-                style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
+                className="w-full bg-[var(--color-bg)] border-t border-[var(--color-border)] rounded-t-3xl p-5 max-h-[85vh] overflow-y-auto custom-scrollbar safe-px safe-pb"
+                style={{ paddingTop: 'max(12px, env(safe-area-inset-top))', paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
+                onTouchStart={onDrawerTouchStart}
+                onTouchMove={onDrawerTouchMove}
+                onTouchEnd={onDrawerTouchEnd}
             >
                 <div className="flex justify-between items-center mb-4">
                     <div>

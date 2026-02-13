@@ -63,12 +63,17 @@ textarea {
 }
 
 .custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
+  width: 3px;
+  height: 3px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.14);
   border-radius: 9999px;
+}
+
+.custom-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.24);
 }
 
 /* Glassmorphism Classes */
@@ -147,8 +152,8 @@ textarea {
 
 /* Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 3px;
+  height: 3px;
 }
 
 ::-webkit-scrollbar-track {
@@ -156,10 +161,72 @@ textarea {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-surface);
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-surface-hover);
+  background: rgba(255, 255, 255, 0.28);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.safe-pt {
+  padding-top: max(16px, env(safe-area-inset-top));
+}
+
+.safe-pb {
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+.safe-px {
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+}
+
+.tab-content-enter {
+  animation: tabFadeSlide 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes tabFadeSlide {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.card-smooth {
+  transition: transform 180ms ease, border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+}
+
+.skeleton-block {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.skeleton-block::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.12) 45%,
+      transparent 100%);
+  animation: shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  to {
+    transform: translateX(100%);
+  }
 }

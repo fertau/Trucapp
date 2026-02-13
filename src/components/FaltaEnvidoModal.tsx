@@ -40,7 +40,7 @@ export const FaltaEnvidoModal = ({ onClose }: FaltaEnvidoModalProps) => {
 
     if (!selectedTeam) {
         return (
-            <div className="fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-[200] p-6 animate-in fade-in duration-300 backdrop-blur-md">
+            <div className="fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-[200] p-6 animate-in fade-in duration-300 backdrop-blur-md safe-pt safe-pb safe-px">
                 <h2 className="text-xl font-black mb-12 text-white italic tracking-[0.2em]">¿QUIÉN GANÓ LA FALTA?</h2>
                 <div className="flex gap-4 w-full max-w-sm">
                     <button
@@ -75,7 +75,7 @@ export const FaltaEnvidoModal = ({ onClose }: FaltaEnvidoModalProps) => {
             : 'A 30, rival en buenas (15-29): Falta Envido suma lo que le falta al rival para 30.';
 
     return (
-        <div className="fixed inset-0 bg-black/95 flex flex-col items-center justify-center z-[200] p-6 animate-in slide-in-from-bottom duration-300 backdrop-blur-md">
+        <div className="fixed inset-0 bg-black/95 flex flex-col items-center justify-center z-[200] p-6 animate-in slide-in-from-bottom duration-300 backdrop-blur-md safe-pt safe-pb safe-px">
             <h2 className="text-2xl font-black mb-8 text-white tracking-[0.3em] italic">FALTA ENVIDO</h2>
 
             <div className="bg-[var(--color-surface)] p-6 rounded w-full mb-6 border border-[var(--color-border)]">
