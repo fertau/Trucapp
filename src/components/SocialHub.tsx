@@ -3,7 +3,8 @@ import { useUserStore } from '../store/useUserStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { PinInput } from './PinInput';
 import { hashPin } from '../utils/pinSecurity';
-import { AvatarBadge, avatarOptions } from './AvatarBadge';
+import { AvatarBadge } from './AvatarBadge';
+import { avatarOptions } from './avatarCatalog';
 import { processAvatarFile } from '../utils/avatarUpload';
 
 interface SocialHubProps {

@@ -6,6 +6,7 @@ import type { MatchEditField, MatchMode, MatchState, TeamId } from '../types';
 import { formatDateInputLocal, parseDateInputLocal } from '../utils/date';
 import { canUserEditMatch } from '../utils/matchValidation';
 import { getMatchEffectiveDate, getTeamRefKey, getTeamRefLabel } from '../utils/matchIdentity';
+import { AvatarBadge } from './AvatarBadge';
 
 interface HistoryScreenProps {
     onBack: () => void;
@@ -17,11 +18,20 @@ type FilterMode = 'ALL' | MatchMode;
 type Scope = 'MINE' | 'GLOBAL';
 type ResultFilter = 'ALL' | 'W' | 'L';
 type RankingType = 'PLAYERS' | 'PAIRS';
-type SummaryWindow = '7D' | '30D' | 'ALL';
 type AnalysisWindow = 'ALL' | '30D' | '90D';
 type MatchListView = 'SERIES' | 'MATCHES';
+type StatsModeTab = '1v1' | '2v2' | 'GLOBAL';
+type HistoryFocus = 'YO_1V1' | 'YO_2V2' | 'YO_3V3' | 'MI_EQUIPO' | 'CLASICOS';
 
 const MODES: FilterMode[] = ['ALL', '1v1', '2v2', '3v3'];
+const STATS_MODE_TABS: StatsModeTab[] = ['1v1', '2v2', 'GLOBAL'];
+const HISTORY_FOCUS_TABS: Array<{ key: HistoryFocus; label: string }> = [
+    { key: 'YO_1V1', label: 'Yo 1v1' },
+    { key: 'YO_2V2', label: 'Yo 2v2' },
+    { key: 'YO_3V3', label: 'Yo 3v3' },
+    { key: 'MI_EQUIPO', label: 'Mi equipo' },
+    { key: 'CLASICOS', label: 'Clasicos' }
+];
 
 const getTeamIdForUser = (match: MatchState, userId: string): TeamId | null => {
     if (match.teams.nosotros.players.includes(userId)) return 'nosotros';
@@ -53,6 +63,9 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
     const players = useUserStore(state => state.players);
 
     const [tab, setTab] = useState<HistoryTab>(initialTab);
+    const [historyFocus, setHistoryFocus] = useState<HistoryFocus>('YO_1V1');
+    const [myTeamKey, setMyTeamKey] = useState<string>('ALL');
+    const [classicKey, setClassicKey] = useState<string>('AUTO');
     const [scope, setScope] = useState<Scope>('MINE');
     const [mode, setMode] = useState<FilterMode>('ALL');
     const [result, setResult] = useState<ResultFilter>('ALL');
@@ -60,7 +73,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
     const [opponentGroupKey, setOpponentGroupKey] = useState<string>('ALL');
     const [search, setSearch] = useState('');
     const [rankingType, setRankingType] = useState<RankingType>('PLAYERS');
-    const [summaryWindow, setSummaryWindow] = useState<SummaryWindow>('30D');
+    const [statsMode, setStatsMode] = useState<StatsModeTab>('1v1');
     const [analysisWindow, setAnalysisWindow] = useState<AnalysisWindow>('ALL');
     const [rankingMinMatches, setRankingMinMatches] = useState<number>(3);
     const [matchListView, setMatchListView] = useState<MatchListView>('SERIES');
@@ -173,82 +186,18 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
         });
     }, [tab, analysisWindow, scopeMatches, mode, scope, currentUserId, opponentId, opponentGroupKey, result, search, getPlayerName]);
 
-    const myModeMatches = useMemo(() => {
+    const statsScopedMatches = useMemo(() => {
         if (!currentUserId) return [];
-        const mine = matches.filter((m) => getTeamIdForUser(m, currentUserId) !== null);
-        if (mode === 'ALL') return mine;
-        return mine.filter((m) => m.mode === mode);
-    }, [matches, currentUserId, mode]);
-
-    const summaryMatches = useMemo(() => {
-        if (summaryWindow === 'ALL') return myModeMatches;
-        const now = Date.now();
-        const from = summaryWindow === '7D'
-            ? now - (7 * 24 * 60 * 60 * 1000)
-            : now - (30 * 24 * 60 * 60 * 1000);
-        return myModeMatches.filter((m) => {
-            const ts = getMatchEffectiveDate(m);
-            return ts >= from && ts <= now;
+        return matches.filter((m) => {
+            if (!isParticipant(m, currentUserId)) return false;
+            if (statsMode === 'GLOBAL') return true;
+            return m.mode === statsMode;
         });
-    }, [myModeMatches, summaryWindow]);
+    }, [matches, currentUserId, statsMode]);
 
-    const summary = useMemo(() => {
-        if (!currentUserId) return { total: 0, wins: 0, losses: 0, winRate: 0, streak: [] as ('W' | 'L')[] };
-
-        const orderedSummary = [...summaryMatches].sort((a, b) => getMatchEffectiveDate(a) - getMatchEffectiveDate(b));
-        const streak = orderedSummary.slice(-8).map((m) => {
-            const team = getTeamIdForUser(m, currentUserId);
-            if (!team || !m.winner) return 'L';
-            return m.winner === team ? 'W' : 'L';
-        }).reverse();
-
-        let wins = 0;
-        summaryMatches.forEach((m) => {
-            const team = getTeamIdForUser(m, currentUserId);
-            if (!team) return;
-            if (m.winner === team) wins++;
-        });
-
-        const total = summaryMatches.length;
-        return {
-            total,
-            wins,
-            losses: total - wins,
-            winRate: total > 0 ? Math.round((wins / total) * 100) : 0,
-            streak
-        };
-    }, [summaryMatches, currentUserId]);
-
-    const trends = useMemo(() => {
-        const now = Date.now();
-        const dayMs = 24 * 60 * 60 * 1000;
-        const windowDays = summaryWindow === '7D' ? 7 : summaryWindow === '30D' ? 30 : 7;
-        const currentFrom = now - (windowDays * dayMs);
-        const prevFrom = now - ((windowDays * 2) * dayMs);
-
-        const getBucketStats = (from: number, to: number) => {
-            const bucket = myModeMatches.filter((m) => {
-                const ts = getMatchEffectiveDate(m);
-                return ts >= from && ts < to;
-            });
-            const wins = bucket.filter((m) => {
-                const team = currentUserId ? getTeamIdForUser(m, currentUserId) : null;
-                return Boolean(team && m.winner === team);
-            }).length;
-            const total = bucket.length;
-            return { wins, total, winRate: total ? Math.round((wins / total) * 100) : 0 };
-        };
-
-        const lastWindow = getBucketStats(currentFrom, now);
-        const prevWindow = getBucketStats(prevFrom, currentFrom);
-        return {
-            lastWindow,
-            prevWindow,
-            deltaMatches: lastWindow.total - prevWindow.total,
-            deltaWinRate: lastWindow.winRate - prevWindow.winRate,
-            windowDays
-        };
-    }, [myModeMatches, currentUserId, summaryWindow]);
+    const statsScopedMatchesSorted = useMemo(() => (
+        [...statsScopedMatches].sort((a, b) => getMatchEffectiveDate(a) - getMatchEffectiveDate(b))
+    ), [statsScopedMatches]);
 
     const analysisScopedMatches = useMemo(() => {
         if (analysisWindow === 'ALL') return scopeMatches;
@@ -262,60 +211,247 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
         });
     }, [scopeMatches, analysisWindow]);
 
-    const summaryInsights = useMemo(() => {
+    const summaryStats = useMemo(() => {
         if (!currentUserId) {
             return {
-                avgFor: 0,
-                avgAgainst: 0,
-                topRivals: [] as Array<{ id: string; name: string; matches: number; wins: number }>,
-                topLocations: [] as Array<{ name: string; matches: number }>
+                total: 0,
+                wins: 0,
+                losses: 0,
+                gf: 0,
+                gc: 0,
+                gd: 0,
+                avgGf: 0,
+                avgGc: 0,
+                avgGd: 0,
+                winRate: 0
             };
         }
 
-        let totalFor = 0;
-        let totalAgainst = 0;
-        const rivalStats: Record<string, { matches: number; wins: number }> = {};
-        const locationStats: Record<string, number> = {};
+        let wins = 0;
+        let losses = 0;
+        let gf = 0;
+        let gc = 0;
 
-        summaryMatches.forEach((m) => {
+        statsScopedMatchesSorted.forEach((m) => {
             const myTeam = getTeamIdForUser(m, currentUserId);
             if (!myTeam) return;
-            const oppTeam = m.teams[getOppositeTeam(myTeam)];
+            const opponentTeam = getOppositeTeam(myTeam);
+            const myScore = m.teams[myTeam].score;
+            const oppScore = m.teams[opponentTeam].score;
+            gf += myScore;
+            gc += oppScore;
 
-            totalFor += m.teams[myTeam].score;
-            totalAgainst += oppTeam.score;
-
-            const didWin = m.winner === myTeam;
-            oppTeam.players.forEach((rivalId) => {
-                rivalStats[rivalId] = rivalStats[rivalId] ?? { matches: 0, wins: 0 };
-                rivalStats[rivalId].matches += 1;
-                if (didWin) rivalStats[rivalId].wins += 1;
-            });
-
-            const location = (m.metadata?.location ?? '').trim();
-            if (location) {
-                locationStats[location] = (locationStats[location] ?? 0) + 1;
-            }
+            if (m.winner === myTeam) wins++;
+            else losses++;
         });
 
-        const divisor = summaryMatches.length || 1;
-        const topRivals = Object.entries(rivalStats)
-            .map(([id, s]) => ({ id, name: getPlayerName(id), matches: s.matches, wins: s.wins }))
-            .sort((a, b) => b.matches - a.matches || b.wins - a.wins)
-            .slice(0, 3);
-
-        const topLocations = Object.entries(locationStats)
-            .map(([name, matches]) => ({ name, matches }))
-            .sort((a, b) => b.matches - a.matches)
-            .slice(0, 3);
-
+        const total = statsScopedMatchesSorted.length;
+        const gd = gf - gc;
         return {
-            avgFor: Math.round((totalFor / divisor) * 10) / 10,
-            avgAgainst: Math.round((totalAgainst / divisor) * 10) / 10,
-            topRivals,
-            topLocations
+            total,
+            wins,
+            losses,
+            gf,
+            gc,
+            gd,
+            avgGf: total ? Math.round((gf / total) * 10) / 10 : 0,
+            avgGc: total ? Math.round((gc / total) * 10) / 10 : 0,
+            avgGd: total ? Math.round((gd / total) * 10) / 10 : 0,
+            winRate: total ? Math.round((wins / total) * 100) : 0
         };
-    }, [summaryMatches, currentUserId, getPlayerName]);
+    }, [statsScopedMatchesSorted, currentUserId]);
+
+    const recentForm = useMemo(() => {
+        if (!currentUserId) return [] as Array<{ id: string; code: 'G' | 'P'; title: string }>;
+        const recentMatches = [...statsScopedMatchesSorted].reverse().slice(0, 10);
+        return recentMatches.map((m) => {
+            const myTeam = getTeamIdForUser(m, currentUserId);
+            const oppTeamId = myTeam ? getOppositeTeam(myTeam) : 'ellos';
+            const myScore = myTeam ? m.teams[myTeam].score : 0;
+            const oppScore = myTeam ? m.teams[oppTeamId].score : 0;
+            const opponentLabel = myTeam
+                ? (m.mode === '1v1'
+                    ? m.teams[oppTeamId].players.map(getPlayerName).join(' / ')
+                    : m.teams[oppTeamId].name)
+                : 'Rival';
+            const code: 'G' | 'P' = myTeam && m.winner === myTeam ? 'G' : 'P';
+            return {
+                id: m.id,
+                code,
+                title: `${opponentLabel} · ${myScore}-${oppScore}`
+            };
+        });
+    }, [statsScopedMatchesSorted, currentUserId, getPlayerName]);
+
+    const myAllMatchesSorted = useMemo(() => {
+        if (!currentUserId) return [] as MatchState[];
+        return matches
+            .filter((m) => isParticipant(m, currentUserId))
+            .sort((a, b) => getMatchEffectiveDate(b) - getMatchEffectiveDate(a));
+    }, [matches, currentUserId]);
+
+    const myTeamOptions = useMemo(() => {
+        if (!currentUserId) return [] as Array<{ key: string; label: string; count: number }>;
+        const buckets = new Map<string, { label: string; count: number }>();
+        myAllMatchesSorted
+            .filter((m) => m.mode === '2v2' || m.mode === '3v3')
+            .forEach((m) => {
+                const mySide = getTeamIdForUser(m, currentUserId);
+                if (!mySide) return;
+                const key = getTeamRefKey(m, mySide);
+                const label = getTeamRefLabel(m, mySide);
+                const prev = buckets.get(key);
+                buckets.set(key, { label, count: (prev?.count ?? 0) + 1 });
+            });
+        return Array.from(buckets.entries())
+            .map(([key, v]) => ({ key, label: v.label, count: v.count }))
+            .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+    }, [myAllMatchesSorted, currentUserId]);
+
+    const classicOptions = useMemo(() => {
+        if (!currentUserId) return [] as Array<{ key: string; label: string; count: number }>;
+        const buckets = new Map<string, { label: string; count: number }>();
+
+        myAllMatchesSorted.forEach((m) => {
+            const mySide = getTeamIdForUser(m, currentUserId);
+            if (!mySide) return;
+            const oppSide = getOppositeTeam(mySide);
+
+            let key = '';
+            let label = '';
+            if (m.mode === '1v1') {
+                const rivalId = m.teams[oppSide].players[0];
+                key = `1v1:${rivalId}`;
+                label = `1v1 vs ${getPlayerName(rivalId)}`;
+            } else {
+                const myKey = getTeamRefKey(m, mySide);
+                const oppKey = getTeamRefKey(m, oppSide);
+                key = `${m.mode}:${myKey}:${oppKey}`;
+                label = `${m.mode} · ${getTeamRefLabel(m, mySide)} vs ${getTeamRefLabel(m, oppSide)}`;
+            }
+
+            const prev = buckets.get(key);
+            buckets.set(key, { label, count: (prev?.count ?? 0) + 1 });
+        });
+
+        return Array.from(buckets.entries())
+            .map(([key, v]) => ({ key, label: v.label, count: v.count }))
+            .filter((x) => x.count >= 3)
+            .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+    }, [myAllMatchesSorted, currentUserId, getPlayerName]);
+
+    const activeClassicKey = useMemo(() => {
+        if (classicKey === 'AUTO') return classicOptions[0]?.key ?? '';
+        return classicKey;
+    }, [classicKey, classicOptions]);
+
+    const historyFocusMatches = useMemo(() => {
+        if (!currentUserId) return [] as MatchState[];
+        if (historyFocus === 'YO_1V1') return myAllMatchesSorted.filter((m) => m.mode === '1v1');
+        if (historyFocus === 'YO_2V2') return myAllMatchesSorted.filter((m) => m.mode === '2v2');
+        if (historyFocus === 'YO_3V3') return myAllMatchesSorted.filter((m) => m.mode === '3v3');
+        if (historyFocus === 'MI_EQUIPO') {
+            const base = myAllMatchesSorted.filter((m) => m.mode === '2v2' || m.mode === '3v3');
+            if (myTeamKey === 'ALL') return base;
+            return base.filter((m) => {
+                const mySide = getTeamIdForUser(m, currentUserId);
+                return mySide ? getTeamRefKey(m, mySide) === myTeamKey : false;
+            });
+        }
+
+        if (!activeClassicKey) return [] as MatchState[];
+        return myAllMatchesSorted.filter((m) => {
+            const mySide = getTeamIdForUser(m, currentUserId);
+            if (!mySide) return false;
+            const oppSide = getOppositeTeam(mySide);
+            if (m.mode === '1v1') {
+                return `1v1:${m.teams[oppSide].players[0]}` === activeClassicKey;
+            }
+            const key = `${m.mode}:${getTeamRefKey(m, mySide)}:${getTeamRefKey(m, oppSide)}`;
+            return key === activeClassicKey;
+        });
+    }, [currentUserId, historyFocus, myAllMatchesSorted, myTeamKey, activeClassicKey]);
+
+    const compactHistory = useMemo(() => {
+        if (!currentUserId) return [] as Array<{
+            id: string;
+            line1: string;
+            line2: string;
+            code: 'G' | 'P';
+        }>;
+
+        return historyFocusMatches.slice(0, 25).map((m) => {
+            const myTeam = getTeamIdForUser(m, currentUserId);
+            const oppTeamId = myTeam ? getOppositeTeam(myTeam) : 'ellos';
+            const myScore = myTeam ? m.teams[myTeam].score : 0;
+            const oppScore = myTeam ? m.teams[oppTeamId].score : 0;
+            const opponentLabel = myTeam
+                ? (m.mode === '1v1'
+                    ? m.teams[oppTeamId].players.map(getPlayerName).join(' / ')
+                    : m.teams[oppTeamId].name)
+                : 'Rival';
+            const dateLabel = new Date(getMatchEffectiveDate(m)).toLocaleDateString();
+            const closureLabel = `A ${m.targetScore}${m.editedFlags?.resultEdited ? ' · Editado' : ''}`;
+            const code: 'G' | 'P' = myTeam && m.winner === myTeam ? 'G' : 'P';
+
+            return {
+                id: m.id,
+                line1: `${opponentLabel} · ${myScore}-${oppScore} · ${dateLabel}`,
+                line2: `${m.mode} · ${closureLabel}`,
+                code
+            };
+        });
+    }, [historyFocusMatches, currentUserId, getPlayerName]);
+
+    const globalPlayerStats = useMemo(() => {
+        const selectedModeMatches = matches.filter((m) => statsMode === 'GLOBAL' || m.mode === statsMode);
+        const stats: Record<string, { total: number; wins: number; losses: number; gf: number; gc: number }> = {};
+
+        selectedModeMatches.forEach((m) => {
+            const apply = (side: TeamId) => {
+                const opp = getOppositeTeam(side);
+                const playersInTeam = m.teams[side].players;
+                const teamScore = m.teams[side].score;
+                const oppScore = m.teams[opp].score;
+                playersInTeam.forEach((pid) => {
+                    stats[pid] = stats[pid] ?? { total: 0, wins: 0, losses: 0, gf: 0, gc: 0 };
+                    stats[pid].total += 1;
+                    stats[pid].gf += teamScore;
+                    stats[pid].gc += oppScore;
+                    if (m.winner === side) stats[pid].wins += 1;
+                    else stats[pid].losses += 1;
+                });
+            };
+            apply('nosotros');
+            apply('ellos');
+        });
+
+        return stats;
+    }, [matches, statsMode]);
+
+    const summaryRanking = useMemo(() => {
+        const rows = Object.entries(globalPlayerStats)
+            .map(([playerId, s]) => {
+                const score = s.wins;
+                const winRate = s.total ? Math.round((s.wins / s.total) * 100) : 0;
+                return {
+                    playerId,
+                    score,
+                    winRate,
+                    total: s.total,
+                    wins: s.wins,
+                    losses: s.losses,
+                    gf: s.gf,
+                    gc: s.gc
+                };
+            })
+            .filter((r) => r.total > 0)
+            .sort((a, b) => b.score - a.score || b.winRate - a.winRate || b.wins - a.wins);
+
+        const top3 = rows.slice(0, 3);
+        const myIndex = currentUserId ? rows.findIndex((r) => r.playerId === currentUserId) : -1;
+        return { rows, top3, myIndex };
+    }, [globalPlayerStats, currentUserId]);
 
     const rankings = useMemo(() => {
         const source = mode === 'ALL' ? analysisScopedMatches : analysisScopedMatches.filter((m) => m.mode === mode);
@@ -597,92 +733,159 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                 {!isLoading && tab === 'SUMMARY' && (
                     <div className="flex flex-col gap-4 animate-in slide-in-from-bottom duration-300">
                         <div className="flex gap-2 overflow-x-auto no-scrollbar">
-                            {(['7D', '30D', 'ALL'] as const).map((w) => (
+                            {STATS_MODE_TABS.map((sm) => (
                                 <button
-                                    key={w}
-                                    onClick={() => setSummaryWindow(w)}
-                                    className={`px-3 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border whitespace-nowrap ${summaryWindow === w ? 'bg-white text-black border-white' : 'bg-white/5 text-white/45 border-white/10'}`}
+                                    key={sm}
+                                    onClick={() => setStatsMode(sm)}
+                                    className={`px-3 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border whitespace-nowrap ${statsMode === sm ? 'bg-white text-black border-white' : 'bg-white/5 text-white/45 border-white/10'}`}
                                 >
-                                    {w === '7D' ? '7 días' : w === '30D' ? '30 días' : 'Todo'}
+                                    {sm}
                                 </button>
                             ))}
                         </div>
 
-                        <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] p-6">
-                            <div className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-black mb-3">Resumen del jugador</div>
+                        <div className="text-[11px] text-white/50 bg-white/5 border border-white/10 rounded-xl px-3 py-2">
+                            Leyenda: PJ = Partidos Jugados · G = Ganados · P = Perdidos · GD = Diferencia (GF - GC)
+                        </div>
+
+                        <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] p-5">
+                            <div className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-black mb-3">Resumen {statsMode}</div>
                             <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-white/5 rounded-2xl p-3"><div className="text-xs text-white/40">PJ</div><div className="text-2xl font-black">{summary.total}</div></div>
-                                <div className="bg-white/5 rounded-2xl p-3"><div className="text-xs text-white/40">Efectividad</div><div className="text-2xl font-black">{summary.winRate}%</div></div>
-                                <div className="bg-white/5 rounded-2xl p-3"><div className="text-xs text-white/40">G / P</div><div className="text-2xl font-black">{summary.wins} / {summary.losses}</div></div>
-                                <div className="bg-white/5 rounded-2xl p-3"><div className="text-xs text-white/40">Racha</div><div className="text-2xl font-black">{summary.streak.length}</div></div>
+                                <div className="bg-white/5 rounded-2xl p-4">
+                                    <div className="text-[11px] text-white/50 font-black uppercase">PJ</div>
+                                    <div className="text-3xl font-black font-mono leading-tight">{summaryStats.total}</div>
+                                </div>
+                                <div className="bg-white/5 rounded-2xl p-4">
+                                    <div className="text-[11px] text-white/50 font-black uppercase">G/P</div>
+                                    <div className="text-2xl font-black font-mono leading-tight">{summaryStats.wins}/{summaryStats.losses}</div>
+                                </div>
+                                <div className="bg-white/5 rounded-2xl p-4">
+                                    <div className="text-[11px] text-white/50 font-black uppercase">GD</div>
+                                    <div className={`text-3xl font-black font-mono leading-tight ${summaryStats.gd >= 0 ? 'text-[var(--color-nosotros)]' : 'text-[var(--color-ellos)]'}`}>
+                                        {summaryStats.gd >= 0 ? `+${summaryStats.gd}` : summaryStats.gd}
+                                    </div>
+                                </div>
+                                <div className="bg-white/5 rounded-2xl p-4">
+                                    <div className="text-[11px] text-white/50 font-black uppercase">Win%</div>
+                                    <div className="text-3xl font-black font-mono leading-tight">{summaryStats.winRate}%</div>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] p-6">
-                            <div className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-black mb-3">Racha reciente</div>
-                            <div className="flex gap-2">
-                                {summary.streak.length === 0 && <span className="text-white/30 text-sm">Sin datos</span>}
-                                {summary.streak.map((r, i) => (
-                                    <span key={`${r}-${i}`} className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black ${r === 'W' ? 'bg-[var(--color-nosotros)]/20 text-[var(--color-nosotros)]' : 'bg-[var(--color-ellos)]/20 text-[var(--color-ellos)]'}`}>
-                                        {r === 'W' ? 'G' : 'P'}
+                        <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] p-5">
+                            <div className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-black mb-3">Forma reciente (últimos 10)</div>
+                            <div className="flex flex-wrap gap-2">
+                                {recentForm.length === 0 && <span className="text-white/30 text-sm">Sin datos</span>}
+                                {recentForm.map((r) => (
+                                    <span
+                                        key={r.id}
+                                        title={r.title}
+                                        className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black ${r.code === 'G' ? 'bg-[var(--color-nosotros)]/20 text-[var(--color-nosotros)]' : 'bg-[var(--color-ellos)]/20 text-[var(--color-ellos)]'}`}
+                                    >
+                                        {r.code}
                                     </span>
                                 ))}
                             </div>
                         </div>
 
-                        <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] p-6">
-                            <div className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-black mb-3">Tendencia ({trends.windowDays} días)</div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-white/5 rounded-2xl p-3">
-                                    <div className="text-xs text-white/40">Partidos</div>
-                                    <div className="text-2xl font-black">{trends.lastWindow.total}</div>
-                                    <div className={`text-[10px] font-black ${trends.deltaMatches >= 0 ? 'text-[var(--color-nosotros)]' : 'text-[var(--color-ellos)]'}`}>
-                                        vs periodo previo: {trends.deltaMatches >= 0 ? `+${trends.deltaMatches}` : trends.deltaMatches}
+                        <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] p-5">
+                            <div className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-black mb-3">Historial principal</div>
+                            <div className="flex gap-2 overflow-x-auto no-scrollbar mb-3">
+                                {HISTORY_FOCUS_TABS.map((hf) => (
+                                    <button
+                                        key={hf.key}
+                                        onClick={() => setHistoryFocus(hf.key)}
+                                        className={`px-3 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border whitespace-nowrap ${historyFocus === hf.key ? 'bg-[var(--color-accent)] text-black border-[var(--color-accent)]' : 'bg-white/5 text-white/45 border-white/10'}`}
+                                    >
+                                        {hf.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {historyFocus === 'MI_EQUIPO' && (
+                                <select
+                                    value={myTeamKey}
+                                    onChange={(e) => setMyTeamKey(e.target.value)}
+                                    className="w-full mb-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-xs font-bold"
+                                >
+                                    <option value="ALL">Todos mis equipos</option>
+                                    {myTeamOptions.map((team) => (
+                                        <option key={team.key} value={team.key}>{team.label} · {team.count} PJ</option>
+                                    ))}
+                                </select>
+                            )}
+
+                            {historyFocus === 'CLASICOS' && (
+                                <select
+                                    value={classicKey}
+                                    onChange={(e) => setClassicKey(e.target.value)}
+                                    className="w-full mb-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-xs font-bold"
+                                >
+                                    <option value="AUTO">Clasico principal</option>
+                                    {classicOptions.map((classic) => (
+                                        <option key={classic.key} value={classic.key}>{classic.label} · {classic.count} PJ</option>
+                                    ))}
+                                </select>
+                            )}
+
+                            <div className="flex flex-col gap-2">
+                                {compactHistory.length === 0 && (
+                                    <div className="text-sm text-white/30">
+                                        {historyFocus === 'CLASICOS' ? 'No hay clasicos (minimo 3 PJ por cruce).' : 'Sin partidos para esta vista.'}
                                     </div>
-                                </div>
-                                <div className="bg-white/5 rounded-2xl p-3">
-                                    <div className="text-xs text-white/40">Efectividad</div>
-                                    <div className="text-2xl font-black">{trends.lastWindow.winRate}%</div>
-                                    <div className={`text-[10px] font-black ${trends.deltaWinRate >= 0 ? 'text-[var(--color-nosotros)]' : 'text-[var(--color-ellos)]'}`}>
-                                        vs periodo previo: {trends.deltaWinRate >= 0 ? `+${trends.deltaWinRate}` : trends.deltaWinRate} pts
-                                    </div>
-                                </div>
+                                )}
+                                {compactHistory.map((row) => (
+                                    <button key={row.id} onClick={() => setSelectedMatch(matches.find((m) => m.id === row.id) ?? null)} className="text-left bg-white/5 border border-white/10 rounded-xl px-3 py-2">
+                                        <div className="text-[12px] font-black flex items-center gap-2">
+                                            <span className={row.code === 'G' ? 'text-[var(--color-nosotros)]' : 'text-[var(--color-ellos)]'}>{row.code}</span>
+                                            <span className="truncate">{row.line1}</span>
+                                        </div>
+                                        <div className="text-[10px] text-white/45 uppercase tracking-wider mt-1">{row.line2}</div>
+                                    </button>
+                                ))}
                             </div>
                         </div>
 
-                        <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] p-6">
-                            <div className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-black mb-3">Indicadores</div>
-                            <div className="grid grid-cols-2 gap-3 mb-3">
-                                <div className="bg-white/5 rounded-2xl p-3">
-                                    <div className="text-xs text-white/40">Prom. puntos a favor</div>
-                                    <div className="text-2xl font-black">{summaryInsights.avgFor}</div>
-                                </div>
-                                <div className="bg-white/5 rounded-2xl p-3">
-                                    <div className="text-xs text-white/40">Prom. puntos en contra</div>
-                                    <div className="text-2xl font-black">{summaryInsights.avgAgainst}</div>
-                                </div>
+                        <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] p-5">
+                            <div className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-black mb-3">Ranking</div>
+                            <div className="grid grid-cols-3 gap-2 mb-3">
+                                {summaryRanking.top3.map((entry, idx) => {
+                                    const player = players.find((p) => p.id === entry.playerId);
+                                    const displayName = player?.nickname || player?.name || entry.playerId;
+                                    return (
+                                        <div key={entry.playerId} className="bg-white/5 border border-white/10 rounded-2xl p-3 text-center">
+                                            <div className="text-[10px] text-white/40 font-black mb-2">#{idx + 1}</div>
+                                            <div className="flex justify-center mb-2">
+                                                <AvatarBadge avatar={player?.avatar} name={displayName} size={52} />
+                                            </div>
+                                            <div className="text-[11px] font-black truncate">{displayName}</div>
+                                            <div className="font-mono text-xl font-black text-[var(--color-accent)]">{entry.score}</div>
+                                        </div>
+                                    );
+                                })}
                             </div>
-
-                            <div className="bg-white/5 rounded-2xl p-3 mb-3">
-                                <div className="text-xs text-white/40 mb-2">Rivales más frecuentes</div>
-                                {summaryInsights.topRivals.length === 0 && <div className="text-xs text-white/30">Sin datos</div>}
-                                {summaryInsights.topRivals.map((r) => (
-                                    <div key={r.id} className="flex items-center justify-between text-xs py-1">
-                                        <span>{r.name}</span>
-                                        <span className="text-white/55">{r.matches} PJ | {r.wins} G | {r.matches - r.wins} P</span>
+                            <div className="flex flex-col gap-2">
+                                {summaryRanking.rows.slice(0, 10).map((entry, idx) => {
+                                    const player = players.find((p) => p.id === entry.playerId);
+                                    const displayName = player?.nickname || player?.name || entry.playerId;
+                                    const isMe = currentUserId === entry.playerId;
+                                    return (
+                                        <div key={entry.playerId} className={`rounded-xl px-3 py-2 border ${isMe ? 'bg-[var(--color-accent)]/15 border-[var(--color-accent)]/40' : 'bg-white/5 border-white/10'}`}>
+                                            <div className="flex items-center justify-between text-xs">
+                                                <span className="font-black">#{idx + 1} · {displayName}</span>
+                                                <span className="font-black font-mono">{entry.score}</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {summaryRanking.myIndex >= 10 && currentUserId && (
+                                    <div className="rounded-xl px-3 py-2 border bg-[var(--color-accent)]/15 border-[var(--color-accent)]/40">
+                                        <div className="flex items-center justify-between text-xs">
+                                            <span className="font-black">#{summaryRanking.myIndex + 1} · {getPlayerName(currentUserId)}</span>
+                                            <span className="font-black font-mono">{summaryRanking.rows[summaryRanking.myIndex]?.score ?? 0}</span>
+                                        </div>
                                     </div>
-                                ))}
-                            </div>
-
-                            <div className="bg-white/5 rounded-2xl p-3">
-                                <div className="text-xs text-white/40 mb-2">Sedes más usadas</div>
-                                {summaryInsights.topLocations.length === 0 && <div className="text-xs text-white/30">Sin sedes registradas</div>}
-                                {summaryInsights.topLocations.map((loc) => (
-                                    <div key={loc.name} className="flex items-center justify-between text-xs py-1">
-                                        <span className="truncate pr-2">{loc.name}</span>
-                                        <span className="text-white/55">{loc.matches} PJ</span>
-                                    </div>
-                                ))}
+                                )}
                             </div>
                         </div>
                     </div>

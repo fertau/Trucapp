@@ -9,7 +9,8 @@ import { PinInput } from './PinInput';
 import { hashPin } from '../utils/pinSecurity';
 import { isSuperAdmin } from '../utils/authz';
 import { SocialHub } from './SocialHub';
-import { AvatarBadge, avatarOptions } from './AvatarBadge';
+import { AvatarBadge } from './AvatarBadge';
+import { avatarOptions } from './avatarCatalog';
 import { processAvatarFile } from '../utils/avatarUpload';
 
 interface ProfileScreenProps {
