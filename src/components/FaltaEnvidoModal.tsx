@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMatchStore } from '../store/useMatchStore';
 import type { TeamId } from '../types';
+import { getFaltaEnvidoSuggestedPoints } from '../utils/truco';
 
 interface FaltaEnvidoModalProps {
     onClose: () => void;
@@ -11,59 +12,28 @@ export const FaltaEnvidoModal = ({ onClose }: FaltaEnvidoModalProps) => {
     const addPoints = useMatchStore(state => state.addPoints);
     const targetScore = useMatchStore(state => state.targetScore);
 
-    // Logic:
-    // "If opponent score is 0–14 → wins the match." -> means opponent needs exactly (Target - OpponentScore) points? No, User needs enough points to win.
-    // Spec: "If opponent score is 0–14 → wins the match." -> The winner of the hand gets enough points to reach target.
-    // Spec: "If opponent score is 15–29 → gains (30 - opponentScore) points." -> Wait, that's the Malas/Buenas logic.
-    // Usually: 
-    // Malas: Falta Envido = Win the Game (Points needed = Target - MyScore).
-    // Buenas: Falta Envido = Points needed = Target - OpponentScore. 
-
-    // Wireframe just says: "Sugerencia: Sumar X puntos". "Confirmar / Ajustar".
-    // I need to implement the calculation logic.
-
-    // Let's implement dynamic calculation per team.
-    // Since we don't know WHO WON the Falta Envido yet, we need to show options or select team first?
-    // Wireframe: "Score actual: ... Sugerencia: ..."
-    // This implies a SINGLE suggestion relative to... whom?
-    // Maybe the modal asks "Who won?". 
-    // OR we show 2 suggestions: "If Nos won: X pts", "If Ell won: Y pts".
-
-    // Let's assume user taps "Falta Envido" button -> Modal opens -> Select Winner -> Confirmation.
-    // Wireframe Screen 6 notes: "[Confirmar] [Ajustar manualmente]".
-    // This implies the points are already calculated.
-    // But for whom?
-
-    // I will modify the modal to have TABS or Columns for "Gana Nosotros" / "Gana Ellos"?
-    // Or just a Team Selector at top.
-
     const [selectedTeam, setSelectedTeam] = useState<TeamId | null>(null);
     const [customPoints, setCustomPoints] = useState<string>('');
     const [isManual, setIsManual] = useState(false);
 
     const getPointsForTeam = (winnerTeam: TeamId, loserTeam: TeamId) => {
-        const loserScore = teams[loserTeam].score;
-        const isLoserInBuenas = loserScore >= (targetScore / 2); // 15
-
-        if (isLoserInBuenas) {
-            // "If opponent score is 15–29 → gains (30 - opponentScore) points."
-            return targetScore - loserScore;
-        } else {
-            // "If opponent score is 0–14 → wins the match."
-            // Winner needs (30 - WinnerScore) to reach 30?
-            // "Wins the match" usually means they get all needed points.
-            return targetScore - teams[winnerTeam].score;
-        }
+        return getFaltaEnvidoSuggestedPoints(
+            targetScore,
+            teams[winnerTeam].score,
+            teams[loserTeam].score
+        );
     };
 
     const calculatedPoints = selectedTeam
         ? getPointsForTeam(selectedTeam, selectedTeam === 'nosotros' ? 'ellos' : 'nosotros')
         : 0;
 
-    const pointsToApply = isManual && customPoints ? parseInt(customPoints) : calculatedPoints;
+    const manualPoints = Number.parseInt(customPoints, 10);
+    const pointsToApply = isManual && customPoints ? manualPoints : calculatedPoints;
+    const isPointsValid = Number.isFinite(pointsToApply) && pointsToApply > 0;
 
     const handleConfirm = () => {
-        if (!selectedTeam) return;
+        if (!selectedTeam || !isPointsValid) return;
         addPoints(selectedTeam, pointsToApply, 'falta_envido');
         onClose();
     };
@@ -97,6 +67,12 @@ export const FaltaEnvidoModal = ({ onClose }: FaltaEnvidoModalProps) => {
     }
 
     const opponent = selectedTeam === 'nosotros' ? teams.ellos : teams.nosotros;
+    const winnerTeamName = selectedTeam === 'nosotros' ? teams.nosotros.name : teams.ellos.name;
+    const ruleHint = targetScore <= 15
+        ? 'A 15: Falta Envido suma lo necesario para ganar el partido.'
+        : opponent.score <= 14
+            ? 'A 30, rival en malas (0-14): Falta Envido suma lo necesario para ganar.'
+            : 'A 30, rival en buenas (15-29): Falta Envido suma lo que le falta al rival para 30.';
 
     return (
         <div className="fixed inset-0 bg-black/95 flex flex-col items-center justify-center z-[200] p-6 animate-in slide-in-from-bottom duration-300 backdrop-blur-md">
@@ -114,10 +90,12 @@ export const FaltaEnvidoModal = ({ onClose }: FaltaEnvidoModalProps) => {
             </div>
 
             <div className="text-center mb-8">
-                <div className="text-[var(--color-text-muted)] text-[10px] mb-2 uppercase tracking-widest font-black">Sugerencia para {selectedTeam === 'nosotros' ? teams.nosotros.name : teams.ellos.name}</div>
+                <div className="text-[var(--color-text-muted)] text-[10px] mb-2 uppercase tracking-widest font-black">Sugerencia para {winnerTeamName}</div>
                 {isManual ? (
                     <input
                         type="number"
+                        min={1}
+                        step={1}
                         value={customPoints}
                         onChange={(e) => setCustomPoints(e.target.value)}
                         placeholder={calculatedPoints.toString()}
@@ -129,15 +107,14 @@ export const FaltaEnvidoModal = ({ onClose }: FaltaEnvidoModalProps) => {
                         +{calculatedPoints}
                     </div>
                 )}
-                <div className="text-[var(--color-text-muted)] text-sm mt-2">
-                    {targetScore === 15
-                        ? 'Partido a 15'
-                        : (opponent.score < (targetScore / 2) ? 'Malas (gana partido)' : 'Buenas (falta para 30)')}
+                <div className="text-[var(--color-text-muted)] text-[12px] mt-2 max-w-sm">
+                    {ruleHint}
                 </div>
             </div>
 
             <button
                 onClick={handleConfirm}
+                disabled={!isPointsValid}
                 className={`w-full bg-[var(--color-${selectedTeam})] text-white py-4 rounded font-bold text-xl mb-4`}
             >
                 CONFIRMAR

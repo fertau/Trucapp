@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useMatchStore } from '../store/useMatchStore';
 import { ScoreSquare } from './ScoreSquare';
 import type { TeamId, PointType } from '../types';
+import { getFaltaEnvidoSuggestedPoints } from '../utils/truco';
 
 // Long Press Hook
 function useLongPress(callback: () => void, ms = 500) {
@@ -72,7 +73,15 @@ export const ScoreBoard = () => {
     const subtractPoints = useMatchStore(state => state.subtractPoints);
     const hasBuenasSection = targetScore > 15;
     const scoreSplit = Math.floor(targetScore / 2);
-    const faltaLabelFor = (opponentScore: number) => (opponentScore < scoreSplit ? 'PARTIDO' : `+${targetScore - opponentScore}`);
+    const faltaLabelFor = (winnerTeam: TeamId) => {
+        const loserTeam: TeamId = winnerTeam === 'nosotros' ? 'ellos' : 'nosotros';
+        const suggested = getFaltaEnvidoSuggestedPoints(
+            targetScore,
+            teams[winnerTeam].score,
+            teams[loserTeam].score
+        );
+        return `+${suggested}`;
+    };
 
     // Interaction Handlers
     const [longPressTriggered, setLongPressTriggered] = useState<{ nosotros: boolean, ellos: boolean }>({ nosotros: false, ellos: false });
@@ -192,7 +201,7 @@ export const ScoreBoard = () => {
                             <ShortcutButton label="Real Envido" points={3} type="real_envido" teamId="nosotros" onAction={() => addPoints('nosotros', 3, 'real_envido')} />
                             <ShortcutButton
                                 label="Falta Envido"
-                                points={faltaLabelFor(teams.ellos.score)}
+                                points={faltaLabelFor('nosotros')}
                                 type="falta_envido"
                                 teamId="nosotros"
                                 onAction={() => window.dispatchEvent(new CustomEvent('requestFaltaEnvido'))}
@@ -209,7 +218,7 @@ export const ScoreBoard = () => {
                             <ShortcutButton label="Real Envido" points={3} type="real_envido" teamId="ellos" onAction={() => addPoints('ellos', 3, 'real_envido')} />
                             <ShortcutButton
                                 label="Falta Envido"
-                                points={faltaLabelFor(teams.nosotros.score)}
+                                points={faltaLabelFor('ellos')}
                                 type="falta_envido"
                                 teamId="ellos"
                                 onAction={() => window.dispatchEvent(new CustomEvent('requestFaltaEnvido'))}
