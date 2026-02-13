@@ -593,7 +593,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
 
     const updateSeriesMetadata = async (
         seriesId: string,
-        changes: { name?: string; closedManually?: boolean }
+        changes: { name?: string; closedManually?: boolean; location?: string | null; date?: number }
     ) => {
         if (!currentUserId) return;
         const seriesMatches = matches.filter((m) => m.series?.id === seriesId);
@@ -613,7 +613,41 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                         ? (m.series?.closedAt ?? null)
                         : (changes.closedManually ? Date.now() : null)
                 };
-                await updateMatch({ ...m, series: nextSeries }, currentUserId);
+
+                const hasLocationChange = changes.location !== undefined && (m.metadata?.location ?? null) !== (changes.location ?? null);
+                const hasDateChange = changes.date !== undefined && getMatchEffectiveDate(m) !== changes.date;
+                const metadataEdited = hasLocationChange || hasDateChange;
+                const fields: MatchEditField[] = [];
+                if (hasLocationChange) {
+                    fields.push({ key: 'location', before: m.metadata?.location ?? null, after: changes.location ?? null });
+                }
+                if (hasDateChange && changes.date !== undefined) {
+                    fields.push({ key: 'date', before: getMatchEffectiveDate(m), after: changes.date });
+                }
+
+                await updateMatch({
+                    ...m,
+                    series: nextSeries,
+                    metadata: {
+                        ...m.metadata,
+                        location: changes.location !== undefined ? (changes.location || null) : (m.metadata?.location ?? null),
+                        date: changes.date ?? (m.metadata?.date ?? getMatchEffectiveDate(m))
+                    },
+                    editedFlags: {
+                        ...m.editedFlags,
+                        metadataEdited: (m.editedFlags?.metadataEdited ?? false) || metadataEdited
+                    },
+                    edits: fields.length > 0
+                        ? [
+                            ...(m.edits ?? []),
+                            {
+                                at: Date.now(),
+                                byUserId: currentUserId,
+                                fields
+                            }
+                        ]
+                        : (m.edits ?? [])
+                }, currentUserId);
             }));
         } catch (err) {
             console.error('Error actualizando serie', err);
@@ -1412,7 +1446,7 @@ interface SeriesDetailDrawerProps {
     onChangeResultFilter: (filter: SeriesResultFilter) => void;
     onClose: () => void;
     onOpenMatch: (match: MatchState) => void;
-    onUpdateSeries: (seriesId: string, changes: { name?: string; closedManually?: boolean }) => Promise<void>;
+    onUpdateSeries: (seriesId: string, changes: { name?: string; closedManually?: boolean; location?: string | null; date?: number }) => Promise<void>;
 }
 
 const SeriesDetailDrawer = ({
@@ -1427,6 +1461,8 @@ const SeriesDetailDrawer = ({
 }: SeriesDetailDrawerProps) => {
     const [isSavingSeries, setIsSavingSeries] = useState(false);
     const [seriesName, setSeriesName] = useState(series.seriesName);
+    const [seriesLocation, setSeriesLocation] = useState(() => series.matches[series.matches.length - 1]?.metadata?.location ?? '');
+    const [seriesDate, setSeriesDate] = useState(() => formatDateInputLocal(getMatchEffectiveDate(series.matches[series.matches.length - 1])));
     const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
     const swipeTriggeredRef = useRef(false);
 
@@ -1525,6 +1561,45 @@ const SeriesDetailDrawer = ({
                             >
                                 {series.closedManually ? 'Reabrir serie' : 'Cerrar serie'}
                             </button>
+                        </div>
+                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div>
+                                <label className="text-[10px] uppercase tracking-widest text-white/40 font-black">Sede de serie</label>
+                                <input
+                                    value={seriesLocation}
+                                    onChange={(e) => setSeriesLocation(e.target.value)}
+                                    placeholder="Sin sede"
+                                    className="w-full mt-1 bg-black/20 border border-white/10 rounded-xl px-3 py-2 text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-[10px] uppercase tracking-widest text-white/40 font-black">Fecha de serie</label>
+                                <input
+                                    type="date"
+                                    value={seriesDate}
+                                    onChange={(e) => setSeriesDate(e.target.value)}
+                                    className="w-full mt-1 bg-black/20 border border-white/10 rounded-xl px-3 py-2 text-sm"
+                                />
+                            </div>
+                        </div>
+                        <button
+                            disabled={isSavingSeries}
+                            onClick={async () => {
+                                const parsed = parseDateInputLocal(seriesDate);
+                                if (parsed === null) {
+                                    alert('Fecha inválida para la serie.');
+                                    return;
+                                }
+                                setIsSavingSeries(true);
+                                await onUpdateSeries(series.seriesId, { location: seriesLocation || null, date: parsed });
+                                setIsSavingSeries(false);
+                            }}
+                            className="w-full mt-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border border-[var(--color-accent)]/40 bg-[var(--color-accent)]/15 text-[var(--color-accent)] disabled:opacity-60"
+                        >
+                            Guardar datos en toda la serie
+                        </button>
+                        <div className="text-[10px] text-white/45 mt-1">
+                            Aplica fecha y sede a todos los partidos de esta serie.
                         </div>
                     </div>
                     <div className="flex bg-[var(--color-surface)] p-1 rounded-xl border border-[var(--color-border)]">
