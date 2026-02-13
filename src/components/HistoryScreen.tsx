@@ -3,7 +3,7 @@ import { useHistoryStore } from '../store/useHistoryStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useUserStore } from '../store/useUserStore';
 import type { MatchEditField, MatchMode, MatchState, TeamId } from '../types';
-import { formatDateInputLocal, parseDateInputLocal } from '../utils/date';
+import { formatDateDisplay, formatDateInputLocal, formatDateTimeDisplay, parseDateInputLocal } from '../utils/date';
 import { canUserEditMatch } from '../utils/matchValidation';
 import { getMatchEffectiveDate, getTeamRefKey, getTeamRefLabel } from '../utils/matchIdentity';
 
@@ -461,7 +461,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                     ? m.teams[oppTeamId].players.map(getPlayerName).join(' / ')
                     : m.teams[oppTeamId].name)
                 : 'Rival';
-            const dateLabel = new Date(getMatchEffectiveDate(m)).toLocaleDateString();
+            const dateLabel = formatDateDisplay(getMatchEffectiveDate(m));
             const closureLabel = `A ${m.targetScore}${m.editedFlags?.resultEdited ? ' · Editado' : ''}`;
             const code: 'G' | 'P' = myTeam && m.winner === myTeam ? 'G' : 'P';
 
@@ -628,7 +628,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
 
         if (!resultEdit) return '';
         const editor = getPlayerName(resultEdit.byUserId);
-        const when = new Date(resultEdit.at).toLocaleString();
+        const when = formatDateTimeDisplay(resultEdit.at);
         const fields = resultEdit.fields
             .filter((f) => resultKeys.has(f.key))
             .map((f) => {
@@ -1054,7 +1054,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                                                     {serie.first.teams.nosotros.name} {serie.winsMine} - {serie.winsRival} {serie.first.teams.ellos.name}
                                                 </div>
                                                 <div className="text-[10px] text-white/45 mt-1">
-                                                    {serie.matches.length} partidos · {new Date(getMatchEffectiveDate(serie.matches[serie.matches.length - 1])).toLocaleDateString()}
+                                                    {serie.matches.length} partidos · {formatDateDisplay(getMatchEffectiveDate(serie.matches[serie.matches.length - 1]))}
                                                 </div>
                                                 {onStartSeriesFromHistory && currentUserId && isParticipant(serie.first, currentUserId) && (
                                                     <div className="flex gap-2 mt-2">
@@ -1198,7 +1198,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                                                     {serie.seriesName}
                                                 </div>
                                                 <div className="text-[11px] text-white/50 mt-1">
-                                                    {serie.matches.length} partidos · última: {new Date(getMatchEffectiveDate(serie.matches[serie.matches.length - 1])).toLocaleDateString()}
+                                                    {serie.matches.length} partidos · última: {formatDateDisplay(getMatchEffectiveDate(serie.matches[serie.matches.length - 1]))}
                                                 </div>
                                             </button>
 
@@ -1241,7 +1241,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                                                             className="text-left bg-white/5 border border-white/10 rounded-xl p-3"
                                                         >
                                                             <div className="text-[10px] uppercase text-white/40 font-black tracking-widest">
-                                                                Partido {m.series?.gameNumber ?? '-'} · {new Date(getMatchEffectiveDate(m)).toLocaleString()}
+                                                                Partido {m.series?.gameNumber ?? '-'} · {formatDateTimeDisplay(getMatchEffectiveDate(m))}
                                                             </div>
                                                             <div className="text-sm font-black mt-1">
                                                                 {m.teams.nosotros.name} {m.teams.nosotros.score} - {m.teams.ellos.score} {m.teams.ellos.name}
@@ -1278,7 +1278,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                                                     ⚠
                                                 </span>
                                             )}
-                                            <span className="text-[10px] uppercase text-white/40 font-black tracking-widest">{new Date(getMatchEffectiveDate(m)).toLocaleDateString()}</span>
+                                            <span className="text-[10px] uppercase text-white/40 font-black tracking-widest">{formatDateDisplay(getMatchEffectiveDate(m))}</span>
                                         </div>
                                     </div>
                                     <div className="text-sm font-black">{m.teams.nosotros.name} {m.teams.nosotros.score} - {m.teams.ellos.score} {m.teams.ellos.name}</div>
@@ -1482,7 +1482,7 @@ const SeriesDetailDrawer = ({
                                         Partido {m.series?.gameNumber ?? '-'}
                                     </div>
                                     <div className="text-[10px] uppercase tracking-widest text-white/45 font-black">
-                                        {new Date(getMatchEffectiveDate(m)).toLocaleDateString()}
+                                        {formatDateDisplay(getMatchEffectiveDate(m))}
                                     </div>
                                 </div>
                                 <div className="text-sm font-black">
@@ -1531,7 +1531,7 @@ const MatchDetailDrawer = ({ match, currentUserId, getPlayerName, locationSugges
         if (!match.edits || match.edits.length === 0) return '';
         const last = match.edits[match.edits.length - 1];
         const fields = last.fields.map((f) => `${f.key}: ${f.before ?? '-'} -> ${f.after ?? '-'}`).join(' | ');
-        return `Editado por ${getPlayerName(last.byUserId)} el ${new Date(last.at).toLocaleString()}. ${fields}`;
+        return `Editado por ${getPlayerName(last.byUserId)} el ${formatDateTimeDisplay(last.at)}. ${fields}`;
     }, [match.edits, getPlayerName]);
 
     const handleShare = async () => {
@@ -1684,7 +1684,7 @@ const MatchDetailDrawer = ({ match, currentUserId, getPlayerName, locationSugges
                                 .map((edit, idx) => (
                                     <div key={`${edit.at}-${idx}`} className="bg-white/5 border border-white/10 rounded-xl p-3">
                                         <div className="text-[11px] text-white/60 mb-1">
-                                            {getPlayerName(edit.byUserId)} · {new Date(edit.at).toLocaleString()}
+                                            {getPlayerName(edit.byUserId)} · {formatDateTimeDisplay(edit.at)}
                                         </div>
                                         <div className="text-[11px] text-white/80">
                                             {edit.fields.map((f) => `${f.key}: ${f.before ?? '-'} -> ${f.after ?? '-'}`).join(' | ')}
@@ -1713,7 +1713,9 @@ const MatchDetailDrawer = ({ match, currentUserId, getPlayerName, locationSugges
                         <label className="text-[10px] uppercase text-white/40 font-black">Fecha</label>
                         <input
                             disabled={!isEditing}
-                            type="date"
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="DD/MM/AA"
                             value={date}
                             onChange={(e) => setDate(e.target.value)}
                             className="w-full mt-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-sm disabled:opacity-60"

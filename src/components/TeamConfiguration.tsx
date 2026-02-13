@@ -3,6 +3,7 @@ import { usePairStore } from '../store/usePairStore';
 import { useHistoryStore } from '../store/useHistoryStore';
 import type { Player, TeamId } from '../types';
 import { formatDateInputLocal, parseDateInputLocal } from '../utils/date';
+import { getMatchEffectiveDate } from '../utils/matchIdentity';
 
 interface TeamConfigurationProps {
     players: Player[];
@@ -91,11 +92,26 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
     const limit = getLimit();
     const isValid = nosotros.length === limit && ellos.length === limit;
     const is2v2 = limit === 2;
+    const findHistoricTeamName = (playerIds: string[]): string => {
+        if (playerIds.length === 0) return '';
+        const key = [...playerIds].sort().join('|');
+        const hit = [...matches]
+            .sort((a, b) => getMatchEffectiveDate(b) - getMatchEffectiveDate(a))
+            .find((m) => {
+                const nos = [...m.teams.nosotros.players].sort().join('|');
+                const ell = [...m.teams.ellos.players].sort().join('|');
+                return nos === key || ell === key;
+            });
+        if (!hit) return '';
+        const isNos = [...hit.teams.nosotros.players].sort().join('|') === key;
+        return isNos ? hit.teams.nosotros.name : hit.teams.ellos.name;
+    };
+
     const defaultNosotrosPairName = nosotros.length === 2
-        ? (findPairByPlayers([nosotros[0].id, nosotros[1].id])?.name ?? `${nosotros[0].name} + ${nosotros[1].name}`)
+        ? (findPairByPlayers([nosotros[0].id, nosotros[1].id])?.name ?? findHistoricTeamName([nosotros[0].id, nosotros[1].id]) ?? `${nosotros[0].name} + ${nosotros[1].name}`)
         : '';
     const defaultEllosPairName = ellos.length === 2
-        ? (findPairByPlayers([ellos[0].id, ellos[1].id])?.name ?? `${ellos[0].name} + ${ellos[1].name}`)
+        ? (findPairByPlayers([ellos[0].id, ellos[1].id])?.name ?? findHistoricTeamName([ellos[0].id, ellos[1].id]) ?? `${ellos[0].name} + ${ellos[1].name}`)
         : '';
     const displayNosotrosPairName = nosotrosPairName || defaultNosotrosPairName;
     const displayEllosPairName = ellosPairName || defaultEllosPairName;
@@ -359,7 +375,9 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
                     <div className="flex flex-col gap-1.5">
                         <label className="text-[9px] font-black uppercase text-[var(--color-text-muted)] ml-2">Fecha (Opcional)</label>
                         <input
-                            type="date"
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="DD/MM/AA"
                             className="bg-[var(--color-surface)] border border-[var(--color-border)] p-4 rounded-2xl w-full font-bold text-sm outline-none focus:border-[var(--color-accent)]"
                             value={customDate}
                             onChange={(e) => setCustomDate(e.target.value)}

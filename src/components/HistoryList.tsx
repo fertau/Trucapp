@@ -3,6 +3,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useUserStore } from '../store/useUserStore';
 import type { MatchMode } from '../types';
 import { getMatchEffectiveDate } from '../utils/matchIdentity';
+import { formatDateDisplay } from '../utils/date';
 
 interface HistoryListProps {
     filter: 'ALL' | MatchMode;
@@ -48,7 +49,7 @@ export const HistoryList = ({ filter }: HistoryListProps) => {
                                     <span className="text-[10px] font-black uppercase text-white/20 tracking-widest">{match.mode}</span>
                                     <span className="w-1 h-1 rounded-full bg-white/10"></span>
                                     <span className="text-[8px] font-black uppercase text-white/40 tracking-widest">
-                                        {new Date(getMatchEffectiveDate(match)).toLocaleDateString(undefined, { day: '2-digit', month: 'short' })}
+                                        {formatDateDisplay(getMatchEffectiveDate(match))}
                                     </span>
                                 </div>
 

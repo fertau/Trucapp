@@ -3,6 +3,7 @@ import { usePairStore } from '../store/usePairStore';
 import { useHistoryStore } from '../store/useHistoryStore';
 import { calculateHeadToHead, getGroupId } from '../services/statisticsService';
 import { getMatchEffectiveDate } from '../utils/matchIdentity';
+import { formatDateDisplay } from '../utils/date';
 
 const toPlayerId = (player: unknown): string => {
     if (typeof player === 'string') return player;
@@ -188,7 +189,7 @@ export const PairHeadToHead = ({ onBack }: { onBack: () => void }) => {
                     <p className="text-center text-xs font-medium text-white/20 py-8 italic">No hay partidos disputados todavía.</p>
                 ) : (
                     recentMatches.map(m => {
-                        const date = new Date(getMatchEffectiveDate(m)).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' });
+                        const date = formatDateDisplay(getMatchEffectiveDate(m));
                         const loc = m.metadata?.location || 'Sede';
                         const isWinA = (m.winner === 'nosotros' && getGroupId(m.teams.nosotros.players.map(toPlayerId)) === getGroupId(pairA!.playerIds)) ||
                             (m.winner === 'ellos' && getGroupId(m.teams.ellos.players.map(toPlayerId)) === getGroupId(pairA!.playerIds));

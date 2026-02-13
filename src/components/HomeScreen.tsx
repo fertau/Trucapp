@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { AvatarBadge } from './AvatarBadge';
 import type { MatchState, TeamId } from '../types';
 import { getMatchEffectiveDate, getTeamRefKey, getTeamRefLabel } from '../utils/matchIdentity';
+import { formatDateDisplay, formatDateTimeDisplay } from '../utils/date';
 
 interface HomeScreenProps {
     onNewMatch: () => void;
@@ -238,10 +239,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                                 const getPlayerNames = (playerIds: string[]) => {
                                     return playerIds.map(id => players.find(p => p.id === id)?.name || '?').join(', ');
                                 };
-                                const dateText = new Date(getMatchEffectiveDate(m)).toLocaleDateString(undefined, {
-                                    day: '2-digit',
-                                    month: '2-digit'
-                                });
+                                const dateText = formatDateDisplay(getMatchEffectiveDate(m));
                                 const location = (m.metadata?.location || '').trim() || 'Sin sede';
                                 const seriesInfo = m.series?.id ? seriesSummary.get(m.series.id) : null;
                                 const boText = m.series ? `BO${(m.series.targetWins * 2) - 1}` : '';
@@ -331,7 +329,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                                             {m.teams.nosotros.name} {m.teams.nosotros.score} - {m.teams.ellos.score} {m.teams.ellos.name}
                                         </div>
                                         <div className="text-[11px] text-white/45 mt-1">
-                                            {new Date(getMatchEffectiveDate(m)).toLocaleString()}
+                                            {formatDateTimeDisplay(getMatchEffectiveDate(m))}
                                         </div>
                                     </div>
                                 );
