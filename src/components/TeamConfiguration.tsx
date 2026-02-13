@@ -106,12 +106,28 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
         const isNos = [...hit.teams.nosotros.players].sort().join('|') === key;
         return isNos ? hit.teams.nosotros.name : hit.teams.ellos.name;
     };
+    const resolvePairName = (pairName: string | undefined, historic: string, fallback: string) => {
+        const cleanedPair = (pairName ?? '').trim();
+        if (cleanedPair && cleanedPair !== 'Pareja Sin Nombre') return cleanedPair;
+        const cleanedHistoric = historic.trim();
+        if (cleanedHistoric) return cleanedHistoric;
+        if (cleanedPair) return cleanedPair;
+        return fallback;
+    };
 
     const defaultNosotrosPairName = nosotros.length === 2
-        ? (findPairByPlayers([nosotros[0].id, nosotros[1].id])?.name ?? findHistoricTeamName([nosotros[0].id, nosotros[1].id]) ?? `${nosotros[0].name} + ${nosotros[1].name}`)
+        ? resolvePairName(
+            findPairByPlayers([nosotros[0].id, nosotros[1].id])?.name,
+            findHistoricTeamName([nosotros[0].id, nosotros[1].id]),
+            `${nosotros[0].name} + ${nosotros[1].name}`
+        )
         : '';
     const defaultEllosPairName = ellos.length === 2
-        ? (findPairByPlayers([ellos[0].id, ellos[1].id])?.name ?? findHistoricTeamName([ellos[0].id, ellos[1].id]) ?? `${ellos[0].name} + ${ellos[1].name}`)
+        ? resolvePairName(
+            findPairByPlayers([ellos[0].id, ellos[1].id])?.name,
+            findHistoricTeamName([ellos[0].id, ellos[1].id]),
+            `${ellos[0].name} + ${ellos[1].name}`
+        )
         : '';
     const displayNosotrosPairName = nosotrosPairName || defaultNosotrosPairName;
     const displayEllosPairName = ellosPairName || defaultEllosPairName;
@@ -395,8 +411,8 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
 
                         let pIds: { nosotros?: string, ellos?: string } = {};
                         if (is2v2) {
-                            const pN = getOrCreatePair([nosotros[0].id, nosotros[1].id] as [string, string]);
-                            const pE = getOrCreatePair([ellos[0].id, ellos[1].id] as [string, string]);
+                            const pN = getOrCreatePair([nosotros[0].id, nosotros[1].id] as [string, string], defaultNosotrosPairName);
+                            const pE = getOrCreatePair([ellos[0].id, ellos[1].id] as [string, string], defaultEllosPairName);
                             pIds = { nosotros: pN.id, ellos: pE.id };
                         }
                         onStartMatch(

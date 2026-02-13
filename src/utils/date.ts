@@ -2,10 +2,10 @@ const pad2 = (n: number): string => n.toString().padStart(2, '0');
 
 export const formatDateInputLocal = (timestamp: number): string => {
     const d = new Date(timestamp);
-    const yy = String(d.getFullYear()).slice(-2);
+    const yyyy = d.getFullYear();
     const mm = pad2(d.getMonth() + 1);
     const dd = pad2(d.getDate());
-    return `${dd}/${mm}/${yy}`;
+    return `${yyyy}-${mm}-${dd}`;
 };
 
 export const parseDateInputLocal = (value: string): number | null => {
