@@ -76,7 +76,6 @@ export const ScoreBoard = () => {
 
     // Interaction Handlers
     const [longPressTriggered, setLongPressTriggered] = useState<{ nosotros: boolean, ellos: boolean }>({ nosotros: false, ellos: false });
-    const [showShortcuts, setShowShortcuts] = useState(false);
 
     const handleLongPress = (teamId: TeamId) => {
         if (navigator.vibrate) navigator.vibrate(50);
@@ -186,65 +185,41 @@ export const ScoreBoard = () => {
 
                 {/* Controls - Pointer Events Enabed */}
                 <div className="mt-auto w-full px-2 pointer-events-auto z-30 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
-                    <div className="grid grid-cols-2 gap-3 mb-2">
-                        <button
-                            onClick={() => addPoints('nosotros', 1, 'score_tap')}
-                            className="min-h-[58px] rounded-2xl border border-[var(--color-nosotros)]/50 bg-[var(--color-nosotros)]/20 text-[var(--color-nosotros)] font-black text-lg tracking-wide active:scale-95 transition-all"
-                        >
-                            +1 {teams.nosotros.name}
-                        </button>
-                        <button
-                            onClick={() => addPoints('ellos', 1, 'score_tap')}
-                            className="min-h-[58px] rounded-2xl border border-[var(--color-ellos)]/50 bg-[var(--color-ellos)]/20 text-[var(--color-ellos)] font-black text-lg tracking-wide active:scale-95 transition-all"
-                        >
-                            +1 {teams.ellos.name}
-                        </button>
-                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        {/* Nosotros Controls */}
+                        <div className="grid grid-cols-3 gap-1">
+                            <ShortcutButton label="Envido" points={2} type="envido" teamId="nosotros" onAction={() => addPoints('nosotros', 2, 'envido')} />
+                            <ShortcutButton label="Real Envido" points={3} type="real_envido" teamId="nosotros" onAction={() => addPoints('nosotros', 3, 'real_envido')} />
+                            <ShortcutButton
+                                label="Falta Envido"
+                                points={faltaLabelFor(teams.ellos.score)}
+                                type="falta_envido"
+                                teamId="nosotros"
+                                onAction={() => window.dispatchEvent(new CustomEvent('requestFaltaEnvido'))}
+                            />
 
-                    <button
-                        onClick={() => setShowShortcuts((prev) => !prev)}
-                        className="w-full mb-2 py-2 rounded-xl border border-white/15 bg-white/5 text-[10px] font-black uppercase tracking-widest text-white/70"
-                    >
-                        {showShortcuts ? 'Ocultar atajos' : 'Mostrar atajos'}
-                    </button>
-
-                    {showShortcuts && (
-                        <div className="grid grid-cols-2 gap-4">
-                            {/* Nosotros Controls */}
-                            <div className="grid grid-cols-3 gap-1">
-                                <ShortcutButton label="Envido" points={2} type="envido" teamId="nosotros" onAction={() => addPoints('nosotros', 2, 'envido')} />
-                                <ShortcutButton label="Real Envido" points={3} type="real_envido" teamId="nosotros" onAction={() => addPoints('nosotros', 3, 'real_envido')} />
-                                <ShortcutButton
-                                    label="Falta Envido"
-                                    points={faltaLabelFor(teams.ellos.score)}
-                                    type="falta_envido"
-                                    teamId="nosotros"
-                                    onAction={() => window.dispatchEvent(new CustomEvent('requestFaltaEnvido'))}
-                                />
-
-                                <ShortcutButton label="Truco" points={2} type="truco" teamId="nosotros" onAction={() => addPoints('nosotros', 2, 'truco')} />
-                                <ShortcutButton label="Retruco" points={3} type="retruco" teamId="nosotros" onAction={() => addPoints('nosotros', 3, 'retruco')} />
-                                <ShortcutButton label="Vale 4" points={4} type="vale_cuatro" teamId="nosotros" onAction={() => addPoints('nosotros', 4, 'vale_cuatro')} />
-                            </div>
-
-                            {/* Ellos Controls */}
-                            <div className="grid grid-cols-3 gap-1">
-                                <ShortcutButton label="Envido" points={2} type="envido" teamId="ellos" onAction={() => addPoints('ellos', 2, 'envido')} />
-                                <ShortcutButton label="Real Envido" points={3} type="real_envido" teamId="ellos" onAction={() => addPoints('ellos', 3, 'real_envido')} />
-                                <ShortcutButton
-                                    label="Falta Envido"
-                                    points={faltaLabelFor(teams.nosotros.score)}
-                                    type="falta_envido"
-                                    teamId="ellos"
-                                    onAction={() => window.dispatchEvent(new CustomEvent('requestFaltaEnvido'))}
-                                />
-
-                                <ShortcutButton label="Truco" points={2} type="truco" teamId="ellos" onAction={() => addPoints('ellos', 2, 'truco')} />
-                                <ShortcutButton label="Retruco" points={3} type="retruco" teamId="ellos" onAction={() => addPoints('ellos', 3, 'retruco')} />
-                                <ShortcutButton label="Vale 4" points={4} type="vale_cuatro" teamId="ellos" onAction={() => addPoints('ellos', 4, 'vale_cuatro')} />
-                            </div>
+                            <ShortcutButton label="Truco" points={2} type="truco" teamId="nosotros" onAction={() => addPoints('nosotros', 2, 'truco')} />
+                            <ShortcutButton label="Retruco" points={3} type="retruco" teamId="nosotros" onAction={() => addPoints('nosotros', 3, 'retruco')} />
+                            <ShortcutButton label="Vale 4" points={4} type="vale_cuatro" teamId="nosotros" onAction={() => addPoints('nosotros', 4, 'vale_cuatro')} />
                         </div>
-                    )}
+
+                        {/* Ellos Controls */}
+                        <div className="grid grid-cols-3 gap-1">
+                            <ShortcutButton label="Envido" points={2} type="envido" teamId="ellos" onAction={() => addPoints('ellos', 2, 'envido')} />
+                            <ShortcutButton label="Real Envido" points={3} type="real_envido" teamId="ellos" onAction={() => addPoints('ellos', 3, 'real_envido')} />
+                            <ShortcutButton
+                                label="Falta Envido"
+                                points={faltaLabelFor(teams.nosotros.score)}
+                                type="falta_envido"
+                                teamId="ellos"
+                                onAction={() => window.dispatchEvent(new CustomEvent('requestFaltaEnvido'))}
+                            />
+
+                            <ShortcutButton label="Truco" points={2} type="truco" teamId="ellos" onAction={() => addPoints('ellos', 2, 'truco')} />
+                            <ShortcutButton label="Retruco" points={3} type="retruco" teamId="ellos" onAction={() => addPoints('ellos', 3, 'retruco')} />
+                            <ShortcutButton label="Vale 4" points={4} type="vale_cuatro" teamId="ellos" onAction={() => addPoints('ellos', 4, 'vale_cuatro')} />
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

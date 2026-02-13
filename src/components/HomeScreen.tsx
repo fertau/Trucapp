@@ -154,7 +154,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                                 </div>
                                 <div className="text-[11px] text-white/70 space-y-1">
                                     <div>1. Tocá <span className="font-black">Nuevo Partido</span> para arrancar.</div>
-                                    <div>2. Durante el juego, usá <span className="font-black">+1</span> y abrí atajos solo cuando los necesites.</div>
+                                    <div>2. Durante el juego, usá los <span className="font-black">atajos</span> para sumar puntos rápido.</div>
                                     <div>3. En <span className="font-black">Estadísticas</span>, guardá filtros y seguí tus clásicos.</div>
                                 </div>
                             </div>

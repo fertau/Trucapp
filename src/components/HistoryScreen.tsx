@@ -1041,20 +1041,27 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                                 {isClassicOpen && historySummary.total > 0 && historyFocus === 'CLASICOS' && classicSeriesGroups.length > 0 && (
                                     <div className="flex flex-col gap-2">
                                         {classicSeriesGroups.map((serie) => (
-                                            <div key={serie.id} className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5">
+                                            <div key={serie.id} className="bg-white/5 border border-white/10 rounded-xl px-3 py-2">
                                                 {(() => {
                                                     const targetWins = serie.first.series?.targetWins ?? 2;
                                                     const isFinished = serie.winsMine >= targetWins || serie.winsRival >= targetWins;
+                                                    const lastMatch = serie.matches[serie.matches.length - 1];
+                                                    const lastLocation = lastMatch.metadata?.location?.trim() || 'Sin sede';
                                                     return (
                                                         <>
-                                                <div className="text-[10px] text-white/45 uppercase tracking-widest font-black">
-                                                    Serie · {serie.matches[0].mode}
-                                                </div>
-                                                <div className="text-sm font-black mt-1">
-                                                    {serie.first.teams.nosotros.name} {serie.winsMine} - {serie.winsRival} {serie.first.teams.ellos.name}
-                                                </div>
-                                                <div className="text-[10px] text-white/45 mt-1">
-                                                    {serie.matches.length} partidos · {formatDateDisplay(getMatchEffectiveDate(serie.matches[serie.matches.length - 1]))}
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    <div>
+                                                        <div className="text-[9px] text-white/45 uppercase tracking-widest font-black">Fecha</div>
+                                                        <div className="text-[12px] font-black">{formatDateDisplay(getMatchEffectiveDate(lastMatch))}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-[9px] text-white/45 uppercase tracking-widest font-black">Sede</div>
+                                                        <div className="text-[12px] font-black truncate" title={lastLocation}>{lastLocation}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-[9px] text-white/45 uppercase tracking-widest font-black">Resultado</div>
+                                                        <div className="text-[12px] font-black">{serie.winsMine} - {serie.winsRival}</div>
+                                                    </div>
                                                 </div>
                                                 {onStartSeriesFromHistory && currentUserId && isParticipant(serie.first, currentUserId) && (
                                                     <div className="flex gap-2 mt-2">
@@ -1176,29 +1183,28 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                                     const sid = serie.seriesId;
                                     const isOpen = openSeriesId === sid;
                                     const first = serie.first;
+                                    const lastMatch = serie.matches[serie.matches.length - 1];
+                                    const lastLocation = lastMatch.metadata?.location?.trim() || 'Sin sede';
                                     const canQuickStart = scope === 'MINE' && !!currentUserId && isParticipant(first, currentUserId);
                                     return (
                                         <div key={sid} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl overflow-hidden">
                                             <button
                                                 onClick={() => setOpenSeriesId((v) => (v === sid ? null : sid))}
-                                                className="w-full text-left p-4"
+                                                className="w-full text-left p-3"
                                             >
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <span className="text-[10px] uppercase text-white/45 font-black tracking-widest">
-                                                        Serie BO{(serie.targetWins * 2) - 1}
-                                                    </span>
-                                                    <span className={`text-[10px] font-black uppercase tracking-widest ${serie.isFinished ? 'text-[var(--color-nosotros)]' : 'text-amber-400'}`}>
-                                                        {serie.isFinished ? 'Cerrada' : 'En curso'}
-                                                    </span>
-                                                </div>
-                                                <div className="text-sm font-black">
-                                                    {first.teams.nosotros.name} {serie.winsNos} - {serie.winsEll} {first.teams.ellos.name}
-                                                </div>
-                                                <div className="text-[11px] text-white/60 mt-1 truncate">
-                                                    {serie.seriesName}
-                                                </div>
-                                                <div className="text-[11px] text-white/50 mt-1">
-                                                    {serie.matches.length} partidos · última: {formatDateDisplay(getMatchEffectiveDate(serie.matches[serie.matches.length - 1]))}
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    <div>
+                                                        <div className="text-[9px] uppercase text-white/45 font-black tracking-widest">Fecha</div>
+                                                        <div className="text-xs font-black">{formatDateDisplay(getMatchEffectiveDate(lastMatch))}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-[9px] uppercase text-white/45 font-black tracking-widest">Sede</div>
+                                                        <div className="text-xs font-black truncate" title={lastLocation}>{lastLocation}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-[9px] uppercase text-white/45 font-black tracking-widest">Resultado</div>
+                                                        <div className="text-xs font-black">{serie.winsNos} - {serie.winsEll}</div>
+                                                    </div>
                                                 </div>
                                             </button>
 
