@@ -848,17 +848,25 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                         <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] p-4">
                             <div className="flex items-center justify-between mb-3">
                                 <div className="text-[10px] text-white/40 uppercase tracking-[0.18em] font-black">Resumen {statsMode}</div>
-                                <div className="text-[10px] text-white/45 font-black uppercase tracking-wider">{summaryStats.total} PJ</div>
+                                <span className="inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/15 bg-white/5 text-white/75">
+                                    {statsMode}
+                                </span>
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-white/5 rounded-2xl p-3">
-                                    <div className="text-[10px] text-white/50 font-black uppercase tracking-wider">PJ</div>
-                                    <div className="text-[30px] font-black font-mono leading-tight mt-0.5">{summaryStats.total}</div>
-                                </div>
-                                <div className="bg-white/5 rounded-2xl p-3">
-                                    <div className="text-[10px] text-white/50 font-black uppercase tracking-wider">G/P</div>
-                                    <div className="text-[26px] font-black font-mono leading-tight mt-0.5">{summaryStats.wins}/{summaryStats.losses}</div>
-                                </div>
+                            <div className="text-[32px] font-black leading-none tabular-nums">
+                                {summaryStats.total} <span className="text-[16px] text-white/65">PJ</span>
+                            </div>
+                            <div className="text-sm text-white/65 mt-1">
+                                <span className="font-mono">{summaryStats.total}</span> PJ = <span className="font-mono text-[var(--color-nosotros)]">{summaryStats.wins}</span> G + <span className="font-mono text-[var(--color-ellos)]">{summaryStats.losses}</span> P
+                            </div>
+                            <div className="mt-2 h-2.5 rounded-full overflow-hidden bg-black/25 border border-white/10 flex">
+                                <div
+                                    className="h-full bg-[var(--color-nosotros)]"
+                                    style={{ width: `${summaryStats.total ? (summaryStats.wins / summaryStats.total) * 100 : 0}%` }}
+                                />
+                                <div
+                                    className="h-full bg-[var(--color-ellos)]"
+                                    style={{ width: `${summaryStats.total ? (summaryStats.losses / summaryStats.total) * 100 : 0}%` }}
+                                />
                             </div>
                         </div>
 
@@ -928,27 +936,28 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                                     <div className="text-[10px] text-white/45 uppercase tracking-[0.14em] font-black mb-1">
                                         Ficha resumen
                                     </div>
-                                    <div className="grid grid-cols-3 gap-2 mt-2">
-                                        <div className="bg-black/20 border border-white/10 rounded-xl p-2 text-center">
-                                            <div className="text-[10px] uppercase tracking-widest text-white/45 font-black">PJ</div>
-                                            <div className="text-2xl font-black font-mono">{historySummary.total}</div>
-                                        </div>
-                                        <div className="bg-[var(--color-nosotros)]/10 border border-[var(--color-nosotros)]/25 rounded-xl p-2 text-center">
-                                            <div className="text-[10px] uppercase tracking-widest text-[var(--color-nosotros)]/80 font-black">G</div>
-                                            <div className="text-2xl font-black font-mono text-[var(--color-nosotros)]">{historySummary.wins}</div>
-                                        </div>
-                                        <div className="bg-[var(--color-ellos)]/10 border border-[var(--color-ellos)]/25 rounded-xl p-2 text-center">
-                                            <div className="text-[10px] uppercase tracking-widest text-[var(--color-ellos)]/80 font-black">P</div>
-                                            <div className="text-2xl font-black font-mono text-[var(--color-ellos)]">{historySummary.losses}</div>
-                                        </div>
+                                    <div className="text-[30px] font-black leading-none tabular-nums mt-1">
+                                        {historySummary.total} <span className="text-[14px] text-white/65">PJ</span>
+                                    </div>
+                                    <div className="text-[12px] text-white/65 mt-1">
+                                        <span className="font-mono">{historySummary.total}</span> PJ = <span className="font-mono text-[var(--color-nosotros)]">{historySummary.wins}</span> G + <span className="font-mono text-[var(--color-ellos)]">{historySummary.losses}</span> P
+                                    </div>
+                                    <div className="mt-2 h-2.5 rounded-full overflow-hidden bg-black/25 border border-white/10 flex">
+                                        <div
+                                            className="h-full bg-[var(--color-nosotros)]"
+                                            style={{ width: `${historySummary.total ? (historySummary.wins / historySummary.total) * 100 : 0}%` }}
+                                        />
+                                        <div
+                                            className="h-full bg-[var(--color-ellos)]"
+                                            style={{ width: `${historySummary.total ? (historySummary.losses / historySummary.total) * 100 : 0}%` }}
+                                        />
                                     </div>
                                     {historyForm.length > 0 && (
-                                        <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-                                            <span className="text-[10px] text-white/45 uppercase tracking-wider font-black mr-1">Forma</span>
+                                        <div className="mt-3 flex items-center justify-center gap-1.5 flex-wrap">
                                             {historyForm.map((item, idx) => (
                                                 <span
                                                     key={`${item}-${idx}`}
-                                                    className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black ${item === 'G' ? 'bg-[var(--color-nosotros)]/20 text-[var(--color-nosotros)]' : 'bg-[var(--color-ellos)]/20 text-[var(--color-ellos)]'}`}
+                                                    className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black border ${item === 'G' ? 'bg-[var(--color-nosotros)]/15 border-[var(--color-nosotros)]/35 text-[var(--color-nosotros)]' : 'bg-[var(--color-ellos)]/15 border-[var(--color-ellos)]/35 text-[var(--color-ellos)]'}`}
                                                 >
                                                     {item}
                                                 </span>

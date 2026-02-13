@@ -62,6 +62,15 @@ textarea {
   scrollbar-gutter: stable both-edges;
 }
 
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 9999px;
+}
+
 /* Glassmorphism Classes */
 .glass-panel {
   background: rgba(44, 44, 46, 0.8);

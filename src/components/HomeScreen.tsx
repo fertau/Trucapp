@@ -175,39 +175,41 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                                 onClick={onHistory}
                                 className="w-full text-left bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl px-4 py-4"
                             >
-                                <div className="text-[10px] font-black uppercase tracking-widest text-[var(--color-accent)] mb-2">Rivalidad activa</div>
-                                <div className="text-xl font-black leading-tight">{activeRivalry.label.replace(`${activeRivalry.mode} · `, '')}</div>
-                                <div className="grid grid-cols-3 gap-2 mt-3">
-                                    <div className="bg-black/20 border border-white/10 rounded-xl p-2 text-center">
-                                        <div className="text-[10px] uppercase tracking-widest text-white/45 font-black">PJ</div>
-                                        <div className="text-2xl font-black font-mono">{activeRivalry.count}</div>
-                                    </div>
-                                    <div className="bg-[var(--color-nosotros)]/10 border border-[var(--color-nosotros)]/25 rounded-xl p-2 text-center">
-                                        <div className="text-[10px] uppercase tracking-widest text-[var(--color-nosotros)]/80 font-black">G</div>
-                                        <div className="text-2xl font-black font-mono text-[var(--color-nosotros)]">{activeRivalry.wins}</div>
-                                    </div>
-                                    <div className="bg-[var(--color-ellos)]/10 border border-[var(--color-ellos)]/25 rounded-xl p-2 text-center">
-                                        <div className="text-[10px] uppercase tracking-widest text-[var(--color-ellos)]/80 font-black">P</div>
-                                        <div className="text-2xl font-black font-mono text-[var(--color-ellos)]">{activeRivalry.losses}</div>
-                                    </div>
+                                <div className="flex items-center justify-between gap-3">
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-[var(--color-accent)]">Rivalidad activa</div>
+                                    <span className="inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/15 bg-white/5 text-white/75">
+                                        {activeRivalry.mode}
+                                    </span>
+                                </div>
+                                <div className="text-[28px] font-black leading-none mt-2 tabular-nums">
+                                    {activeRivalry.count} <span className="text-[15px] font-bold text-white/65">PJ</span>
+                                </div>
+                                <div className="text-sm font-black leading-tight mt-1">{activeRivalry.label.replace(`${activeRivalry.mode} · `, '')}</div>
+                                <div className="text-[12px] text-white/65 mt-2">
+                                    <span className="font-mono">{activeRivalry.count}</span> PJ = <span className="font-mono text-[var(--color-nosotros)]">{activeRivalry.wins}</span> G + <span className="font-mono text-[var(--color-ellos)]">{activeRivalry.losses}</span> P
+                                </div>
+                                <div className="mt-2 h-2.5 rounded-full overflow-hidden bg-black/25 border border-white/10 flex">
+                                    <div
+                                        className="h-full bg-[var(--color-nosotros)]"
+                                        style={{ width: `${activeRivalry.count ? (activeRivalry.wins / activeRivalry.count) * 100 : 0}%` }}
+                                    />
+                                    <div
+                                        className="h-full bg-[var(--color-ellos)]"
+                                        style={{ width: `${activeRivalry.count ? (activeRivalry.losses / activeRivalry.count) * 100 : 0}%` }}
+                                    />
                                 </div>
                                 {activeRivalry.form.length > 0 && (
-                                    <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                                    <div className="mt-3 flex items-center justify-center gap-1.5 flex-wrap">
                                         {activeRivalry.form.map((item, idx) => (
                                             <span
                                                 key={`home-form-${idx}`}
-                                                className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black ${item === 'G' ? 'bg-[var(--color-nosotros)]/20 text-[var(--color-nosotros)]' : 'bg-[var(--color-ellos)]/20 text-[var(--color-ellos)]'}`}
+                                                className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black border ${item === 'G' ? 'bg-[var(--color-nosotros)]/15 border-[var(--color-nosotros)]/35 text-[var(--color-nosotros)]' : 'bg-[var(--color-ellos)]/15 border-[var(--color-ellos)]/35 text-[var(--color-ellos)]'}`}
                                             >
                                                 {item}
                                             </span>
                                         ))}
                                     </div>
                                 )}
-                                <div className="mt-3">
-                                    <span className="inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/15 bg-white/5 text-white/75">
-                                        {activeRivalry.mode}
-                                    </span>
-                                </div>
                             </button>
                         )}
 
