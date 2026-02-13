@@ -188,35 +188,31 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                                 </div>
                                 <div className="text-sm font-black leading-tight mt-1">{activeRivalry.label.replace(`${activeRivalry.mode} · `, '')}</div>
                                 <div className="text-[10px] uppercase tracking-[0.2em] text-white/45 font-black mt-3 text-center">Ultimos 10</div>
-                                <div className="mt-2 flex items-center justify-center gap-1.5">
+                                <div className="mt-2 grid grid-cols-10 gap-2 w-full">
                                     {Array.from({ length: 10 }).map((_, idx) => {
                                         const item = activeRivalry.form[idx];
                                         const cls = item === 'G'
                                             ? 'bg-[var(--color-nosotros)] border-[var(--color-nosotros)]/90 shadow-[0_0_10px_rgba(74,222,128,0.4)]'
                                             : item === 'P'
-                                                ? 'bg-[var(--color-ellos)] border-[var(--color-ellos)]/90 shadow-[0_0_10px_rgba(251,191,36,0.35)]'
+                                                ? 'bg-[var(--color-danger)] border-[var(--color-danger)]/90 shadow-[0_0_10px_rgba(255,69,58,0.35)]'
                                                 : 'bg-white/5 border-white/15';
                                         return (
                                             <span
                                                 key={`home-form-slot-${idx}`}
-                                                className={`w-4 h-4 rounded-full border ${cls}`}
+                                                className={`w-full aspect-square rounded-full border ${cls}`}
                                                 title={item ? `Partido ${idx + 1}: ${item}` : `Partido ${idx + 1}: sin dato`}
                                             />
                                         );
                                     })}
                                 </div>
                                 <div className="w-full h-px bg-white/10 my-3" />
-                                <div className="grid grid-cols-3 gap-2">
-                                    <div className="text-center">
-                                        <div className="text-[26px] font-black font-mono leading-none text-white">{activeRivalry.count}</div>
-                                        <div className="text-[10px] uppercase tracking-widest font-black text-white/50 mt-1">PJ</div>
-                                    </div>
-                                    <div className="text-center">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="text-center bg-white/5 border border-white/10 rounded-xl py-2">
                                         <div className="text-[26px] font-black font-mono leading-none text-[var(--color-nosotros)]">{activeRivalry.wins}</div>
                                         <div className="text-[10px] uppercase tracking-widest font-black text-white/50 mt-1">G</div>
                                     </div>
-                                    <div className="text-center">
-                                        <div className="text-[26px] font-black font-mono leading-none text-[var(--color-ellos)]">{activeRivalry.losses}</div>
+                                    <div className="text-center bg-white/5 border border-white/10 rounded-xl py-2">
+                                        <div className="text-[26px] font-black font-mono leading-none text-[var(--color-danger)]">{activeRivalry.losses}</div>
                                         <div className="text-[10px] uppercase tracking-widest font-black text-white/50 mt-1">P</div>
                                     </div>
                                 </div>

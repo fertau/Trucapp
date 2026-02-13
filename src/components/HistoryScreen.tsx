@@ -870,18 +870,18 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                             <div className="mt-2 flex items-center gap-3 text-[13px] font-black">
                                 <span className="text-[var(--color-nosotros)]">G {summaryStats.wins}</span>
                                 <span className="text-white/30">·</span>
-                                <span className="text-[var(--color-ellos)]">P {summaryStats.losses}</span>
+                                <span className="text-[var(--color-danger)]">P {summaryStats.losses}</span>
                             </div>
                             <div className="text-[10px] uppercase tracking-[0.2em] text-white/45 font-black mt-3 text-center">Ultimos 10</div>
-                            <div className="mt-3 flex items-center justify-center gap-1.5">
+                            <div className="mt-3 grid grid-cols-10 gap-2 w-full">
                                 {Array.from({ length: 10 }).map((_, idx) => {
                                     const item = summaryForm[idx] ?? null;
                                     const cls = item === 'G'
                                         ? 'bg-[var(--color-nosotros)] border-[var(--color-nosotros)]/90 shadow-[0_0_10px_rgba(74,222,128,0.4)]'
                                         : item === 'P'
-                                            ? 'bg-[var(--color-ellos)] border-[var(--color-ellos)]/90 shadow-[0_0_10px_rgba(251,191,36,0.35)]'
+                                            ? 'bg-[var(--color-danger)] border-[var(--color-danger)]/90 shadow-[0_0_10px_rgba(255,69,58,0.35)]'
                                             : 'bg-white/5 border-white/15';
-                                    return <span key={`summary-slot-${idx}`} className={`w-4 h-4 rounded-full border ${cls}`} />;
+                                    return <span key={`summary-slot-${idx}`} className={`w-full aspect-square rounded-full border ${cls}`} />;
                                 })}
                             </div>
                             </div>
@@ -961,21 +961,21 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                                     <div className="mt-2 flex items-center gap-3 text-[13px] font-black">
                                         <span className="text-[var(--color-nosotros)]">G {historySummary.wins}</span>
                                         <span className="text-white/30">·</span>
-                                        <span className="text-[var(--color-ellos)]">P {historySummary.losses}</span>
+                                        <span className="text-[var(--color-danger)]">P {historySummary.losses}</span>
                                     </div>
                                     <div className="text-[10px] uppercase tracking-[0.2em] text-white/45 font-black mt-3 text-center">Ultimos 10</div>
-                                    <div className="mt-2 flex items-center justify-center gap-1.5 flex-wrap">
+                                    <div className="mt-2 grid grid-cols-10 gap-2 w-full">
                                         {Array.from({ length: 10 }).map((_, idx) => {
                                             const item = historyForm[idx] ?? null;
                                             const cls = item === 'G'
                                                 ? 'bg-[var(--color-nosotros)] border-[var(--color-nosotros)]/90 shadow-[0_0_10px_rgba(74,222,128,0.4)]'
                                                 : item === 'P'
-                                                    ? 'bg-[var(--color-ellos)] border-[var(--color-ellos)]/90 shadow-[0_0_10px_rgba(251,191,36,0.35)]'
+                                                    ? 'bg-[var(--color-danger)] border-[var(--color-danger)]/90 shadow-[0_0_10px_rgba(255,69,58,0.35)]'
                                                     : 'bg-white/5 border-white/15';
                                             return (
                                                 <span
                                                     key={`history-form-slot-${idx}`}
-                                                    className={`w-4 h-4 rounded-full border ${cls}`}
+                                                    className={`w-full aspect-square rounded-full border ${cls}`}
                                                     title={item ? `Partido ${idx + 1}: ${item}` : `Partido ${idx + 1}: sin dato`}
                                                 />
                                             );
