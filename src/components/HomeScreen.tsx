@@ -185,31 +185,28 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                                     {activeRivalry.count} <span className="text-[15px] font-bold text-white/65">PJ</span>
                                 </div>
                                 <div className="text-sm font-black leading-tight mt-1">{activeRivalry.label.replace(`${activeRivalry.mode} · `, '')}</div>
-                                <div className="text-[12px] text-white/65 mt-2">
-                                    <span className="font-mono">{activeRivalry.count}</span> PJ = <span className="font-mono text-[var(--color-nosotros)]">{activeRivalry.wins}</span> G + <span className="font-mono text-[var(--color-ellos)]">{activeRivalry.losses}</span> P
+                                <div className="mt-2 flex items-center gap-3 text-[13px] font-black">
+                                    <span className="text-[var(--color-nosotros)]">G {activeRivalry.wins}</span>
+                                    <span className="text-white/30">·</span>
+                                    <span className="text-[var(--color-ellos)]">P {activeRivalry.losses}</span>
                                 </div>
-                                <div className="mt-2 h-2.5 rounded-full overflow-hidden bg-black/25 border border-white/10 flex">
-                                    <div
-                                        className="h-full bg-[var(--color-nosotros)]"
-                                        style={{ width: `${activeRivalry.count ? (activeRivalry.wins / activeRivalry.count) * 100 : 0}%` }}
-                                    />
-                                    <div
-                                        className="h-full bg-[var(--color-ellos)]"
-                                        style={{ width: `${activeRivalry.count ? (activeRivalry.losses / activeRivalry.count) * 100 : 0}%` }}
-                                    />
-                                </div>
-                                {activeRivalry.form.length > 0 && (
-                                    <div className="mt-3 flex items-center justify-center gap-1.5 flex-wrap">
-                                        {activeRivalry.form.map((item, idx) => (
+                                <div className="mt-3 flex items-center justify-center gap-1.5">
+                                    {Array.from({ length: 10 }).map((_, idx) => {
+                                        const item = activeRivalry.form[idx];
+                                        const cls = item === 'G'
+                                            ? 'bg-[var(--color-nosotros)]/20 border-[var(--color-nosotros)]/45'
+                                            : item === 'P'
+                                                ? 'bg-[var(--color-ellos)]/20 border-[var(--color-ellos)]/45'
+                                                : 'bg-white/5 border-white/10';
+                                        return (
                                             <span
-                                                key={`home-form-${idx}`}
-                                                className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black border ${item === 'G' ? 'bg-[var(--color-nosotros)]/15 border-[var(--color-nosotros)]/35 text-[var(--color-nosotros)]' : 'bg-[var(--color-ellos)]/15 border-[var(--color-ellos)]/35 text-[var(--color-ellos)]'}`}
-                                            >
-                                                {item}
-                                            </span>
-                                        ))}
-                                    </div>
-                                )}
+                                                key={`home-form-slot-${idx}`}
+                                                className={`w-5 h-5 rounded-md border ${cls}`}
+                                                title={item ? `Partido ${idx + 1}: ${item}` : `Partido ${idx + 1}: sin dato`}
+                                            />
+                                        );
+                                    })}
+                                </div>
                             </button>
                         )}
 
