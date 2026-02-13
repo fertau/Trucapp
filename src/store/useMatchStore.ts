@@ -24,6 +24,9 @@ interface MatchStore extends MatchState {
     unsubscribe: (() => void) | null;
     listenToMatch: (matchId: string) => void;
     stopListening: () => void;
+
+    // UX safeguard: allows reverting accidental 30 -> 15 target switch.
+    targetSwitchBackup: { nosotros: number; ellos: number } | null;
 }
 
 const INITIAL_STATE: Omit<MatchState, 'id' | 'startDate'> = {
@@ -85,6 +88,7 @@ export const useMatchStore = create<MatchStore>()(
             id: crypto.randomUUID(),
             startDate: Date.now(),
             ...INITIAL_STATE,
+            targetSwitchBackup: null,
             isCloudSynced: false,
             unsubscribe: null,
 
@@ -176,7 +180,8 @@ export const useMatchStore = create<MatchStore>()(
                         teams: newTeams,
                         history: newHistory,
                         isFinished: isWin,
-                        winner: isWin ? teamId : null
+                        winner: isWin ? teamId : null,
+                        targetSwitchBackup: null
                     };
 
                     // Cloud Write
@@ -211,7 +216,7 @@ export const useMatchStore = create<MatchStore>()(
                         [teamId]: { ...state.teams[teamId], score: newScore }
                     };
 
-                    const newState = { teams: newTeams };
+                    const newState = { teams: newTeams, targetSwitchBackup: null as MatchStore['targetSwitchBackup'] };
 
                     // Cloud Write
                     if (state.id) {
@@ -247,7 +252,8 @@ export const useMatchStore = create<MatchStore>()(
                         }
                     },
                     isFinished: recomputed.isFinished,
-                    winner: recomputed.winner
+                    winner: recomputed.winner,
+                    targetSwitchBackup: null as MatchStore['targetSwitchBackup']
                 };
 
                 // Cloud Write
@@ -272,6 +278,7 @@ export const useMatchStore = create<MatchStore>()(
                     mode,
                     winner: null, // Ensure reset
                     isFinished: false,
+                    targetSwitchBackup: null,
                     isCloudSynced: false // Start local until shared/synced
                 });
             },
@@ -300,8 +307,26 @@ export const useMatchStore = create<MatchStore>()(
 
             setTargetScore: (score) => set((state) => {
                 const nextTarget = score === 15 ? 15 : 30;
-                const nextNos = Math.min(state.teams.nosotros.score, nextTarget);
-                const nextEll = Math.min(state.teams.ellos.score, nextTarget);
+                let nextNos = Math.min(state.teams.nosotros.score, nextTarget);
+                let nextEll = Math.min(state.teams.ellos.score, nextTarget);
+                let nextBackup: MatchStore['targetSwitchBackup'] = state.targetSwitchBackup;
+
+                const isSwitchingTo15 = state.targetScore === 30 && nextTarget === 15;
+                const isSwitchingBackTo30 = state.targetScore === 15 && nextTarget === 30;
+
+                if (isSwitchingTo15) {
+                    nextBackup = {
+                        nosotros: state.teams.nosotros.score,
+                        ellos: state.teams.ellos.score
+                    };
+                }
+
+                if (isSwitchingBackTo30 && nextBackup) {
+                    // Restore previous 30-point progress on quick revert.
+                    nextNos = Math.min(nextTarget, nextBackup.nosotros);
+                    nextEll = Math.min(nextTarget, nextBackup.ellos);
+                    nextBackup = null;
+                }
 
                 let nextWinner: TeamId | null = null;
                 if (nextNos >= nextTarget && nextEll < nextTarget) nextWinner = 'nosotros';
@@ -318,7 +343,8 @@ export const useMatchStore = create<MatchStore>()(
                         ellos: { ...state.teams.ellos, score: nextEll }
                     },
                     isFinished: nextWinner !== null,
-                    winner: nextWinner
+                    winner: nextWinner,
+                    targetSwitchBackup: nextBackup
                 };
 
                 if (state.id) {

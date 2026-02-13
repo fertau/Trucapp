@@ -720,7 +720,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
         if (selectedMatch || selectedSeriesId) return;
         const t = e.touches[0];
         if (!t) return;
-        if (t.clientX > 28) {
+        if (t.clientX > 20) {
             edgeSwipeStartRef.current = null;
             edgeSwipeTriggeredRef.current = false;
             return;
@@ -735,7 +735,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
         if (!t) return;
         const dx = t.clientX - edgeSwipeStartRef.current.x;
         const dy = Math.abs(t.clientY - edgeSwipeStartRef.current.y);
-        if (dx > 82 && dy < 36) {
+        if (dx > 110 && dy < 24) {
             edgeSwipeTriggeredRef.current = true;
             onBack();
         }
@@ -1442,6 +1442,11 @@ const SeriesDetailDrawer = ({
     const onDrawerTouchStart: TouchEventHandler<HTMLDivElement> = (e) => {
         const t = e.touches[0];
         if (!t) return;
+        if (t.clientY > 220) {
+            swipeStartRef.current = null;
+            swipeTriggeredRef.current = false;
+            return;
+        }
         swipeStartRef.current = { x: t.clientX, y: t.clientY };
         swipeTriggeredRef.current = false;
     };
@@ -1452,7 +1457,7 @@ const SeriesDetailDrawer = ({
         if (!t) return;
         const dy = t.clientY - swipeStartRef.current.y;
         const dx = Math.abs(t.clientX - swipeStartRef.current.x);
-        if (dy > 96 && dx < 42) {
+        if (dy > 130 && dx < 34) {
             swipeTriggeredRef.current = true;
             onClose();
         }
@@ -1610,6 +1615,11 @@ const MatchDetailDrawer = ({ match, currentUserId, getPlayerName, locationSugges
     const onDrawerTouchStart: TouchEventHandler<HTMLDivElement> = (e) => {
         const t = e.touches[0];
         if (!t) return;
+        if (t.clientY > 220) {
+            swipeStartRef.current = null;
+            swipeTriggeredRef.current = false;
+            return;
+        }
         swipeStartRef.current = { x: t.clientX, y: t.clientY };
         swipeTriggeredRef.current = false;
     };
@@ -1620,7 +1630,7 @@ const MatchDetailDrawer = ({ match, currentUserId, getPlayerName, locationSugges
         if (!t) return;
         const dy = t.clientY - swipeStartRef.current.y;
         const dx = Math.abs(t.clientX - swipeStartRef.current.x);
-        if (dy > 96 && dx < 42) {
+        if (dy > 130 && dx < 34) {
             swipeTriggeredRef.current = true;
             onClose();
         }
