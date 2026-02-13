@@ -232,28 +232,6 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
         };
     }, [statsScopedMatchesSorted, currentUserId]);
 
-    const recentForm = useMemo(() => {
-        if (!currentUserId) return [] as Array<{ id: string; code: 'G' | 'P'; title: string }>;
-        const recentMatches = [...statsScopedMatchesSorted].reverse().slice(0, 10);
-        return recentMatches.map((m) => {
-            const myTeam = getTeamIdForUser(m, currentUserId);
-            const oppTeamId = myTeam ? getOppositeTeam(myTeam) : 'ellos';
-            const myScore = myTeam ? m.teams[myTeam].score : 0;
-            const oppScore = myTeam ? m.teams[oppTeamId].score : 0;
-            const opponentLabel = myTeam
-                ? (m.mode === '1v1'
-                    ? m.teams[oppTeamId].players.map(getPlayerName).join(' / ')
-                    : m.teams[oppTeamId].name)
-                : 'Rival';
-            const code: 'G' | 'P' = myTeam && m.winner === myTeam ? 'G' : 'P';
-            return {
-                id: m.id,
-                code,
-                title: `${opponentLabel} · ${myScore}-${oppScore}`
-            };
-        });
-    }, [statsScopedMatchesSorted, currentUserId, getPlayerName]);
-
     const myAllMatchesSorted = useMemo(() => {
         if (!currentUserId) return [] as MatchState[];
         return matches
@@ -378,7 +356,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
         });
     }, [historyFocusMatches, currentUserId, getPlayerName]);
 
-    const classicSummary = useMemo(() => {
+    const historySummary = useMemo(() => {
         if (!currentUserId) return { total: 0, wins: 0, losses: 0, winRate: 0 };
         let wins = 0;
         let losses = 0;
@@ -395,6 +373,16 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
             losses,
             winRate: total > 0 ? Math.round((wins / total) * 100) : 0
         };
+    }, [historyFocusMatches, currentUserId]);
+
+    const historyForm = useMemo(() => {
+        if (!currentUserId) return [] as Array<'G' | 'P'>;
+        return historyFocusMatches
+            .slice(0, 8)
+            .map((m) => {
+                const myTeam = getTeamIdForUser(m, currentUserId);
+                return myTeam && m.winner === myTeam ? 'G' : 'P';
+            });
     }, [historyFocusMatches, currentUserId]);
 
     const classicSeriesGroups = useMemo(() => {
@@ -644,10 +632,6 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                             ))}
                         </div>
 
-                        <div className="text-[11px] text-white/50 bg-white/5 border border-white/10 rounded-xl px-3 py-2">
-                            Leyenda: PJ = Partidos Jugados · G = Ganados · P = Perdidos · GD = Diferencia (GF - GC)
-                        </div>
-
                         <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] p-5">
                             <div className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-black mb-3">Resumen {statsMode}</div>
                             <div className="grid grid-cols-2 gap-3">
@@ -669,22 +653,6 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                                     <div className="text-[11px] text-white/50 font-black uppercase">Win%</div>
                                     <div className="text-3xl font-black font-mono leading-tight">{summaryStats.winRate}%</div>
                                 </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] p-5">
-                            <div className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-black mb-3">Forma reciente (últimos 10)</div>
-                            <div className="flex flex-wrap gap-2">
-                                {recentForm.length === 0 && <span className="text-white/30 text-sm">Sin datos</span>}
-                                {recentForm.map((r) => (
-                                    <span
-                                        key={r.id}
-                                        title={r.title}
-                                        className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black ${r.code === 'G' ? 'bg-[var(--color-nosotros)]/20 text-[var(--color-nosotros)]' : 'bg-[var(--color-ellos)]/20 text-[var(--color-ellos)]'}`}
-                                    >
-                                        {r.code}
-                                    </span>
-                                ))}
                             </div>
                         </div>
 
@@ -729,75 +697,63 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                             )}
 
                             <div className="flex flex-col gap-2">
-                                {historyFocus !== 'CLASICOS' && compactHistory.length === 0 && (
+                                <button
+                                    onClick={() => setIsClassicOpen((v) => !v)}
+                                    className="text-left bg-white/5 border border-white/10 rounded-xl px-3 py-3"
+                                >
+                                    <div className="text-[10px] text-white/45 uppercase tracking-widest font-black mb-1">
+                                        Ficha resumen
+                                    </div>
+                                    <div className="flex items-center justify-between text-sm font-black">
+                                        <span>PJ {historySummary.total} · G {historySummary.wins} · P {historySummary.losses}</span>
+                                        <span className="font-mono">{historySummary.winRate}%</span>
+                                    </div>
+                                    {historyForm.length > 0 && (
+                                        <div className="text-[10px] text-white/55 uppercase tracking-wider mt-2">
+                                            Forma: {historyForm.join(' · ')}
+                                        </div>
+                                    )}
+                                    <div className="text-[10px] text-white/45 uppercase tracking-wider mt-2">
+                                        {isClassicOpen ? 'Ocultar detalle' : 'Ver detalle'}
+                                    </div>
+                                </button>
+
+                                {!isClassicOpen && historySummary.total === 0 && (
                                     <div className="text-sm text-white/30">
-                                        Sin partidos para esta vista.
+                                        {historyFocus === 'CLASICOS' ? 'No hay clasicos (minimo 3 PJ por cruce).' : 'Sin partidos para esta vista.'}
                                     </div>
                                 )}
-                                {historyFocus !== 'CLASICOS' && compactHistory.map((row) => (
-                                    <button key={row.id} onClick={() => setSelectedMatch(matches.find((m) => m.id === row.id) ?? null)} className="text-left bg-white/5 border border-white/10 rounded-xl px-3 py-2">
-                                        <div className="text-[12px] font-black flex items-center gap-2">
-                                            <span className={row.code === 'G' ? 'text-[var(--color-nosotros)]' : 'text-[var(--color-ellos)]'}>{row.code}</span>
-                                            <span className="truncate">{row.line1}</span>
-                                        </div>
-                                        <div className="text-[10px] text-white/45 uppercase tracking-wider mt-1">{row.line2}</div>
-                                    </button>
-                                ))}
 
-                                {historyFocus === 'CLASICOS' && (
-                                    <>
-                                        <button
-                                            onClick={() => setIsClassicOpen((v) => !v)}
-                                            className="text-left bg-white/5 border border-white/10 rounded-xl px-3 py-3"
-                                        >
-                                            <div className="text-[10px] text-white/45 uppercase tracking-widest font-black mb-1">
-                                                Resumen del clasico
+                                {isClassicOpen && historySummary.total > 0 && historyFocus === 'CLASICOS' && classicSeriesGroups.length > 0 && (
+                                    <div className="flex flex-col gap-2">
+                                        {classicSeriesGroups.map((serie) => (
+                                            <div key={serie.id} className="bg-white/5 border border-white/10 rounded-xl px-3 py-3">
+                                                <div className="text-[10px] text-white/45 uppercase tracking-widest font-black">
+                                                    Serie · {serie.matches[0].mode}
+                                                </div>
+                                                <div className="text-sm font-black mt-1">
+                                                    {serie.first.teams.nosotros.name} {serie.winsMine} - {serie.winsRival} {serie.first.teams.ellos.name}
+                                                </div>
+                                                <div className="text-[10px] text-white/45 mt-1">
+                                                    {serie.matches.length} partidos · {new Date(getMatchEffectiveDate(serie.matches[serie.matches.length - 1])).toLocaleDateString()}
+                                                </div>
                                             </div>
-                                            <div className="flex items-center justify-between text-sm font-black">
-                                                <span>PJ {classicSummary.total} · G {classicSummary.wins} · P {classicSummary.losses}</span>
-                                                <span className="font-mono">{classicSummary.winRate}%</span>
-                                            </div>
-                                            <div className="text-[10px] text-white/45 uppercase tracking-wider mt-2">
-                                                {isClassicOpen ? 'Ocultar detalle' : 'Ver detalle'}
-                                            </div>
-                                        </button>
+                                        ))}
+                                    </div>
+                                )}
 
-                                        {!isClassicOpen && classicSummary.total === 0 && (
-                                            <div className="text-sm text-white/30">No hay clasicos (minimo 3 PJ por cruce).</div>
-                                        )}
-
-                                        {isClassicOpen && classicSummary.total > 0 && classicSeriesGroups.length > 0 && (
-                                            <div className="flex flex-col gap-2">
-                                                {classicSeriesGroups.map((serie) => (
-                                                    <div key={serie.id} className="bg-white/5 border border-white/10 rounded-xl px-3 py-3">
-                                                        <div className="text-[10px] text-white/45 uppercase tracking-widest font-black">
-                                                            Serie · {serie.matches[0].mode}
-                                                        </div>
-                                                        <div className="text-sm font-black mt-1">
-                                                            {serie.first.teams.nosotros.name} {serie.winsMine} - {serie.winsRival} {serie.first.teams.ellos.name}
-                                                        </div>
-                                                        <div className="text-[10px] text-white/45 mt-1">
-                                                            {serie.matches.length} partidos · {new Date(getMatchEffectiveDate(serie.matches[serie.matches.length - 1])).toLocaleDateString()}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        {isClassicOpen && classicSummary.total > 0 && classicSeriesGroups.length === 0 && (
-                                            <div className="flex flex-col gap-2">
-                                                {compactHistory.map((row) => (
-                                                    <button key={row.id} onClick={() => setSelectedMatch(matches.find((m) => m.id === row.id) ?? null)} className="text-left bg-white/5 border border-white/10 rounded-xl px-3 py-2">
-                                                        <div className="text-[12px] font-black flex items-center gap-2">
-                                                            <span className={row.code === 'G' ? 'text-[var(--color-nosotros)]' : 'text-[var(--color-ellos)]'}>{row.code}</span>
-                                                            <span className="truncate">{row.line1}</span>
-                                                        </div>
-                                                        <div className="text-[10px] text-white/45 uppercase tracking-wider mt-1">{row.line2}</div>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </>
+                                {isClassicOpen && historySummary.total > 0 && (historyFocus !== 'CLASICOS' || classicSeriesGroups.length === 0) && (
+                                    <div className="flex flex-col gap-2">
+                                        {compactHistory.map((row) => (
+                                            <button key={row.id} onClick={() => setSelectedMatch(matches.find((m) => m.id === row.id) ?? null)} className="text-left bg-white/5 border border-white/10 rounded-xl px-3 py-2">
+                                                <div className="text-[12px] font-black flex items-center gap-2">
+                                                    <span className={row.code === 'G' ? 'text-[var(--color-nosotros)]' : 'text-[var(--color-ellos)]'}>{row.code}</span>
+                                                    <span className="truncate">{row.line1}</span>
+                                                </div>
+                                                <div className="text-[10px] text-white/45 uppercase tracking-wider mt-1">{row.line2}</div>
+                                            </button>
+                                        ))}
+                                    </div>
                                 )}
                             </div>
                         </div>

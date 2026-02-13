@@ -182,9 +182,11 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                                 const wasEdited = Boolean(m.editedFlags?.resultEdited);
                                 return (
                                     <div key={`news-${m.id}`} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl px-4 py-2.5">
-                                        <div className="text-[10px] uppercase tracking-widest text-white/40 font-black">
-                                            {wasEdited ? 'Resultado editado' : 'Partido registrado'}
-                                        </div>
+                                        {wasEdited && (
+                                            <div className="text-[10px] uppercase tracking-widest text-white/40 font-black">
+                                                Resultado editado
+                                            </div>
+                                        )}
                                         <div className="text-sm font-black mt-1">
                                             {m.teams.nosotros.name} {m.teams.nosotros.score} - {m.teams.ellos.score} {m.teams.ellos.name}
                                         </div>
