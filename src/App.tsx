@@ -308,7 +308,40 @@ function App() {
   if (effectiveStep === 'HISTORY') {
     return (
       <Suspense fallback={<ScreenLoader />}>
-        <HistoryScreen onBack={() => setStep('HOME')} initialTab={historyInitialTab} />
+        <HistoryScreen
+          onBack={() => setStep('HOME')}
+          initialTab={historyInitialTab}
+          onStartSeriesFromHistory={(baseMatch, mode) => {
+            resetMatch(baseMatch.mode);
+            setTargetScore(baseMatch.targetScore);
+            useMatchStore.getState().setTeamName('nosotros', baseMatch.teams.nosotros.name);
+            useMatchStore.getState().setTeamName('ellos', baseMatch.teams.ellos.name);
+            setPlayers('nosotros', baseMatch.teams.nosotros.players);
+            setPlayers('ellos', baseMatch.teams.ellos.players);
+            setMetadata(baseMatch.metadata?.location ?? 'Sin ubicación', Date.now());
+            if (baseMatch.pairs?.nosotros) setPairId('nosotros', baseMatch.pairs.nosotros);
+            if (baseMatch.pairs?.ellos) setPairId('ellos', baseMatch.pairs.ellos);
+
+            if (mode === 'continue' && baseMatch.series?.id) {
+              const historyMatches = useHistoryStore.getState().matches
+                .filter((m) => m.series?.id === baseMatch.series?.id);
+              const nextGameNumber = historyMatches.length + 1;
+              setSeries({
+                id: baseMatch.series.id,
+                targetWins: baseMatch.series.targetWins,
+                gameNumber: nextGameNumber
+              });
+            } else {
+              setSeries({
+                id: crypto.randomUUID(),
+                targetWins: 2,
+                gameNumber: 1
+              });
+            }
+
+            setStep('MATCH');
+          }}
+        />
       </Suspense>
     );
   }

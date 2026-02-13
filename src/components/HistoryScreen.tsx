@@ -10,6 +10,7 @@ import { getMatchEffectiveDate, getTeamRefKey, getTeamRefLabel } from '../utils/
 interface HistoryScreenProps {
     onBack: () => void;
     initialTab?: HistoryTab;
+    onStartSeriesFromHistory?: (baseMatch: MatchState, mode: 'continue' | 'new') => void;
 }
 
 type HistoryTab = 'SUMMARY' | 'MATCHES';
@@ -17,11 +18,15 @@ type FilterMode = 'ALL' | MatchMode;
 type Scope = 'MINE' | 'GLOBAL';
 type ResultFilter = 'ALL' | 'W' | 'L';
 type MatchListView = 'SERIES' | 'MATCHES';
+type SeriesResultFilter = 'ALL' | 'G' | 'P';
 type StatsModeTab = '1v1' | '2v2' | 'GLOBAL';
 type HistoryFocus = 'YO_1V1' | 'YO_2V2' | 'YO_3V3' | 'MI_EQUIPO' | 'CLASICOS';
 
 const MODES: FilterMode[] = ['ALL', '1v1', '2v2', '3v3'];
 const STATS_MODE_TABS: StatsModeTab[] = ['1v1', '2v2', 'GLOBAL'];
+const HISTORY_FILTERS_STORAGE_KEY = 'trucapp-history-filters-v2';
+const HISTORY_SUMMARY_STORAGE_KEY = 'trucapp-history-summary-v2';
+const HISTORY_FAVORITE_CLASSICS_STORAGE_KEY = 'trucapp-history-favorite-classics-v1';
 const HISTORY_FOCUS_TABS: Array<{ key: HistoryFocus; label: string }> = [
     { key: 'YO_1V1', label: 'Yo 1v1' },
     { key: 'YO_2V2', label: 'Yo 2v2' },
@@ -47,7 +52,7 @@ const TAB_META: Record<HistoryTab, { title: string; hint: string }> = {
     MATCHES: { title: 'Partidos', hint: 'Historial de partidos con filtros combinables.' }
 };
 
-export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenProps) => {
+export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFromHistory }: HistoryScreenProps) => {
     const matches = useHistoryStore(state => state.matches);
     const updateMatch = useHistoryStore(state => state.updateMatch);
     const loadMoreMatches = useHistoryStore(state => state.loadMoreMatches);
@@ -71,12 +76,86 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
     const [isClassicOpen, setIsClassicOpen] = useState(false);
     const [matchListView, setMatchListView] = useState<MatchListView>('SERIES');
     const [openSeriesId, setOpenSeriesId] = useState<string | null>(null);
+    const [selectedSeriesId, setSelectedSeriesId] = useState<string | null>(null);
+    const [seriesResultFilter, setSeriesResultFilter] = useState<SeriesResultFilter>('ALL');
     const [selectedMatch, setSelectedMatch] = useState<MatchState | null>(null);
+    const [favoriteClassicKeys, setFavoriteClassicKeys] = useState<string[]>([]);
     const loadMoreAnchorRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         setTab(initialTab);
     }, [initialTab]);
+
+    useEffect(() => {
+        try {
+            const persistedFilters = localStorage.getItem(HISTORY_FILTERS_STORAGE_KEY);
+            if (persistedFilters) {
+                const parsed = JSON.parse(persistedFilters) as Partial<{
+                    scope: Scope;
+                    mode: FilterMode;
+                    result: ResultFilter;
+                    opponentId: string;
+                    opponentGroupKey: string;
+                    search: string;
+                    matchListView: MatchListView;
+                }>;
+                if (parsed.scope) setScope(parsed.scope);
+                if (parsed.mode) setMode(parsed.mode);
+                if (parsed.result) setResult(parsed.result);
+                if (parsed.opponentId) setOpponentId(parsed.opponentId);
+                if (parsed.opponentGroupKey) setOpponentGroupKey(parsed.opponentGroupKey);
+                if (typeof parsed.search === 'string') setSearch(parsed.search);
+                if (parsed.matchListView) setMatchListView(parsed.matchListView);
+            }
+
+            const persistedSummary = localStorage.getItem(HISTORY_SUMMARY_STORAGE_KEY);
+            if (persistedSummary) {
+                const parsed = JSON.parse(persistedSummary) as Partial<{
+                    statsMode: StatsModeTab;
+                    historyFocus: HistoryFocus;
+                    myTeamKey: string;
+                    classicKey: string;
+                }>;
+                if (parsed.statsMode) setStatsMode(parsed.statsMode);
+                if (parsed.historyFocus) setHistoryFocus(parsed.historyFocus);
+                if (parsed.myTeamKey) setMyTeamKey(parsed.myTeamKey);
+                if (parsed.classicKey) setClassicKey(parsed.classicKey);
+            }
+
+            const persistedFavorites = localStorage.getItem(HISTORY_FAVORITE_CLASSICS_STORAGE_KEY);
+            if (persistedFavorites) {
+                const parsed = JSON.parse(persistedFavorites) as string[];
+                setFavoriteClassicKeys(Array.isArray(parsed) ? parsed : []);
+            }
+        } catch (err) {
+            console.warn('No se pudo restaurar preferencias de historial:', err);
+        }
+    }, []);
+
+    useEffect(() => {
+        localStorage.setItem(HISTORY_FILTERS_STORAGE_KEY, JSON.stringify({
+            scope,
+            mode,
+            result,
+            opponentId,
+            opponentGroupKey,
+            search,
+            matchListView
+        }));
+    }, [scope, mode, result, opponentId, opponentGroupKey, search, matchListView]);
+
+    useEffect(() => {
+        localStorage.setItem(HISTORY_SUMMARY_STORAGE_KEY, JSON.stringify({
+            statsMode,
+            historyFocus,
+            myTeamKey,
+            classicKey
+        }));
+    }, [statsMode, historyFocus, myTeamKey, classicKey]);
+
+    useEffect(() => {
+        localStorage.setItem(HISTORY_FAVORITE_CLASSICS_STORAGE_KEY, JSON.stringify(favoriteClassicKeys));
+    }, [favoriteClassicKeys]);
 
     const getPlayerName = useCallback((id: string): string => {
         const player = players.find((p) => p.id === id);
@@ -258,8 +337,8 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
     }, [myAllMatchesSorted, currentUserId]);
 
     const classicOptions = useMemo(() => {
-        if (!currentUserId) return [] as Array<{ key: string; label: string; count: number }>;
-        const buckets = new Map<string, { label: string; count: number }>();
+        if (!currentUserId) return [] as Array<{ key: string; label: string; count: number; lastPlayedAt: number; isFavorite: boolean; isHot: boolean }>;
+        const buckets = new Map<string, { label: string; count: number; lastPlayedAt: number }>();
 
         myAllMatchesSorted.forEach((m) => {
             const mySide = getTeamIdForUser(m, currentUserId);
@@ -280,19 +359,47 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
             }
 
             const prev = buckets.get(key);
-            buckets.set(key, { label, count: (prev?.count ?? 0) + 1 });
+            buckets.set(key, {
+                label,
+                count: (prev?.count ?? 0) + 1,
+                lastPlayedAt: Math.max(prev?.lastPlayedAt ?? 0, getMatchEffectiveDate(m))
+            });
         });
 
+        const hotThreshold = Date.now() - (1000 * 60 * 60 * 24 * 14);
         return Array.from(buckets.entries())
-            .map(([key, v]) => ({ key, label: v.label, count: v.count }))
+            .map(([key, v]) => ({
+                key,
+                label: v.label,
+                count: v.count,
+                lastPlayedAt: v.lastPlayedAt,
+                isFavorite: favoriteClassicKeys.includes(key),
+                isHot: v.lastPlayedAt >= hotThreshold
+            }))
             .filter((x) => x.count >= 3)
-            .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
-    }, [myAllMatchesSorted, currentUserId, getPlayerName]);
+            .sort((a, b) => {
+                if (Number(b.isFavorite) !== Number(a.isFavorite)) return Number(b.isFavorite) - Number(a.isFavorite);
+                if (b.count !== a.count) return b.count - a.count;
+                if (b.lastPlayedAt !== a.lastPlayedAt) return b.lastPlayedAt - a.lastPlayedAt;
+                return a.label.localeCompare(b.label);
+            });
+    }, [myAllMatchesSorted, currentUserId, getPlayerName, favoriteClassicKeys]);
+
+    const favoriteClassics = useMemo(
+        () => classicOptions.filter((classic) => classic.isFavorite),
+        [classicOptions]
+    );
 
     const activeClassicKey = useMemo(() => {
         if (classicKey === 'AUTO') return classicOptions[0]?.key ?? '';
         return classicKey;
     }, [classicKey, classicOptions]);
+
+    const toggleFavoriteClassic = (key: string) => {
+        setFavoriteClassicKeys((prev) => (
+            prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+        ));
+    };
 
     useEffect(() => {
         setIsClassicOpen(false);
@@ -451,6 +558,11 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
             })
             .sort((a, b) => getMatchEffectiveDate(b.matches[b.matches.length - 1]) - getMatchEffectiveDate(a.matches[a.matches.length - 1]));
     }, [filteredMatches]);
+
+    const selectedSeriesData = useMemo(
+        () => groupedSeries.find((s) => s.seriesId === selectedSeriesId) ?? null,
+        [groupedSeries, selectedSeriesId]
+    );
 
     const locationSuggestions = useMemo(() => (
         Array.from(
@@ -687,16 +799,34 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                             )}
 
                             {historyFocus === 'CLASICOS' && (
-                                <select
-                                    value={classicKey}
-                                    onChange={(e) => setClassicKey(e.target.value)}
-                                    className="w-full mb-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-xs font-bold"
-                                >
-                                    <option value="AUTO">Clasico principal</option>
-                                    {classicOptions.map((classic) => (
-                                        <option key={classic.key} value={classic.key}>{classic.label} · {classic.count} PJ</option>
-                                    ))}
-                                </select>
+                                <div className="mb-3">
+                                    <select
+                                        value={classicKey}
+                                        onChange={(e) => setClassicKey(e.target.value)}
+                                        className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-xs font-bold"
+                                    >
+                                        <option value="AUTO">Clasico principal</option>
+                                        {classicOptions.map((classic) => (
+                                            <option key={classic.key} value={classic.key}>
+                                                {classic.isFavorite ? '★ ' : ''}{classic.label} · {classic.count} PJ{classic.isHot ? ' · Activo' : ''}
+                                            </option>
+                                        ))}
+                                    </select>
+
+                                    {favoriteClassics.length > 0 && (
+                                        <div className="mt-2 flex gap-1.5 overflow-x-auto no-scrollbar">
+                                            {favoriteClassics.map((classic) => (
+                                                <button
+                                                    key={`fav-${classic.key}`}
+                                                    onClick={() => setClassicKey(classic.key)}
+                                                    className={`px-2.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wide whitespace-nowrap border ${activeClassicKey === classic.key ? 'bg-[var(--color-accent)] text-black border-[var(--color-accent)]' : 'bg-white/5 text-white/60 border-white/10'}`}
+                                                >
+                                                    ★ {classic.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             )}
 
                             <div className="flex flex-col gap-2">
@@ -729,6 +859,21 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                                     </div>
                                 </button>
 
+                                {historyFocus === 'CLASICOS' && classicOptions.length > 0 && (
+                                    <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                                        {classicOptions.slice(0, 6).map((classic) => (
+                                            <button
+                                                key={`classic-pin-${classic.key}`}
+                                                onClick={() => toggleFavoriteClassic(classic.key)}
+                                                className={`px-2.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wide whitespace-nowrap border ${classic.isFavorite ? 'bg-amber-300/20 text-amber-300 border-amber-300/30' : 'bg-white/5 text-white/55 border-white/10'}`}
+                                            >
+                                                {classic.isFavorite ? '★ ' : '☆ '}
+                                                {classic.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+
                                 {!isClassicOpen && historySummary.total === 0 && (
                                     <div className="text-sm text-white/30">
                                         {historyFocus === 'CLASICOS' ? 'No hay clasicos (minimo 3 PJ por cruce).' : 'Sin partidos para esta vista.'}
@@ -739,6 +884,11 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                                     <div className="flex flex-col gap-2">
                                         {classicSeriesGroups.map((serie) => (
                                             <div key={serie.id} className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5">
+                                                {(() => {
+                                                    const targetWins = serie.first.series?.targetWins ?? 2;
+                                                    const isFinished = serie.winsMine >= targetWins || serie.winsRival >= targetWins;
+                                                    return (
+                                                        <>
                                                 <div className="text-[10px] text-white/45 uppercase tracking-widest font-black">
                                                     Serie · {serie.matches[0].mode}
                                                 </div>
@@ -748,6 +898,36 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                                                 <div className="text-[10px] text-white/45 mt-1">
                                                     {serie.matches.length} partidos · {new Date(getMatchEffectiveDate(serie.matches[serie.matches.length - 1])).toLocaleDateString()}
                                                 </div>
+                                                {onStartSeriesFromHistory && currentUserId && isParticipant(serie.first, currentUserId) && (
+                                                    <div className="flex gap-2 mt-2">
+                                                        {!isFinished && (
+                                                            <button
+                                                                onClick={() => onStartSeriesFromHistory(serie.first, 'continue')}
+                                                                className="flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border border-[var(--color-accent)]/40 bg-[var(--color-accent)]/15 text-[var(--color-accent)]"
+                                                            >
+                                                                Continuar
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            onClick={() => onStartSeriesFromHistory(serie.first, 'new')}
+                                                            className="flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border border-white/15 bg-white/5 text-white/70"
+                                                        >
+                                                            Nueva serie
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                <button
+                                                    onClick={() => {
+                                                        setSeriesResultFilter('ALL');
+                                                        setSelectedSeriesId(serie.id);
+                                                    }}
+                                                    className="w-full mt-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border border-white/15 bg-white/5 text-white/70"
+                                                >
+                                                    Detalle serie
+                                                </button>
+                                                        </>
+                                                    );
+                                                })()}
                                             </div>
                                         ))}
                                     </div>
@@ -838,6 +1018,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                                     const sid = serie.seriesId;
                                     const isOpen = openSeriesId === sid;
                                     const first = serie.first;
+                                    const canQuickStart = scope === 'MINE' && !!currentUserId && isParticipant(first, currentUserId);
                                     return (
                                         <div key={sid} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl overflow-hidden">
                                             <button
@@ -859,6 +1040,36 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                                                     {serie.matches.length} partidos · última: {new Date(getMatchEffectiveDate(serie.matches[serie.matches.length - 1])).toLocaleDateString()}
                                                 </div>
                                             </button>
+
+                                            {canQuickStart && onStartSeriesFromHistory && (
+                                                <div className="px-4 pb-3 flex gap-2">
+                                                    {!serie.isFinished && (
+                                                        <button
+                                                            onClick={() => onStartSeriesFromHistory(first, 'continue')}
+                                                            className="flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-[var(--color-accent)]/40 bg-[var(--color-accent)]/15 text-[var(--color-accent)]"
+                                                        >
+                                                            Continuar serie
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={() => onStartSeriesFromHistory(first, 'new')}
+                                                        className="flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/15 bg-white/5 text-white/70"
+                                                    >
+                                                        Nueva serie
+                                                    </button>
+                                                </div>
+                                            )}
+                                            <div className="px-4 pb-3">
+                                                <button
+                                                    onClick={() => {
+                                                        setSeriesResultFilter('ALL');
+                                                        setSelectedSeriesId(sid);
+                                                    }}
+                                                    className="w-full py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/15 bg-white/5 text-white/70"
+                                                >
+                                                    Abrir detalle de serie
+                                                </button>
+                                            </div>
 
                                             {isOpen && (
                                                 <div className="border-t border-white/10 p-3 flex flex-col gap-2 bg-black/10">
@@ -960,6 +1171,134 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY' }: HistoryScreenP
                     }}
                 />
             )}
+            {selectedSeriesData && (
+                <SeriesDetailDrawer
+                    series={selectedSeriesData}
+                    currentUserId={currentUserId}
+                    getPlayerName={getPlayerName}
+                    resultFilter={seriesResultFilter}
+                    onChangeResultFilter={setSeriesResultFilter}
+                    onClose={() => setSelectedSeriesId(null)}
+                    onOpenMatch={(match) => {
+                        setSelectedSeriesId(null);
+                        setSelectedMatch(match);
+                    }}
+                />
+            )}
+        </div>
+    );
+};
+
+interface SeriesDetailDrawerProps {
+    series: {
+        seriesId: string;
+        matches: MatchState[];
+        first: MatchState;
+        winsNos: number;
+        winsEll: number;
+        targetWins: number;
+        isFinished: boolean;
+    };
+    currentUserId: string | null;
+    getPlayerName: (id: string) => string;
+    resultFilter: SeriesResultFilter;
+    onChangeResultFilter: (filter: SeriesResultFilter) => void;
+    onClose: () => void;
+    onOpenMatch: (match: MatchState) => void;
+}
+
+const SeriesDetailDrawer = ({
+    series,
+    currentUserId,
+    getPlayerName,
+    resultFilter,
+    onChangeResultFilter,
+    onClose,
+    onOpenMatch
+}: SeriesDetailDrawerProps) => {
+    const mySide = currentUserId ? getTeamIdForUser(series.first, currentUserId) : null;
+    const filteredTimeline = useMemo(() => {
+        if (!mySide || resultFilter === 'ALL') return series.matches;
+        return series.matches.filter((m) => {
+            const won = m.winner === mySide;
+            return resultFilter === 'G' ? won : !won;
+        });
+    }, [series.matches, mySide, resultFilter]);
+
+    return (
+        <div className="fixed inset-0 z-[121] bg-black/70 backdrop-blur-sm flex items-end">
+            <div
+                className="w-full bg-[var(--color-bg)] border-t border-[var(--color-border)] rounded-t-3xl p-5 max-h-[88vh] overflow-y-auto"
+                style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
+            >
+                <div className="sticky top-0 z-10 bg-[var(--color-bg)] pb-3">
+                    <div className="flex justify-between items-center mb-3">
+                        <div>
+                            <div className="text-[10px] uppercase tracking-widest text-white/40 font-black">
+                                Serie BO{(series.targetWins * 2) - 1}
+                            </div>
+                            <div className="text-lg font-black">Detalle de serie</div>
+                        </div>
+                        <button onClick={onClose} className="text-white/60 font-black text-sm">Cerrar</button>
+                    </div>
+                    <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3 mb-3">
+                        <div className="text-sm font-black">
+                            {series.first.teams.nosotros.name} {series.winsNos} - {series.winsEll} {series.first.teams.ellos.name}
+                        </div>
+                        <div className="text-[11px] text-white/55 mt-1">
+                            {series.matches.length} partidos · {series.isFinished ? 'Serie cerrada' : 'Serie en curso'}
+                        </div>
+                    </div>
+                    <div className="flex bg-[var(--color-surface)] p-1 rounded-xl border border-[var(--color-border)]">
+                        {(['ALL', 'G', 'P'] as const).map((f) => (
+                            <button
+                                key={f}
+                                onClick={() => onChangeResultFilter(f)}
+                                className={`flex-1 py-2 rounded-lg text-xs font-black ${resultFilter === f ? 'bg-white text-black' : 'text-white/50'}`}
+                            >
+                                {f === 'ALL' ? 'Todos' : f}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                    {filteredTimeline.length === 0 && (
+                        <div className="text-sm text-white/35 py-6 text-center">No hay partidos con ese filtro.</div>
+                    )}
+                    {filteredTimeline.map((m) => {
+                        const side = currentUserId ? getTeamIdForUser(m, currentUserId) : null;
+                        const isWin = side ? m.winner === side : null;
+                        return (
+                            <button
+                                key={m.id}
+                                onClick={() => onOpenMatch(m)}
+                                className="text-left bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3"
+                            >
+                                <div className="flex items-center justify-between mb-1">
+                                    <div className="text-[10px] uppercase tracking-widest text-white/45 font-black">
+                                        Partido {m.series?.gameNumber ?? '-'}
+                                    </div>
+                                    <div className="text-[10px] uppercase tracking-widest text-white/45 font-black">
+                                        {new Date(getMatchEffectiveDate(m)).toLocaleDateString()}
+                                    </div>
+                                </div>
+                                <div className="text-sm font-black">
+                                    {m.teams.nosotros.name} {m.teams.nosotros.score} - {m.teams.ellos.score} {m.teams.ellos.name}
+                                </div>
+                                <div className="text-[11px] text-white/50 mt-1">
+                                    {m.teams.nosotros.players.map(getPlayerName).join(', ')} vs {m.teams.ellos.players.map(getPlayerName).join(', ')}
+                                </div>
+                                {isWin !== null && (
+                                    <div className={`mt-1 text-[10px] font-black uppercase tracking-wider ${isWin ? 'text-[var(--color-nosotros)]' : 'text-[var(--color-ellos)]'}`}>
+                                        {isWin ? 'G' : 'P'}
+                                    </div>
+                                )}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
         </div>
     );
 };

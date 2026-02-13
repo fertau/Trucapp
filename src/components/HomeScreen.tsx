@@ -3,8 +3,8 @@ import { useUserStore } from '../store/useUserStore';
 import { useHistoryStore } from '../store/useHistoryStore';
 import { useMemo, useState } from 'react';
 import { AvatarBadge } from './AvatarBadge';
-import type { MatchState } from '../types';
-import { getMatchEffectiveDate } from '../utils/matchIdentity';
+import type { MatchState, TeamId } from '../types';
+import { getMatchEffectiveDate, getTeamRefKey, getTeamRefLabel } from '../utils/matchIdentity';
 
 interface HomeScreenProps {
     onNewMatch: () => void;
@@ -65,6 +65,60 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
     }, [validFinishedMatches]);
     const user = players.find(p => p.id === currentUserId);
 
+    const getTeamIdForUser = (match: MatchState, userId: string): TeamId | null => {
+        if (match.teams.nosotros.players.includes(userId)) return 'nosotros';
+        if (match.teams.ellos.players.includes(userId)) return 'ellos';
+        return null;
+    };
+
+    const activeRivalry = useMemo(() => {
+        if (!currentUserId) return null;
+        const buckets = new Map<string, {
+            label: string;
+            count: number;
+            wins: number;
+            losses: number;
+            lastPlayedAt: number;
+            form: Array<'G' | 'P'>;
+        }>();
+
+        const mine = validFinishedMatches.filter((m) => getTeamIdForUser(m, currentUserId) !== null);
+        const sorted = [...mine].sort((a, b) => getMatchEffectiveDate(b) - getMatchEffectiveDate(a));
+
+        sorted.forEach((m) => {
+            const mySide = getTeamIdForUser(m, currentUserId);
+            if (!mySide) return;
+            const oppSide: TeamId = mySide === 'nosotros' ? 'ellos' : 'nosotros';
+            const key = `${m.mode}:${getTeamRefKey(m, mySide)}:${getTeamRefKey(m, oppSide)}`;
+            const label = m.mode === '1v1'
+                ? `1v1 vs ${m.teams[oppSide].players.map((id) => players.find((p) => p.id === id)?.name ?? id).join(' / ')}`
+                : `${m.mode} · ${getTeamRefLabel(m, mySide)} vs ${getTeamRefLabel(m, oppSide)}`;
+            const prev = buckets.get(key) ?? {
+                label,
+                count: 0,
+                wins: 0,
+                losses: 0,
+                lastPlayedAt: 0,
+                form: []
+            };
+            const result: 'G' | 'P' = m.winner === mySide ? 'G' : 'P';
+            const nextForm = prev.form.length < 8 ? [...prev.form, result] : prev.form;
+            buckets.set(key, {
+                label,
+                count: prev.count + 1,
+                wins: prev.wins + (result === 'G' ? 1 : 0),
+                losses: prev.losses + (result === 'P' ? 1 : 0),
+                lastPlayedAt: Math.max(prev.lastPlayedAt, getMatchEffectiveDate(m)),
+                form: nextForm
+            });
+        });
+
+        const ranked = Array.from(buckets.values())
+            .filter((x) => x.count >= 3)
+            .sort((a, b) => b.count - a.count || b.lastPlayedAt - a.lastPlayedAt);
+        return ranked[0] ?? null;
+    }, [validFinishedMatches, currentUserId, players]);
+
     return (
         <div className="full-screen bg-[var(--color-bg)] flex flex-col p-5" style={{ paddingTop: 'max(20px, env(safe-area-inset-top))' }}>
             <div className="flex justify-between items-center mb-6">
@@ -89,6 +143,31 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                         <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mt-1 tracking-wider border-b border-[var(--color-border)] pb-2">
                             Últimos partidos
                         </h3>
+
+                        {activeRivalry && (
+                            <button
+                                onClick={onHistory}
+                                className="w-full text-left bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl px-4 py-3"
+                            >
+                                <div className="text-[10px] font-black uppercase tracking-widest text-[var(--color-accent)] mb-1">Rivalidad activa</div>
+                                <div className="text-sm font-black truncate">{activeRivalry.label}</div>
+                                <div className="text-[11px] text-white/60 mt-1">
+                                    PJ {activeRivalry.count} · G {activeRivalry.wins} · P {activeRivalry.losses}
+                                </div>
+                                {activeRivalry.form.length > 0 && (
+                                    <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                                        {activeRivalry.form.map((item, idx) => (
+                                            <span
+                                                key={`home-form-${idx}`}
+                                                className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black ${item === 'G' ? 'bg-[var(--color-nosotros)]/20 text-[var(--color-nosotros)]' : 'bg-[var(--color-ellos)]/20 text-[var(--color-ellos)]'}`}
+                                            >
+                                                {item}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                            </button>
+                        )}
 
                         <div className="flex flex-col gap-2">
                             {recentItems.length === 0 && <p className="text-[var(--color-text-muted)]">No hay partidos recientes.</p>}
