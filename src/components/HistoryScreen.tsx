@@ -880,10 +880,10 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                                 </div>
                                 <div className="px-3 py-2 flex items-center justify-between text-[11px] font-black">
                                     <span className="text-[var(--color-nosotros)]">
-                                        G {summaryStats.wins} ({summaryStats.total ? Math.round((summaryStats.wins / summaryStats.total) * 100) : 0}%)
+                                        {summaryStats.wins} ({summaryStats.total ? Math.round((summaryStats.wins / summaryStats.total) * 100) : 0}%)
                                     </span>
                                     <span className="text-[var(--color-danger)]">
-                                        P {summaryStats.losses} ({summaryStats.total ? Math.round((summaryStats.losses / summaryStats.total) * 100) : 0}%)
+                                        {summaryStats.losses} ({summaryStats.total ? Math.round((summaryStats.losses / summaryStats.total) * 100) : 0}%)
                                     </span>
                                 </div>
                             </div>
@@ -986,10 +986,10 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                                         </div>
                                         <div className="px-3 py-2 flex items-center justify-between text-[11px] font-black">
                                             <span className="text-[var(--color-nosotros)]">
-                                                G {historySummary.wins} ({historySummary.total ? Math.round((historySummary.wins / historySummary.total) * 100) : 0}%)
+                                                {historySummary.wins} ({historySummary.total ? Math.round((historySummary.wins / historySummary.total) * 100) : 0}%)
                                             </span>
                                             <span className="text-[var(--color-danger)]">
-                                                P {historySummary.losses} ({historySummary.total ? Math.round((historySummary.losses / historySummary.total) * 100) : 0}%)
+                                                {historySummary.losses} ({historySummary.total ? Math.round((historySummary.losses / historySummary.total) * 100) : 0}%)
                                             </span>
                                         </div>
                                     </div>

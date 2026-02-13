@@ -188,6 +188,27 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                                     {activeRivalry.count} <span className="text-[15px] font-bold text-white/65">PJ</span>
                                 </div>
                                 <div className="text-sm font-black leading-tight mt-1">{activeRivalry.label.replace(`${activeRivalry.mode} · `, '')}</div>
+                                <div className="w-full h-px bg-white/10 my-3" />
+                                <div className="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                    <div className="h-3 w-full flex">
+                                        <div
+                                            className="h-full bg-[var(--color-nosotros)]"
+                                            style={{ width: `${activeRivalry.count ? (activeRivalry.wins / activeRivalry.count) * 100 : 0}%` }}
+                                        />
+                                        <div
+                                            className="h-full bg-[var(--color-danger)]"
+                                            style={{ width: `${activeRivalry.count ? (activeRivalry.losses / activeRivalry.count) * 100 : 0}%` }}
+                                        />
+                                    </div>
+                                    <div className="px-3 py-2 flex items-center justify-between text-[11px] font-black">
+                                        <span className="text-[var(--color-nosotros)]">
+                                            {activeRivalry.wins} ({activeRivalry.count ? Math.round((activeRivalry.wins / activeRivalry.count) * 100) : 0}%)
+                                        </span>
+                                        <span className="text-[var(--color-danger)]">
+                                            {activeRivalry.losses} ({activeRivalry.count ? Math.round((activeRivalry.losses / activeRivalry.count) * 100) : 0}%)
+                                        </span>
+                                    </div>
+                                </div>
                                 <div className="text-[10px] uppercase tracking-[0.2em] text-white/45 font-black mt-3 text-center">Ultimos 10</div>
                                 <div className="mt-2 grid grid-cols-10 gap-2 w-full">
                                     {Array.from({ length: 10 }).map((_, idx) => {
@@ -205,27 +226,6 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                                             />
                                         );
                                     })}
-                                </div>
-                                <div className="w-full h-px bg-white/10 my-3" />
-                                <div className="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
-                                    <div className="h-3 w-full flex">
-                                        <div
-                                            className="h-full bg-[var(--color-nosotros)]"
-                                            style={{ width: `${activeRivalry.count ? (activeRivalry.wins / activeRivalry.count) * 100 : 0}%` }}
-                                        />
-                                        <div
-                                            className="h-full bg-[var(--color-danger)]"
-                                            style={{ width: `${activeRivalry.count ? (activeRivalry.losses / activeRivalry.count) * 100 : 0}%` }}
-                                        />
-                                    </div>
-                                    <div className="px-3 py-2 flex items-center justify-between text-[11px] font-black">
-                                        <span className="text-[var(--color-nosotros)]">
-                                            G {activeRivalry.wins} ({activeRivalry.count ? Math.round((activeRivalry.wins / activeRivalry.count) * 100) : 0}%)
-                                        </span>
-                                        <span className="text-[var(--color-danger)]">
-                                            P {activeRivalry.losses} ({activeRivalry.count ? Math.round((activeRivalry.losses / activeRivalry.count) * 100) : 0}%)
-                                        </span>
-                                    </div>
                                 </div>
                                 </div>
                             </button>
