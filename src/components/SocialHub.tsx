@@ -81,11 +81,18 @@ export const SocialHub = ({ onBack }: SocialHubProps) => {
 
     const friendsList = players.filter(p => (currentUser?.friends || []).includes(p.id));
 
+    const pendingRequestUserIds = new Set(
+        friendRequests
+            .filter((r) => r.status === 'pending')
+            .map((r) => r.fromUserId)
+    );
+
     // Discovery: Public players who are not friends AND don't have a pending request
     const discoveryResults = players.filter(p =>
         p.id !== currentUserId &&
-        p.visibility === 'PUBLIC' &&
+        (p.visibility === 'PUBLIC' || !p.visibility) &&
         !(currentUser?.friends || []).includes(p.id) &&
+        !pendingRequestUserIds.has(p.id) &&
         (p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.nickname?.toLowerCase().includes(searchQuery.toLowerCase()))
     ).slice(0, 10);
 

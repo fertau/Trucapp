@@ -8,7 +8,9 @@ interface UserStore {
     players: Player[];
     friendRequests: FriendRequest[];
     isLoading: boolean;
+    playersUnsubscribe: (() => void) | null;
     fetchPlayers: () => Promise<void>;
+    subscribeToPlayers: () => () => void;
     subscribeToFriendRequests: (userId: string) => () => void;
     addPlayer: (name: string, pinHash: string) => Promise<Player>;
     updatePlayer: (id: string, updates: Partial<Player>) => Promise<void>;
@@ -28,6 +30,34 @@ export const useUserStore = create<UserStore>()(
             players: [],
             friendRequests: [],
             isLoading: false,
+            playersUnsubscribe: null,
+
+            subscribeToPlayers: () => {
+                const prev = get().playersUnsubscribe;
+                if (prev) prev();
+
+                const unsubscribe = onSnapshot(collection(db, 'players'), (snapshot) => {
+                    const loadedPlayers: Player[] = [];
+                    snapshot.forEach((d) => {
+                        const data = d.data();
+                        const p = { id: d.id, ...data } as Player;
+                        if (p.pin && !p.pinHash) p.pinHash = p.pin;
+                        if (!p.visibility) p.visibility = 'PUBLIC';
+                        if (!Array.isArray(p.friends)) p.friends = [];
+                        loadedPlayers.push(p);
+                    });
+                    set({ players: loadedPlayers });
+                }, (err) => {
+                    console.error('Error subscribing to players:', err);
+                });
+
+                set({ playersUnsubscribe: unsubscribe });
+                return () => {
+                    const active = get().playersUnsubscribe;
+                    if (active) active();
+                    set({ playersUnsubscribe: null });
+                };
+            },
 
             fetchPlayers: async () => {
                 set({ isLoading: true });
@@ -40,6 +70,12 @@ export const useUserStore = create<UserStore>()(
                         // Normalization: move legacy pin to pinHash if necessary
                         if (p.pin && !p.pinHash) {
                             p.pinHash = p.pin;
+                        }
+                        if (!p.visibility) {
+                            p.visibility = 'PUBLIC';
+                        }
+                        if (!Array.isArray(p.friends)) {
+                            p.friends = [];
                         }
                         loadedPlayers.push(p);
                     });

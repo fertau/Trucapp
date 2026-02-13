@@ -90,6 +90,11 @@ function App() {
   }, []);
 
   useEffect(() => {
+    const unsubscribe = useUserStore.getState().subscribeToPlayers();
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
     if (isBootstrapping) return;
     if (!currentUserId) return;
 
