@@ -123,14 +123,26 @@ export const useMatchStore = create<MatchStore>()(
                                 isCloudSynced: true,
                             });
                         } else {
-                            // If history is same length, we could still update if there are specific changes (like names)
-                            // But for scores, history length is the primary driver.
-                            // Let's at least update metadata/names if they changed?
-                            // Actually, simpler is better for now: only overwrite if cloud is ahead.
-                            if (JSON.stringify(data.teams.nosotros.name) !== JSON.stringify(currentState.teams.nosotros.name) ||
-                                JSON.stringify(data.teams.ellos.name) !== JSON.stringify(currentState.teams.ellos.name)) {
+                            // IMPORTANT:
+                            // Do not overwrite local scores when cloud history is not newer.
+                            // This prevents regressions after re-opening PWA with transient stale cloud/team payloads.
+                            const namesChanged =
+                                data.teams.nosotros.name !== currentState.teams.nosotros.name ||
+                                data.teams.ellos.name !== currentState.teams.ellos.name;
+
+                            if (namesChanged) {
                                 set({
-                                    teams: data.teams,
+                                    teams: {
+                                        ...currentState.teams,
+                                        nosotros: {
+                                            ...currentState.teams.nosotros,
+                                            name: data.teams.nosotros.name
+                                        },
+                                        ellos: {
+                                            ...currentState.teams.ellos,
+                                            name: data.teams.ellos.name
+                                        }
+                                    },
                                     isCloudSynced: true
                                 });
                             }
