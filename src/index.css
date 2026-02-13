@@ -58,6 +58,10 @@ textarea {
   position: relative;
 }
 
+.scroll-safe {
+  scrollbar-gutter: stable both-edges;
+}
+
 /* Glassmorphism Classes */
 .glass-panel {
   background: rgba(44, 44, 46, 0.8);

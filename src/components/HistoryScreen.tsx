@@ -822,7 +822,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                 </>
             )}
 
-            <div className="flex-1 overflow-y-auto pb-10 custom-scrollbar pr-1">
+            <div className="flex-1 overflow-y-auto pb-10 custom-scrollbar scroll-safe pr-2">
                 {isLoading && (
                     <div className="space-y-3 animate-pulse">
                         <div className="h-20 rounded-2xl bg-white/5" />
@@ -928,8 +928,19 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                                     <div className="text-[10px] text-white/45 uppercase tracking-[0.14em] font-black mb-1">
                                         Ficha resumen
                                     </div>
-                                    <div className="flex items-center justify-between text-[13px] font-black">
-                                        <span>PJ {historySummary.total} · G {historySummary.wins} · P {historySummary.losses}</span>
+                                    <div className="grid grid-cols-3 gap-2 mt-2">
+                                        <div className="bg-black/20 border border-white/10 rounded-xl p-2 text-center">
+                                            <div className="text-[10px] uppercase tracking-widest text-white/45 font-black">PJ</div>
+                                            <div className="text-2xl font-black font-mono">{historySummary.total}</div>
+                                        </div>
+                                        <div className="bg-[var(--color-nosotros)]/10 border border-[var(--color-nosotros)]/25 rounded-xl p-2 text-center">
+                                            <div className="text-[10px] uppercase tracking-widest text-[var(--color-nosotros)]/80 font-black">G</div>
+                                            <div className="text-2xl font-black font-mono text-[var(--color-nosotros)]">{historySummary.wins}</div>
+                                        </div>
+                                        <div className="bg-[var(--color-ellos)]/10 border border-[var(--color-ellos)]/25 rounded-xl p-2 text-center">
+                                            <div className="text-[10px] uppercase tracking-widest text-[var(--color-ellos)]/80 font-black">P</div>
+                                            <div className="text-2xl font-black font-mono text-[var(--color-ellos)]">{historySummary.losses}</div>
+                                        </div>
                                     </div>
                                     {historyForm.length > 0 && (
                                         <div className="mt-2 flex items-center gap-1.5 flex-wrap">

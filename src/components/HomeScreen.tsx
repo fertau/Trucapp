@@ -75,6 +75,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
     const activeRivalry = useMemo(() => {
         if (!currentUserId) return null;
         const buckets = new Map<string, {
+            mode: MatchState['mode'];
             label: string;
             count: number;
             wins: number;
@@ -95,6 +96,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                 ? `1v1 vs ${m.teams[oppSide].players.map((id) => players.find((p) => p.id === id)?.name ?? id).join(' / ')}`
                 : `${m.mode} · ${getTeamRefLabel(m, mySide)} vs ${getTeamRefLabel(m, oppSide)}`;
             const prev = buckets.get(key) ?? {
+                mode: m.mode,
                 label,
                 count: 0,
                 wins: 0,
@@ -105,6 +107,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
             const result: 'G' | 'P' = m.winner === mySide ? 'G' : 'P';
             const nextForm = prev.form.length < 8 ? [...prev.form, result] : prev.form;
             buckets.set(key, {
+                mode: m.mode,
                 label,
                 count: prev.count + 1,
                 wins: prev.wins + (result === 'G' ? 1 : 0),
@@ -131,7 +134,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto pb-36">
+            <div className="flex-1 overflow-y-auto pb-36 scroll-safe pr-2">
                 {tab === 'PARTIDO' && (
                     <div className="flex flex-col gap-4 animate-in slide-in-from-bottom duration-300">
                         {showOnboarding && (
@@ -170,12 +173,23 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                         {activeRivalry && (
                             <button
                                 onClick={onHistory}
-                                className="w-full text-left bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl px-4 py-3"
+                                className="w-full text-left bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl px-4 py-4"
                             >
-                                <div className="text-[10px] font-black uppercase tracking-widest text-[var(--color-accent)] mb-1">Rivalidad activa</div>
-                                <div className="text-sm font-black truncate">{activeRivalry.label}</div>
-                                <div className="text-[11px] text-white/60 mt-1">
-                                    PJ {activeRivalry.count} · G {activeRivalry.wins} · P {activeRivalry.losses}
+                                <div className="text-[10px] font-black uppercase tracking-widest text-[var(--color-accent)] mb-2">Rivalidad activa</div>
+                                <div className="text-xl font-black leading-tight">{activeRivalry.label.replace(`${activeRivalry.mode} · `, '')}</div>
+                                <div className="grid grid-cols-3 gap-2 mt-3">
+                                    <div className="bg-black/20 border border-white/10 rounded-xl p-2 text-center">
+                                        <div className="text-[10px] uppercase tracking-widest text-white/45 font-black">PJ</div>
+                                        <div className="text-2xl font-black font-mono">{activeRivalry.count}</div>
+                                    </div>
+                                    <div className="bg-[var(--color-nosotros)]/10 border border-[var(--color-nosotros)]/25 rounded-xl p-2 text-center">
+                                        <div className="text-[10px] uppercase tracking-widest text-[var(--color-nosotros)]/80 font-black">G</div>
+                                        <div className="text-2xl font-black font-mono text-[var(--color-nosotros)]">{activeRivalry.wins}</div>
+                                    </div>
+                                    <div className="bg-[var(--color-ellos)]/10 border border-[var(--color-ellos)]/25 rounded-xl p-2 text-center">
+                                        <div className="text-[10px] uppercase tracking-widest text-[var(--color-ellos)]/80 font-black">P</div>
+                                        <div className="text-2xl font-black font-mono text-[var(--color-ellos)]">{activeRivalry.losses}</div>
+                                    </div>
                                 </div>
                                 {activeRivalry.form.length > 0 && (
                                     <div className="mt-2 flex items-center gap-1.5 flex-wrap">
@@ -189,6 +203,11 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                                         ))}
                                     </div>
                                 )}
+                                <div className="mt-3">
+                                    <span className="inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/15 bg-white/5 text-white/75">
+                                        {activeRivalry.mode}
+                                    </span>
+                                </div>
                             </button>
                         )}
 
