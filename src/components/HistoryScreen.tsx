@@ -867,10 +867,25 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                             <div className="text-[34px] font-black leading-none tabular-nums">
                                 {summaryStats.total} <span className="text-[16px] text-white/65">PJ</span>
                             </div>
-                            <div className="mt-2 flex items-center gap-3 text-[13px] font-black">
-                                <span className="text-[var(--color-nosotros)]">G {summaryStats.wins}</span>
-                                <span className="text-white/30">·</span>
-                                <span className="text-[var(--color-danger)]">P {summaryStats.losses}</span>
+                            <div className="mt-2 rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                <div className="h-3 w-full flex">
+                                    <div
+                                        className="h-full bg-[var(--color-nosotros)]"
+                                        style={{ width: `${summaryStats.total ? (summaryStats.wins / summaryStats.total) * 100 : 0}%` }}
+                                    />
+                                    <div
+                                        className="h-full bg-[var(--color-danger)]"
+                                        style={{ width: `${summaryStats.total ? (summaryStats.losses / summaryStats.total) * 100 : 0}%` }}
+                                    />
+                                </div>
+                                <div className="px-3 py-2 flex items-center justify-between text-[11px] font-black">
+                                    <span className="text-[var(--color-nosotros)]">
+                                        G {summaryStats.wins} ({summaryStats.total ? Math.round((summaryStats.wins / summaryStats.total) * 100) : 0}%)
+                                    </span>
+                                    <span className="text-[var(--color-danger)]">
+                                        P {summaryStats.losses} ({summaryStats.total ? Math.round((summaryStats.losses / summaryStats.total) * 100) : 0}%)
+                                    </span>
+                                </div>
                             </div>
                             <div className="text-[10px] uppercase tracking-[0.2em] text-white/45 font-black mt-3 text-center">Ultimos 10</div>
                             <div className="mt-3 grid grid-cols-10 gap-2 w-full">
@@ -958,10 +973,25 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                                     <div className="text-[32px] font-black leading-none tabular-nums mt-1">
                                         {historySummary.total} <span className="text-[14px] text-white/65">PJ</span>
                                     </div>
-                                    <div className="mt-2 flex items-center gap-3 text-[13px] font-black">
-                                        <span className="text-[var(--color-nosotros)]">G {historySummary.wins}</span>
-                                        <span className="text-white/30">·</span>
-                                        <span className="text-[var(--color-danger)]">P {historySummary.losses}</span>
+                                    <div className="mt-2 rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                        <div className="h-3 w-full flex">
+                                            <div
+                                                className="h-full bg-[var(--color-nosotros)]"
+                                                style={{ width: `${historySummary.total ? (historySummary.wins / historySummary.total) * 100 : 0}%` }}
+                                            />
+                                            <div
+                                                className="h-full bg-[var(--color-danger)]"
+                                                style={{ width: `${historySummary.total ? (historySummary.losses / historySummary.total) * 100 : 0}%` }}
+                                            />
+                                        </div>
+                                        <div className="px-3 py-2 flex items-center justify-between text-[11px] font-black">
+                                            <span className="text-[var(--color-nosotros)]">
+                                                G {historySummary.wins} ({historySummary.total ? Math.round((historySummary.wins / historySummary.total) * 100) : 0}%)
+                                            </span>
+                                            <span className="text-[var(--color-danger)]">
+                                                P {historySummary.losses} ({historySummary.total ? Math.round((historySummary.losses / historySummary.total) * 100) : 0}%)
+                                            </span>
+                                        </div>
                                     </div>
                                     <div className="text-[10px] uppercase tracking-[0.2em] text-white/45 font-black mt-3 text-center">Ultimos 10</div>
                                     <div className="mt-2 grid grid-cols-10 gap-2 w-full">

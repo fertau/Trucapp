@@ -206,14 +206,24 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                                     })}
                                 </div>
                                 <div className="w-full h-px bg-white/10 my-3" />
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="text-center bg-white/5 border border-white/10 rounded-xl py-2">
-                                        <div className="text-[26px] font-black font-mono leading-none text-[var(--color-nosotros)]">{activeRivalry.wins}</div>
-                                        <div className="text-[10px] uppercase tracking-widest font-black text-white/50 mt-1">G</div>
+                                <div className="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                    <div className="h-3 w-full flex">
+                                        <div
+                                            className="h-full bg-[var(--color-nosotros)]"
+                                            style={{ width: `${activeRivalry.count ? (activeRivalry.wins / activeRivalry.count) * 100 : 0}%` }}
+                                        />
+                                        <div
+                                            className="h-full bg-[var(--color-danger)]"
+                                            style={{ width: `${activeRivalry.count ? (activeRivalry.losses / activeRivalry.count) * 100 : 0}%` }}
+                                        />
                                     </div>
-                                    <div className="text-center bg-white/5 border border-white/10 rounded-xl py-2">
-                                        <div className="text-[26px] font-black font-mono leading-none text-[var(--color-danger)]">{activeRivalry.losses}</div>
-                                        <div className="text-[10px] uppercase tracking-widest font-black text-white/50 mt-1">P</div>
+                                    <div className="px-3 py-2 flex items-center justify-between text-[11px] font-black">
+                                        <span className="text-[var(--color-nosotros)]">
+                                            G {activeRivalry.wins} ({activeRivalry.count ? Math.round((activeRivalry.wins / activeRivalry.count) * 100) : 0}%)
+                                        </span>
+                                        <span className="text-[var(--color-danger)]">
+                                            P {activeRivalry.losses} ({activeRivalry.count ? Math.round((activeRivalry.losses / activeRivalry.count) * 100) : 0}%)
+                                        </span>
                                     </div>
                                 </div>
                                 </div>
