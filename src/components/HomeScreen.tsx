@@ -17,6 +17,7 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
     const players = useUserStore(state => state.players);
     const matches = useHistoryStore(state => state.matches);
     const [tab, setTab] = useState<'PARTIDO' | 'HISTORIAL'>('PARTIDO');
+    const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('trucapp-onboarding-v1'));
     const validFinishedMatches = useMemo(() => (
         matches.filter((m) => m.isFinished && (m.teams.nosotros.score + m.teams.ellos.score > 0))
     ), [matches]);
@@ -133,6 +134,28 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
             <div className="flex-1 overflow-y-auto pb-36">
                 {tab === 'PARTIDO' && (
                     <div className="flex flex-col gap-4 animate-in slide-in-from-bottom duration-300">
+                        {showOnboarding && (
+                            <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4">
+                                <div className="flex items-start justify-between gap-3 mb-2">
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-[var(--color-accent)]">Guía rápida</div>
+                                    <button
+                                        onClick={() => {
+                                            localStorage.setItem('trucapp-onboarding-v1', 'seen');
+                                            setShowOnboarding(false);
+                                        }}
+                                        className="text-[10px] font-black uppercase tracking-wider text-white/60"
+                                    >
+                                        Cerrar
+                                    </button>
+                                </div>
+                                <div className="text-[11px] text-white/70 space-y-1">
+                                    <div>1. Tocá <span className="font-black">Nuevo Partido</span> para arrancar.</div>
+                                    <div>2. Durante el juego, usá <span className="font-black">+1</span> y abrí atajos solo cuando los necesites.</div>
+                                    <div>3. En <span className="font-black">Estadísticas</span>, guardá filtros y seguí tus clásicos.</div>
+                                </div>
+                            </div>
+                        )}
+
                         <button
                             onClick={onNewMatch}
                             className="bg-[var(--color-accent)] text-white py-5 rounded-lg font-bold text-xl shadow-lg shadow-blue-900/20 active:scale-[0.98] transition-all"

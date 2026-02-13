@@ -77,6 +77,9 @@ export interface MatchSeriesInfo {
     id: string;
     targetWins: number;
     gameNumber: number;
+    name?: string;
+    closedManually?: boolean;
+    closedAt?: number | null;
 }
 
 export interface MatchTeamRef {

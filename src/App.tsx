@@ -192,7 +192,10 @@ function App() {
         setSeries({
           id: crypto.randomUUID(),
           targetWins: 2,
-          gameNumber: 1
+          gameNumber: 1,
+          name: `${nosotrosName} vs ${ellosName}`,
+          closedManually: false,
+          closedAt: null
         });
       } else {
         setSeries(null);
@@ -251,7 +254,10 @@ function App() {
             setSeries({
               id: currentSeriesId,
               targetWins: matchState.series.targetWins,
-              gameNumber: nextGameNumber
+              gameNumber: nextGameNumber,
+              name: matchState.series.name ?? `${matchState.teams.nosotros.name} vs ${matchState.teams.ellos.name}`,
+              closedManually: false,
+              closedAt: null
             });
             setStep('MATCH');
             return;
@@ -329,13 +335,19 @@ function App() {
               setSeries({
                 id: baseMatch.series.id,
                 targetWins: baseMatch.series.targetWins,
-                gameNumber: nextGameNumber
+                gameNumber: nextGameNumber,
+                name: baseMatch.series.name ?? `${baseMatch.teams.nosotros.name} vs ${baseMatch.teams.ellos.name}`,
+                closedManually: false,
+                closedAt: null
               });
             } else {
               setSeries({
                 id: crypto.randomUUID(),
                 targetWins: 2,
-                gameNumber: 1
+                gameNumber: 1,
+                name: `${baseMatch.teams.nosotros.name} vs ${baseMatch.teams.ellos.name}`,
+                closedManually: false,
+                closedAt: null
               });
             }
 

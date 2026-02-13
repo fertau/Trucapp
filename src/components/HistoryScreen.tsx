@@ -21,12 +21,24 @@ type MatchListView = 'SERIES' | 'MATCHES';
 type SeriesResultFilter = 'ALL' | 'G' | 'P';
 type StatsModeTab = '1v1' | '2v2' | 'GLOBAL';
 type HistoryFocus = 'YO_1V1' | 'YO_2V2' | 'YO_3V3' | 'MI_EQUIPO' | 'CLASICOS';
+type SavedHistoryView = {
+    id: string;
+    name: string;
+    scope: Scope;
+    mode: FilterMode;
+    result: ResultFilter;
+    opponentId: string;
+    opponentGroupKey: string;
+    search: string;
+    matchListView: MatchListView;
+};
 
 const MODES: FilterMode[] = ['ALL', '1v1', '2v2', '3v3'];
 const STATS_MODE_TABS: StatsModeTab[] = ['1v1', '2v2', 'GLOBAL'];
 const HISTORY_FILTERS_STORAGE_KEY = 'trucapp-history-filters-v2';
 const HISTORY_SUMMARY_STORAGE_KEY = 'trucapp-history-summary-v2';
 const HISTORY_FAVORITE_CLASSICS_STORAGE_KEY = 'trucapp-history-favorite-classics-v1';
+const HISTORY_SAVED_VIEWS_STORAGE_KEY = 'trucapp-history-saved-views-v1';
 const HISTORY_FOCUS_TABS: Array<{ key: HistoryFocus; label: string }> = [
     { key: 'YO_1V1', label: 'Yo 1v1' },
     { key: 'YO_2V2', label: 'Yo 2v2' },
@@ -80,6 +92,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
     const [seriesResultFilter, setSeriesResultFilter] = useState<SeriesResultFilter>('ALL');
     const [selectedMatch, setSelectedMatch] = useState<MatchState | null>(null);
     const [favoriteClassicKeys, setFavoriteClassicKeys] = useState<string[]>([]);
+    const [savedViews, setSavedViews] = useState<SavedHistoryView[]>([]);
     const loadMoreAnchorRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
@@ -127,6 +140,12 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                 const parsed = JSON.parse(persistedFavorites) as string[];
                 setFavoriteClassicKeys(Array.isArray(parsed) ? parsed : []);
             }
+
+            const persistedViews = localStorage.getItem(HISTORY_SAVED_VIEWS_STORAGE_KEY);
+            if (persistedViews) {
+                const parsed = JSON.parse(persistedViews) as SavedHistoryView[];
+                setSavedViews(Array.isArray(parsed) ? parsed : []);
+            }
         } catch (err) {
             console.warn('No se pudo restaurar preferencias de historial:', err);
         }
@@ -156,6 +175,10 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
     useEffect(() => {
         localStorage.setItem(HISTORY_FAVORITE_CLASSICS_STORAGE_KEY, JSON.stringify(favoriteClassicKeys));
     }, [favoriteClassicKeys]);
+
+    useEffect(() => {
+        localStorage.setItem(HISTORY_SAVED_VIEWS_STORAGE_KEY, JSON.stringify(savedViews));
+    }, [savedViews]);
 
     const getPlayerName = useCallback((id: string): string => {
         const player = players.find((p) => p.id === id);
@@ -266,48 +289,26 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
             return {
                 total: 0,
                 wins: 0,
-                losses: 0,
-                gf: 0,
-                gc: 0,
-                gd: 0,
-                avgGf: 0,
-                avgGc: 0,
-                avgGd: 0,
-                winRate: 0
+                losses: 0
             };
         }
 
         let wins = 0;
         let losses = 0;
-        let gf = 0;
-        let gc = 0;
 
         statsScopedMatchesSorted.forEach((m) => {
             const myTeam = getTeamIdForUser(m, currentUserId);
             if (!myTeam) return;
-            const opponentTeam = getOppositeTeam(myTeam);
-            const myScore = m.teams[myTeam].score;
-            const oppScore = m.teams[opponentTeam].score;
-            gf += myScore;
-            gc += oppScore;
 
             if (m.winner === myTeam) wins++;
             else losses++;
         });
 
         const total = statsScopedMatchesSorted.length;
-        const gd = gf - gc;
         return {
             total,
             wins,
-            losses,
-            gf,
-            gc,
-            gd,
-            avgGf: total ? Math.round((gf / total) * 10) / 10 : 0,
-            avgGc: total ? Math.round((gc / total) * 10) / 10 : 0,
-            avgGd: total ? Math.round((gd / total) * 10) / 10 : 0,
-            winRate: total ? Math.round((wins / total) * 100) : 0
+            losses
         };
     }, [statsScopedMatchesSorted, currentUserId]);
 
@@ -464,7 +465,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
     }, [historyFocusMatches, currentUserId, getPlayerName]);
 
     const historySummary = useMemo(() => {
-        if (!currentUserId) return { total: 0, wins: 0, losses: 0, winRate: 0 };
+        if (!currentUserId) return { total: 0, wins: 0, losses: 0 };
         let wins = 0;
         let losses = 0;
         historyFocusMatches.forEach((m) => {
@@ -477,8 +478,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
         return {
             total,
             wins,
-            losses,
-            winRate: total > 0 ? Math.round((wins / total) * 100) : 0
+            losses
         };
     }, [historyFocusMatches, currentUserId]);
 
@@ -543,17 +543,22 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
             .map(([seriesId, ms]) => {
                 const matches = [...ms].sort((a, b) => getMatchEffectiveDate(a) - getMatchEffectiveDate(b));
                 const first = matches[0];
+                const last = matches[matches.length - 1];
                 const winsNos = matches.filter((m) => m.winner === 'nosotros').length;
                 const winsEll = matches.filter((m) => m.winner === 'ellos').length;
                 const targetWins = first.series?.targetWins ?? 2;
+                const closedManually = matches.some((m) => Boolean(m.series?.closedManually));
+                const seriesName = last.series?.name ?? first.series?.name ?? `${first.teams.nosotros.name} vs ${first.teams.ellos.name}`;
                 return {
                     seriesId,
                     matches,
                     first,
+                    seriesName,
                     winsNos,
                     winsEll,
                     targetWins,
-                    isFinished: winsNos >= targetWins || winsEll >= targetWins
+                    closedManually,
+                    isFinished: winsNos >= targetWins || winsEll >= targetWins || closedManually
                 };
             })
             .sort((a, b) => getMatchEffectiveDate(b.matches[b.matches.length - 1]) - getMatchEffectiveDate(a.matches[a.matches.length - 1]));
@@ -573,6 +578,36 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
             )
         ).slice(0, 12)
     ), [matches]);
+
+    const updateSeriesMetadata = async (
+        seriesId: string,
+        changes: { name?: string; closedManually?: boolean }
+    ) => {
+        if (!currentUserId) return;
+        const seriesMatches = matches.filter((m) => m.series?.id === seriesId);
+        const updatable = seriesMatches.filter((m) => canUserEditMatch(m, currentUserId));
+        if (updatable.length === 0) {
+            alert('No tenés permisos para editar esta serie.');
+            return;
+        }
+
+        try {
+            await Promise.all(updatable.map(async (m) => {
+                const nextSeries = {
+                    ...m.series!,
+                    name: changes.name ?? m.series?.name ?? `${m.teams.nosotros.name} vs ${m.teams.ellos.name}`,
+                    closedManually: changes.closedManually ?? (m.series?.closedManually ?? false),
+                    closedAt: changes.closedManually === undefined
+                        ? (m.series?.closedAt ?? null)
+                        : (changes.closedManually ? Date.now() : null)
+                };
+                await updateMatch({ ...m, series: nextSeries }, currentUserId);
+            }));
+        } catch (err) {
+            console.error('Error actualizando serie', err);
+            alert('No se pudo actualizar la serie.');
+        }
+    };
 
     const getResultEditTooltip = (match: MatchState): string => {
         if (!match.edits || match.edits.length === 0) return '';
@@ -616,6 +651,40 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
         opponentGroupKey === 'ALL' &&
         search.trim() === ''
     ), [scope, mode, result, opponentId, opponentGroupKey, search]);
+
+    const saveCurrentView = () => {
+        const name = window.prompt('Nombre corto para esta vista (ej: Clasico 2v2)');
+        const trimmed = name?.trim();
+        if (!trimmed) return;
+        const next: SavedHistoryView = {
+            id: crypto.randomUUID(),
+            name: trimmed,
+            scope,
+            mode,
+            result,
+            opponentId,
+            opponentGroupKey,
+            search,
+            matchListView
+        };
+        setSavedViews((prev) => [next, ...prev].slice(0, 8));
+    };
+
+    const applySavedView = (viewId: string) => {
+        const view = savedViews.find((v) => v.id === viewId);
+        if (!view) return;
+        setScope(view.scope);
+        setMode(view.mode);
+        setResult(view.result);
+        setOpponentId(view.opponentId);
+        setOpponentGroupKey(view.opponentGroupKey);
+        setSearch(view.search);
+        setMatchListView(view.matchListView);
+    };
+
+    const removeSavedView = (viewId: string) => {
+        setSavedViews((prev) => prev.filter((v) => v.id !== viewId));
+    };
 
     useEffect(() => {
         if (tab !== 'MATCHES') return;
@@ -718,6 +787,38 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                             ))}
                         </div>
                     )}
+
+                    <div className="mb-4">
+                        <div className="flex gap-2 mb-2">
+                            <button
+                                onClick={saveCurrentView}
+                                className="min-h-11 px-3 py-2 rounded-full text-[10px] font-black bg-white/10 border border-white/20 text-white/70"
+                            >
+                                Guardar vista
+                            </button>
+                        </div>
+                        {savedViews.length > 0 && (
+                            <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                                {savedViews.map((view) => (
+                                    <div key={view.id} className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-full pr-1">
+                                        <button
+                                            onClick={() => applySavedView(view.id)}
+                                            className="px-3 py-2 text-[10px] font-black text-white/70 whitespace-nowrap"
+                                        >
+                                            {view.name}
+                                        </button>
+                                        <button
+                                            onClick={() => removeSavedView(view.id)}
+                                            className="w-6 h-6 rounded-full text-[10px] font-black text-white/60 bg-white/10"
+                                            aria-label={`Eliminar vista ${view.name}`}
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </>
             )}
 
@@ -757,16 +858,6 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                                 <div className="bg-white/5 rounded-2xl p-3">
                                     <div className="text-[10px] text-white/50 font-black uppercase tracking-wider">G/P</div>
                                     <div className="text-[26px] font-black font-mono leading-tight mt-0.5">{summaryStats.wins}/{summaryStats.losses}</div>
-                                </div>
-                                <div className="bg-white/5 rounded-2xl p-3">
-                                    <div className="text-[10px] text-white/50 font-black uppercase tracking-wider">GD</div>
-                                    <div className={`text-[30px] font-black font-mono leading-tight mt-0.5 ${summaryStats.gd >= 0 ? 'text-[var(--color-nosotros)]' : 'text-[var(--color-ellos)]'}`}>
-                                        {summaryStats.gd >= 0 ? `+${summaryStats.gd}` : summaryStats.gd}
-                                    </div>
-                                </div>
-                                <div className="bg-white/5 rounded-2xl p-3">
-                                    <div className="text-[10px] text-white/50 font-black uppercase tracking-wider">Win%</div>
-                                    <div className="text-[30px] font-black font-mono leading-tight mt-0.5">{summaryStats.winRate}%</div>
                                 </div>
                             </div>
                         </div>
@@ -839,7 +930,6 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                                     </div>
                                     <div className="flex items-center justify-between text-[13px] font-black">
                                         <span>PJ {historySummary.total} · G {historySummary.wins} · P {historySummary.losses}</span>
-                                        <span className="font-mono text-base">{historySummary.winRate}%</span>
                                     </div>
                                     {historyForm.length > 0 && (
                                         <div className="mt-2 flex items-center gap-1.5 flex-wrap">
@@ -1036,6 +1126,9 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                                                 <div className="text-sm font-black">
                                                     {first.teams.nosotros.name} {serie.winsNos} - {serie.winsEll} {first.teams.ellos.name}
                                                 </div>
+                                                <div className="text-[11px] text-white/60 mt-1 truncate">
+                                                    {serie.seriesName}
+                                                </div>
                                                 <div className="text-[11px] text-white/50 mt-1">
                                                     {serie.matches.length} partidos · última: {new Date(getMatchEffectiveDate(serie.matches[serie.matches.length - 1])).toLocaleDateString()}
                                                 </div>
@@ -1173,6 +1266,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
             )}
             {selectedSeriesData && (
                 <SeriesDetailDrawer
+                    key={selectedSeriesData.seriesId}
                     series={selectedSeriesData}
                     currentUserId={currentUserId}
                     getPlayerName={getPlayerName}
@@ -1183,6 +1277,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                         setSelectedSeriesId(null);
                         setSelectedMatch(match);
                     }}
+                    onUpdateSeries={updateSeriesMetadata}
                 />
             )}
         </div>
@@ -1194,9 +1289,11 @@ interface SeriesDetailDrawerProps {
         seriesId: string;
         matches: MatchState[];
         first: MatchState;
+        seriesName: string;
         winsNos: number;
         winsEll: number;
         targetWins: number;
+        closedManually: boolean;
         isFinished: boolean;
     };
     currentUserId: string | null;
@@ -1205,6 +1302,7 @@ interface SeriesDetailDrawerProps {
     onChangeResultFilter: (filter: SeriesResultFilter) => void;
     onClose: () => void;
     onOpenMatch: (match: MatchState) => void;
+    onUpdateSeries: (seriesId: string, changes: { name?: string; closedManually?: boolean }) => Promise<void>;
 }
 
 const SeriesDetailDrawer = ({
@@ -1214,8 +1312,12 @@ const SeriesDetailDrawer = ({
     resultFilter,
     onChangeResultFilter,
     onClose,
-    onOpenMatch
+    onOpenMatch,
+    onUpdateSeries
 }: SeriesDetailDrawerProps) => {
+    const [isSavingSeries, setIsSavingSeries] = useState(false);
+    const [seriesName, setSeriesName] = useState(series.seriesName);
+
     const mySide = currentUserId ? getTeamIdForUser(series.first, currentUserId) : null;
     const filteredTimeline = useMemo(() => {
         if (!mySide || resultFilter === 'ALL') return series.matches;
@@ -1242,11 +1344,43 @@ const SeriesDetailDrawer = ({
                         <button onClick={onClose} className="text-white/60 font-black text-sm">Cerrar</button>
                     </div>
                     <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3 mb-3">
+                        <input
+                            value={seriesName}
+                            onChange={(e) => setSeriesName(e.target.value)}
+                            className="w-full mb-2 bg-black/20 border border-white/10 rounded-xl px-3 py-2 text-sm font-black"
+                            placeholder="Nombre de serie"
+                        />
                         <div className="text-sm font-black">
                             {series.first.teams.nosotros.name} {series.winsNos} - {series.winsEll} {series.first.teams.ellos.name}
                         </div>
                         <div className="text-[11px] text-white/55 mt-1">
                             {series.matches.length} partidos · {series.isFinished ? 'Serie cerrada' : 'Serie en curso'}
+                        </div>
+                        <div className="flex gap-2 mt-2">
+                            <button
+                                disabled={isSavingSeries}
+                                onClick={async () => {
+                                    const trimmed = seriesName.trim();
+                                    if (!trimmed) return;
+                                    setIsSavingSeries(true);
+                                    await onUpdateSeries(series.seriesId, { name: trimmed });
+                                    setIsSavingSeries(false);
+                                }}
+                                className="flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border border-white/15 bg-white/5 text-white/70 disabled:opacity-60"
+                            >
+                                Guardar nombre
+                            </button>
+                            <button
+                                disabled={isSavingSeries}
+                                onClick={async () => {
+                                    setIsSavingSeries(true);
+                                    await onUpdateSeries(series.seriesId, { closedManually: !series.closedManually });
+                                    setIsSavingSeries(false);
+                                }}
+                                className="flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border border-[var(--color-accent)]/40 bg-[var(--color-accent)]/15 text-[var(--color-accent)] disabled:opacity-60"
+                            >
+                                {series.closedManually ? 'Reabrir serie' : 'Cerrar serie'}
+                            </button>
                         </div>
                     </div>
                     <div className="flex bg-[var(--color-surface)] p-1 rounded-xl border border-[var(--color-border)]">
