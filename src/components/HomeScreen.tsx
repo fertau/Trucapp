@@ -5,15 +5,17 @@ import { useMemo, useState } from 'react';
 import { AvatarBadge } from './AvatarBadge';
 import type { MatchState, TeamId } from '../types';
 import { getMatchEffectiveDate, getTeamRefLabel } from '../utils/matchIdentity';
-import { formatDateDisplay, formatDateTimeDisplay } from '../utils/date';
+import { formatDateTimeDisplay } from '../utils/date';
 
 interface HomeScreenProps {
     onNewMatch: () => void;
+    onQuickScore: () => void;
     onHistory: () => void;
     onProfile: () => void;
 }
 
-export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps) => {
+export const HomeScreen = ({ onNewMatch, onQuickScore, onHistory, onProfile }: HomeScreenProps) => {
+    const HISTORY_SUMMARY_STORAGE_KEY = 'trucapp-history-summary-v2';
     const currentUserId = useAuthStore(state => state.currentUserId);
     const players = useUserStore(state => state.players);
     const matches = useHistoryStore(state => state.matches);
@@ -21,52 +23,18 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
     const [tab, setTab] = useState<'PARTIDO' | 'HISTORIAL'>('PARTIDO');
     const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('trucapp-onboarding-v1'));
     const showHomeSkeleton = isHistoryLoading && matches.length === 0;
+    const visibleMatches = useMemo(() => {
+        if (!currentUserId) return [] as MatchState[];
+        return matches.filter((m) =>
+            m.teams.nosotros.players.includes(currentUserId) ||
+            m.teams.ellos.players.includes(currentUserId)
+        );
+    }, [matches, currentUserId]);
+
     const validFinishedMatches = useMemo(() => (
-        matches.filter((m) => m.isFinished && (m.teams.nosotros.score + m.teams.ellos.score > 0))
-    ), [matches]);
+        visibleMatches.filter((m) => m.isFinished && (m.teams.nosotros.score + m.teams.ellos.score > 0))
+    ), [visibleMatches]);
 
-    const seriesSummary = useMemo(() => {
-        const grouped = new Map<string, MatchState[]>();
-        matches.forEach((m) => {
-            const seriesId = m.series?.id;
-            if (!seriesId) return;
-            const arr = grouped.get(seriesId) ?? [];
-            arr.push(m);
-            grouped.set(seriesId, arr);
-        });
-
-        const summary = new Map<string, { winsNos: number; winsEll: number; targetWins: number; isFinished: boolean }>();
-        grouped.forEach((arr, seriesId) => {
-            const winsNos = arr.filter((m) => m.winner === 'nosotros').length;
-            const winsEll = arr.filter((m) => m.winner === 'ellos').length;
-            const targetWins = arr[0]?.series?.targetWins ?? 2;
-            summary.set(seriesId, {
-                winsNos,
-                winsEll,
-                targetWins,
-                isFinished: winsNos >= targetWins || winsEll >= targetWins
-            });
-        });
-        return summary;
-    }, [matches]);
-
-    const recentItems = useMemo(() => {
-        const items: Array<{ key: string; type: 'MATCH' | 'SERIES'; match: MatchState }> = [];
-        const seenSeries = new Set<string>();
-
-        for (const match of validFinishedMatches) {
-            const seriesId = match.series?.id;
-            if (seriesId) {
-                if (seenSeries.has(seriesId)) continue;
-                seenSeries.add(seriesId);
-                items.push({ key: `series-${seriesId}`, type: 'SERIES', match });
-            } else {
-                items.push({ key: `match-${match.id}`, type: 'MATCH', match });
-            }
-            if (items.length >= 2) break;
-        }
-        return items;
-    }, [validFinishedMatches]);
     const user = players.find(p => p.id === currentUserId);
 
     const getTeamIdForUser = (match: MatchState, userId: string): TeamId | null => {
@@ -79,13 +47,14 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
         if (!currentUserId) return null;
         const playersKey = (ids: string[]) => [...ids].sort().join('|');
         const buckets = new Map<string, {
+            key: string;
             mode: MatchState['mode'];
             label: string;
             count: number;
             wins: number;
             losses: number;
             lastPlayedAt: number;
-            form: Array<'G' | 'P'>;
+            seriesById: Record<string, { wins: number; losses: number; lastAt: number }>;
         }>();
 
         const mine = validFinishedMatches.filter((m) => getTeamIdForUser(m, currentUserId) !== null);
@@ -102,30 +71,69 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                 ? `1v1 vs ${m.teams[oppSide].players.map((id) => players.find((p) => p.id === id)?.name ?? id).join(' / ')}`
                 : `${m.mode} · ${getTeamRefLabel(m, mySide)} vs ${getTeamRefLabel(m, oppSide)}`;
             const prev = buckets.get(key) ?? {
+                key,
                 mode: m.mode,
                 label,
                 count: 0,
                 wins: 0,
                 losses: 0,
                 lastPlayedAt: 0,
-                form: []
+                seriesById: {}
             };
             const result: 'G' | 'P' = m.winner === mySide ? 'G' : 'P';
-            const cappedForm = prev.form.length < 10 ? [...prev.form, result] : prev.form;
+            const seriesId = m.series?.id ?? `single:${m.id}`;
+            const previousSeries = prev.seriesById[seriesId] ?? { wins: 0, losses: 0, lastAt: 0 };
+            const nextSeries = {
+                wins: previousSeries.wins + (result === 'G' ? 1 : 0),
+                losses: previousSeries.losses + (result === 'P' ? 1 : 0),
+                lastAt: Math.max(previousSeries.lastAt, getMatchEffectiveDate(m))
+            };
             buckets.set(key, {
+                key,
                 mode: m.mode,
                 label,
                 count: prev.count + 1,
                 wins: prev.wins + (result === 'G' ? 1 : 0),
                 losses: prev.losses + (result === 'P' ? 1 : 0),
                 lastPlayedAt: Math.max(prev.lastPlayedAt, getMatchEffectiveDate(m)),
-                form: cappedForm
+                seriesById: {
+                    ...prev.seriesById,
+                    [seriesId]: nextSeries
+                }
             });
         });
 
         const ranked = Array.from(buckets.values())
+            .map((bucket) => {
+                const seriesEntries = Object.values(bucket.seriesById).sort((a, b) => b.lastAt - a.lastAt);
+                let seriesWins = 0;
+                let seriesLosses = 0;
+                const seriesForm: Array<'G' | 'P'> = [];
+                seriesEntries.forEach((s) => {
+                    if (s.wins > s.losses) {
+                        seriesWins += 1;
+                        if (seriesForm.length < 10) seriesForm.push('G');
+                    } else if (s.losses > s.wins) {
+                        seriesLosses += 1;
+                        if (seriesForm.length < 10) seriesForm.push('P');
+                    }
+                });
+                const seriesLastPlayedAt = seriesEntries[0]?.lastAt ?? 0;
+                return {
+                    ...bucket,
+                    seriesWins,
+                    seriesLosses,
+                    seriesTotal: seriesWins + seriesLosses,
+                    seriesForm,
+                    seriesLastPlayedAt
+                };
+            })
             .filter((x) => x.count >= 3)
-            .sort((a, b) => b.count - a.count || b.lastPlayedAt - a.lastPlayedAt);
+            .sort((a, b) =>
+                b.seriesLastPlayedAt - a.seriesLastPlayedAt ||
+                b.seriesTotal - a.seriesTotal ||
+                b.lastPlayedAt - a.lastPlayedAt
+            );
         return ranked[0] ?? null;
     }, [validFinishedMatches, currentUserId, players]);
 
@@ -182,6 +190,12 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                         >
                             NUEVO PARTIDO
                         </button>
+                        <button
+                            onClick={onQuickScore}
+                            className="bg-[var(--color-surface)] border border-[var(--color-border)] text-white py-3 rounded-lg font-black text-sm uppercase tracking-widest active:scale-[0.98] transition-all card-smooth"
+                        >
+                            ANOTADOR DIRECTO
+                        </button>
 
                         <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mt-1 tracking-wider border-b border-[var(--color-border)] pb-2">
                             Últimos partidos
@@ -189,7 +203,13 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
 
                         {activeRivalry && (
                             <button
-                                onClick={onHistory}
+                                onClick={() => {
+                                    localStorage.setItem(HISTORY_SUMMARY_STORAGE_KEY, JSON.stringify({
+                                        historyFocus: 'CLASICOS',
+                                        classicKey: activeRivalry.key
+                                    }));
+                                    onHistory();
+                                }}
                                 className="w-full text-left bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl px-4 py-4 relative overflow-hidden card-smooth"
                             >
                                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(74,222,128,0.14),transparent_44%),radial-gradient(circle_at_100%_100%,rgba(255,255,255,0.04),transparent_40%)]" />
@@ -200,11 +220,47 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                                         {activeRivalry.mode}
                                     </span>
                                 </div>
-                                <div className="text-[32px] font-black leading-none mt-2 tabular-nums">
-                                    {activeRivalry.count} <span className="text-[15px] font-bold text-white/65">PJ</span>
+                                <div className="text-sm font-black leading-tight mt-2">{activeRivalry.label.replace(`${activeRivalry.mode} · `, '')}</div>
+                                <div className="text-[22px] font-black leading-none mt-1 tabular-nums">
+                                    {activeRivalry.seriesTotal} <span className="text-[14px] text-white/65">series</span> <span className="text-[13px] text-white/50">({activeRivalry.count} PJ)</span>
                                 </div>
-                                <div className="text-sm font-black leading-tight mt-1">{activeRivalry.label.replace(`${activeRivalry.mode} · `, '')}</div>
                                 <div className="w-full h-px bg-white/10 my-3" />
+                                <div className="text-[10px] uppercase tracking-[0.18em] text-white/45 font-black mb-2">Series ganadas</div>
+                                <div className="rounded-xl border border-white/10 bg-black/20 overflow-hidden mb-2">
+                                    <div className="h-3 w-full flex">
+                                        <div
+                                            className="h-full bg-[var(--color-nosotros)]"
+                                            style={{ width: `${activeRivalry.seriesTotal ? (activeRivalry.seriesWins / activeRivalry.seriesTotal) * 100 : 0}%` }}
+                                        />
+                                        <div
+                                            className="h-full bg-[var(--color-danger)]"
+                                            style={{ width: `${activeRivalry.seriesTotal ? (activeRivalry.seriesLosses / activeRivalry.seriesTotal) * 100 : 0}%` }}
+                                        />
+                                    </div>
+                                    <div className="px-3 py-2 flex items-center justify-between text-[11px] font-black">
+                                        <span className="text-[var(--color-nosotros)]">{activeRivalry.seriesWins}</span>
+                                        <span className="text-[var(--color-danger)]">{activeRivalry.seriesLosses}</span>
+                                    </div>
+                                </div>
+                                <div className="text-[10px] uppercase tracking-[0.18em] text-white/45 font-black text-center">Forma de series</div>
+                                <div className="mt-2 grid grid-cols-10 gap-2 w-full mb-3">
+                                    {Array.from({ length: 10 }).map((_, idx) => {
+                                        const item = activeRivalry.seriesForm[idx];
+                                        const cls = item === 'G'
+                                            ? 'bg-[var(--color-nosotros)] border-[var(--color-nosotros)]/90 shadow-[0_0_10px_rgba(74,222,128,0.4)]'
+                                            : item === 'P'
+                                                ? 'bg-[var(--color-danger)] border-[var(--color-danger)]/90 shadow-[0_0_10px_rgba(255,69,58,0.35)]'
+                                                : 'bg-white/5 border-white/15';
+                                        return (
+                                            <span
+                                                key={`home-series-form-slot-${idx}`}
+                                                className={`w-full aspect-square rounded-full border ${cls}`}
+                                                title={item ? `Serie ${idx + 1}: ${item}` : `Serie ${idx + 1}: sin dato`}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                                <div className="text-[10px] uppercase tracking-[0.18em] text-white/45 font-black mb-2">Partidos jugados</div>
                                 <div className="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                     <div className="h-3 w-full flex">
                                         <div
@@ -218,115 +274,16 @@ export const HomeScreen = ({ onNewMatch, onHistory, onProfile }: HomeScreenProps
                                     </div>
                                     <div className="px-3 py-2 flex items-center justify-between text-[11px] font-black">
                                         <span className="text-[var(--color-nosotros)]">
-                                            {activeRivalry.wins} ({activeRivalry.count ? Math.round((activeRivalry.wins / activeRivalry.count) * 100) : 0}%)
+                                            G {activeRivalry.wins} ({activeRivalry.count ? Math.round((activeRivalry.wins / activeRivalry.count) * 100) : 0}%)
                                         </span>
                                         <span className="text-[var(--color-danger)]">
-                                            {activeRivalry.losses} ({activeRivalry.count ? Math.round((activeRivalry.losses / activeRivalry.count) * 100) : 0}%)
+                                            P {activeRivalry.losses} ({activeRivalry.count ? Math.round((activeRivalry.losses / activeRivalry.count) * 100) : 0}%)
                                         </span>
                                     </div>
-                                </div>
-                                <div className="text-[10px] uppercase tracking-[0.2em] text-white/45 font-black mt-3 text-center">Ultimos 10</div>
-                                <div className="mt-2 grid grid-cols-10 gap-2 w-full">
-                                    {Array.from({ length: 10 }).map((_, idx) => {
-                                        const item = activeRivalry.form[idx];
-                                        const cls = item === 'G'
-                                            ? 'bg-[var(--color-nosotros)] border-[var(--color-nosotros)]/90 shadow-[0_0_10px_rgba(74,222,128,0.4)]'
-                                            : item === 'P'
-                                                ? 'bg-[var(--color-danger)] border-[var(--color-danger)]/90 shadow-[0_0_10px_rgba(255,69,58,0.35)]'
-                                                : 'bg-white/5 border-white/15';
-                                        return (
-                                            <span
-                                                key={`home-form-slot-${idx}`}
-                                                className={`w-full aspect-square rounded-full border ${cls}`}
-                                                title={item ? `Partido ${idx + 1}: ${item}` : `Partido ${idx + 1}: sin dato`}
-                                            />
-                                        );
-                                    })}
                                 </div>
                                 </div>
                             </button>
                         )}
-
-                        <div className="flex flex-col gap-2">
-                            {recentItems.length === 0 && <p className="text-[var(--color-text-muted)]">No hay partidos recientes.</p>}
-
-                            {recentItems.map((item) => {
-                                const m = item.match;
-                                const getPlayerNames = (playerIds: string[]) => {
-                                    return playerIds.map(id => players.find(p => p.id === id)?.name || '?').join(', ');
-                                };
-                                const dateText = formatDateDisplay(getMatchEffectiveDate(m));
-                                const location = (m.metadata?.location || '').trim() || 'Sin sede';
-                                const seriesInfo = m.series?.id ? seriesSummary.get(m.series.id) : null;
-                                const boText = m.series ? `BO${(m.series.targetWins * 2) - 1}` : '';
-
-                                return (
-                                    <div key={item.key} className="bg-[var(--color-surface)] px-4 py-3 rounded-[1.25rem] border border-[var(--color-border)] shadow-sm card-smooth">
-                                        <div className="flex items-start justify-between gap-3 mb-2">
-                                            <div className="min-w-0">
-                                                <div className="text-[10px] font-black uppercase tracking-widest text-white/45">{dateText}</div>
-                                                <div className="text-[11px] text-white/55 truncate">{location}</div>
-                                            </div>
-                                            <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                                                <span className="px-2 py-1 rounded-full text-[9px] font-black uppercase tracking-wide bg-white/8 border border-white/10 text-white/70">
-                                                    {m.mode}
-                                                </span>
-                                                {item.type === 'SERIES' && seriesInfo && (
-                                                    <span className="px-2 py-1 rounded-full text-[9px] font-black uppercase tracking-wide bg-[var(--color-accent)]/15 border border-[var(--color-accent)]/30 text-[var(--color-accent)]">
-                                                        Serie {boText}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {item.type === 'SERIES' && seriesInfo ? (
-                                            <>
-                                                <div className="text-base font-black leading-tight">
-                                                    {m.teams.nosotros.name} {seriesInfo.winsNos} - {seriesInfo.winsEll} {m.teams.ellos.name}
-                                                </div>
-                                                <div className="text-[10px] font-black uppercase tracking-widest mt-1 text-white/45">
-                                                    {seriesInfo.isFinished ? 'Serie cerrada' : 'Serie en curso'}
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <div className="flex flex-col gap-2">
-                                                <div className="flex justify-between items-start">
-                                                    <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                                                        <span className={`text-sm font-black uppercase truncate ${m.winner === 'nosotros' ? 'text-[var(--color-nosotros)]' : 'text-white/65'}`}>
-                                                            {m.teams.nosotros.name}
-                                                        </span>
-                                                        {m.mode !== '1v1' && (
-                                                            <span className="text-[10px] font-medium text-white/40 truncate">
-                                                                {getPlayerNames(m.teams.nosotros.players)}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <span className={`text-xl font-black ml-2 ${m.winner === 'nosotros' ? 'text-[var(--color-nosotros)]' : 'text-white/45'}`}>
-                                                        {m.teams.nosotros.score}
-                                                    </span>
-                                                </div>
-
-                                                <div className="flex justify-between items-start">
-                                                    <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                                                        <span className={`text-sm font-black uppercase truncate ${m.winner === 'ellos' ? 'text-[var(--color-ellos)]' : 'text-white/65'}`}>
-                                                            {m.teams.ellos.name}
-                                                        </span>
-                                                        {m.mode !== '1v1' && (
-                                                            <span className="text-[10px] font-medium text-white/40 truncate">
-                                                                {getPlayerNames(m.teams.ellos.players)}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <span className={`text-xl font-black ml-2 ${m.winner === 'ellos' ? 'text-[var(--color-ellos)]' : 'text-white/45'}`}>
-                                                        {m.teams.ellos.score}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
 
                         <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mt-2 tracking-wider border-b border-[var(--color-border)] pb-2">
                             Novedades

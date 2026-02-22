@@ -82,6 +82,19 @@ export interface MatchSeriesInfo {
     closedAt?: number | null;
 }
 
+export interface MatchPicaPicaPairing {
+    nosotrosId: string;
+    ellosId: string;
+}
+
+export interface MatchPicaPicaConfig {
+    enabled: boolean;
+    startAt: number; // inclusive
+    endAt: number; // inclusive
+    pairings: MatchPicaPicaPairing[];
+    currentPairingIndex: number;
+}
+
 export interface MatchTeamRef {
     key: string;
     label: string;
@@ -113,6 +126,7 @@ export interface MatchState {
         ellos: MatchTeamRef;
     } | null;
     series?: MatchSeriesInfo | null;
+    picaPica?: MatchPicaPicaConfig | null;
 
     history: GameAction[];
     isFinished: boolean;

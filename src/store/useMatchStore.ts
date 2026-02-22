@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import type { MatchState, TeamId, PointType, GameAction, MatchSeriesInfo } from '../types';
+import type { MatchState, TeamId, PointType, GameAction, MatchSeriesInfo, MatchPicaPicaConfig } from '../types';
 
 interface MatchStore extends MatchState {
     // Actions
@@ -18,6 +18,7 @@ interface MatchStore extends MatchState {
     setMetadata: (location: string, date?: number) => void;
     setPairId: (team: TeamId, pairId: string) => void;
     setSeries: (series: MatchSeriesInfo | null) => void;
+    setPicaPica: (config: MatchPicaPicaConfig | null) => void;
 
     // Cloud Persistence
     isCloudSynced: boolean;
@@ -36,8 +37,20 @@ const INITIAL_STATE: Omit<MatchState, 'id' | 'startDate'> = {
         nosotros: { id: 'nosotros', name: 'Equipo 1', players: [], score: 0 },
         ellos: { id: 'ellos', name: 'Equipo 2', players: [], score: 0 },
     },
+    picaPica: null,
     history: [],
     isFinished: false,
+};
+
+const isPicaPicaWindow = (
+    config: MatchPicaPicaConfig | null | undefined,
+    scoreNos: number,
+    scoreEll: number
+): boolean => {
+    if (!config?.enabled || config.pairings.length === 0) return false;
+    const inNos = scoreNos >= config.startAt && scoreNos <= config.endAt;
+    const inEll = scoreEll >= config.startAt && scoreEll <= config.endAt;
+    return inNos || inEll;
 };
 
 const recomputeFromHistory = (
@@ -79,7 +92,8 @@ const getMatchData = (state: MatchStore) => ({
     metadata: state.metadata ?? null,
     pairs: state.pairs ?? null
     ,
-    series: state.series ?? null
+    series: state.series ?? null,
+    picaPica: state.picaPica ?? null
 });
 
 export const useMatchStore = create<MatchStore>()(
@@ -179,6 +193,11 @@ export const useMatchStore = create<MatchStore>()(
 
                     const newHistory = [...state.history, action];
                     const currentScore = state.teams[teamId].score;
+                    const wasPicaWindow = isPicaPicaWindow(
+                        state.picaPica,
+                        state.teams.nosotros.score,
+                        state.teams.ellos.score
+                    );
                     let newScore = currentScore + amount;
                     const isWin = newScore >= state.targetScore;
                     if (isWin) newScore = state.targetScore;
@@ -193,7 +212,15 @@ export const useMatchStore = create<MatchStore>()(
                         history: newHistory,
                         isFinished: isWin,
                         winner: isWin ? teamId : null,
-                        targetSwitchBackup: null
+                        targetSwitchBackup: null,
+                        picaPica: state.picaPica
+                            ? {
+                                ...state.picaPica,
+                                currentPairingIndex: wasPicaWindow && state.picaPica.pairings.length > 0
+                                    ? (state.picaPica.currentPairingIndex + 1) % state.picaPica.pairings.length
+                                    : state.picaPica.currentPairingIndex
+                            }
+                            : null
                     };
 
                     // Cloud Write
@@ -251,6 +278,11 @@ export const useMatchStore = create<MatchStore>()(
 
                 if (!lastAction || lastAction.type !== 'ADD_POINTS') return { history: newHistory };
                 const recomputed = recomputeFromHistory(newHistory, state.targetScore);
+                const currentInPicaWindow = isPicaPicaWindow(
+                    state.picaPica,
+                    state.teams.nosotros.score,
+                    state.teams.ellos.score
+                );
                 const newState = {
                     history: newHistory,
                     teams: {
@@ -265,7 +297,15 @@ export const useMatchStore = create<MatchStore>()(
                     },
                     isFinished: recomputed.isFinished,
                     winner: recomputed.winner,
-                    targetSwitchBackup: null as MatchStore['targetSwitchBackup']
+                    targetSwitchBackup: null as MatchStore['targetSwitchBackup'],
+                    picaPica: state.picaPica
+                        ? {
+                            ...state.picaPica,
+                            currentPairingIndex: currentInPicaWindow && state.picaPica.pairings.length > 0
+                                ? (state.picaPica.currentPairingIndex - 1 + state.picaPica.pairings.length) % state.picaPica.pairings.length
+                                : state.picaPica.currentPairingIndex
+                        }
+                        : null
                 };
 
                 // Cloud Write
@@ -374,6 +414,9 @@ export const useMatchStore = create<MatchStore>()(
             })),
 
             setSeries: (series) => set({ series })
+            ,
+
+            setPicaPica: (config) => set({ picaPica: config })
         }),
         {
             name: 'trucapp-match-storage-v1', // unique name
@@ -387,7 +430,8 @@ export const useMatchStore = create<MatchStore>()(
                 winner: state.winner,
                 metadata: state.metadata,
                 pairs: state.pairs,
-                series: state.series
+                series: state.series,
+                picaPica: state.picaPica
             })
         }
     )

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { usePairStore } from '../store/usePairStore';
 import { useHistoryStore } from '../store/useHistoryStore';
-import type { Player, TeamId } from '../types';
+import type { MatchPicaPicaConfig, Player, TeamId } from '../types';
 import { formatDateInputLocal, parseDateInputLocal } from '../utils/date';
 import { getMatchEffectiveDate } from '../utils/matchIdentity';
 
@@ -14,7 +14,7 @@ interface TeamConfigurationProps {
         metadata: { location: string, date: number, teamNames?: { nosotros: string, ellos: string } },
         pairIds: { nosotros?: string, ellos?: string },
         targetScore?: number,
-        options?: { startBestOf3?: boolean }
+        options?: { startBestOf3?: boolean; picaPica?: MatchPicaPicaConfig | null }
     ) => void;
 }
 
@@ -46,6 +46,8 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
     const [isEditingNosotrosTeam, setIsEditingNosotrosTeam] = useState(false);
     const [isEditingEllosTeam, setIsEditingEllosTeam] = useState(false);
     const [startBestOf3, setStartBestOf3] = useState(false);
+    const [isPicaPicaEnabled, setIsPicaPicaEnabled] = useState(requiredCount === 6);
+    const [picaPairingMap, setPicaPairingMap] = useState<Record<string, string>>({});
 
     const handlePairNameSave = (team: TeamId, name: string) => {
         if (team === 'nosotros' && nosotros.length === 2) {
@@ -92,6 +94,63 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
     const limit = getLimit();
     const isValid = nosotros.length === limit && ellos.length === limit;
     const is2v2 = limit === 2;
+    const supportsPicaPica = limit > 1;
+    const shouldShowPicaControls = supportsPicaPica && targetScore === 30;
+
+    const normalizePicaMap = (source: Record<string, string>) => {
+        if (!supportsPicaPica || nosotros.length !== limit || ellos.length !== limit) return source;
+
+        const next: Record<string, string> = {};
+        const usedEllos = new Set<string>();
+        const availableEllos = ellos.map((p) => p.id);
+
+        nosotros.forEach((player) => {
+            const existing = source[player.id];
+            if (existing && availableEllos.includes(existing) && !usedEllos.has(existing)) {
+                next[player.id] = existing;
+                usedEllos.add(existing);
+                return;
+            }
+            const fallback = availableEllos.find((id) => !usedEllos.has(id));
+            if (fallback) {
+                next[player.id] = fallback;
+                usedEllos.add(fallback);
+            }
+        });
+
+        return next;
+    };
+
+    const normalizedPicaPairingMap = normalizePicaMap(picaPairingMap);
+
+    const handlePicaPairingChange = (nosotrosId: string, ellosId: string) => {
+        setPicaPairingMap((prev) => {
+            const base = normalizePicaMap(prev);
+            const previousValue = base[nosotrosId];
+            const next = { ...base, [nosotrosId]: ellosId };
+            const takenBy = Object.entries(next)
+                .find(([id, assigned]) => id !== nosotrosId && assigned === ellosId)?.[0];
+            if (takenBy) {
+                next[takenBy] = previousValue ?? '';
+            }
+            return next;
+        });
+    };
+
+    const picaPairings = nosotros
+        .map((player) => {
+            const rivalId = normalizedPicaPairingMap[player.id];
+            if (!rivalId) return null;
+            return {
+                nosotrosId: player.id,
+                ellosId: rivalId
+            };
+        })
+        .filter((pairing): pairing is { nosotrosId: string; ellosId: string } => pairing !== null);
+
+    const hasUniquePicaPairings = new Set(picaPairings.map((pairing) => pairing.ellosId)).size === picaPairings.length;
+    const isPicaConfigValid = !shouldShowPicaControls || !isPicaPicaEnabled || (picaPairings.length === limit && hasUniquePicaPairings);
+
     const findHistoricTeamName = (playerIds: string[]): string => {
         if (playerIds.length === 0) return '';
         const key = [...playerIds].sort().join('|');
@@ -368,6 +427,58 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
                 </div>
             )}
 
+            {shouldShowPicaControls && (
+                <div className="mb-8">
+                    <div className="text-[10px] font-black uppercase text-[var(--color-text-muted)] mb-3 tracking-widest border-b border-[var(--color-border)] pb-2">Pica Pica</div>
+                    <button
+                        type="button"
+                        onClick={() => setIsPicaPicaEnabled((value) => !value)}
+                        className={`w-full rounded-2xl border px-4 py-3 text-left transition-all ${isPicaPicaEnabled
+                            ? 'bg-[var(--color-accent)]/15 border-[var(--color-accent)]/40 text-[var(--color-accent)]'
+                            : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text-secondary)]'
+                            }`}
+                    >
+                        <div className="text-sm font-black uppercase tracking-wide">Activar pica pica (20 a 25)</div>
+                        <div className="text-[11px] opacity-80 mt-1">
+                            {isPicaPicaEnabled
+                                ? 'Encendido: rota mano de por medio según emparejamientos.'
+                                : 'Apagado: partido normal sin pica pica.'}
+                        </div>
+                    </button>
+
+                    {isPicaPicaEnabled && isValid && (
+                        <div className="mt-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3">
+                            <div className="text-[9px] uppercase tracking-widest text-[var(--color-text-muted)] font-black mb-2">
+                                Elegí los cruces 1v1
+                            </div>
+                            <div className="space-y-2">
+                                {nosotros.map((player) => (
+                                    <div key={`pica-row-${player.id}`} className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                                        <div className="text-xs font-black text-[var(--color-nosotros)] truncate">{player.name}</div>
+                                        <div className="text-[10px] text-[var(--color-text-muted)] font-black uppercase">vs</div>
+                                        <select
+                                            value={normalizedPicaPairingMap[player.id] ?? ''}
+                                            onChange={(event) => handlePicaPairingChange(player.id, event.target.value)}
+                                            className="bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg px-2 py-1.5 text-xs font-black text-[var(--color-ellos)]"
+                                        >
+                                            <option value="" disabled>Elegir rival</option>
+                                            {ellos.map((rival) => (
+                                                <option key={`pica-rival-${player.id}-${rival.id}`} value={rival.id}>{rival.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                ))}
+                            </div>
+                            {!isPicaConfigValid && (
+                                <div className="mt-3 text-[10px] font-black uppercase tracking-widest text-[var(--color-danger)]">
+                                    Configurá cruces únicos para todos.
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Metadata Section */}
             <div className="mb-12">
                 <div className="text-[10px] font-black uppercase text-[var(--color-text-muted)] mb-4 tracking-widest border-b border-[var(--color-border)] pb-2">Información del Partido</div>
@@ -402,7 +513,7 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
 
             <button
                 className="w-full bg-[var(--color-accent)] text-white py-5 rounded-3xl font-black text-xl disabled:opacity-30 mt-auto shadow-2xl shadow-green-900/40 active:scale-95 transition-all"
-                disabled={!isValid}
+                disabled={!isValid || !isPicaConfigValid}
                 onClick={() => {
                     try {
                         let dateTs = Date.now();
@@ -415,6 +526,18 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
                             const pE = getOrCreatePair([ellos[0].id, ellos[1].id] as [string, string], defaultEllosPairName);
                             pIds = { nosotros: pN.id, ellos: pE.id };
                         }
+
+                        const picaConfig: MatchPicaPicaConfig | null =
+                            shouldShowPicaControls && isPicaPicaEnabled
+                                ? {
+                                    enabled: true,
+                                    startAt: 20,
+                                    endAt: 25,
+                                    pairings: picaPairings,
+                                    currentPairingIndex: 0
+                                }
+                                : null;
+
                         onStartMatch(
                             { nosotros, ellos },
                             {
@@ -424,7 +547,10 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
                             },
                             pIds,
                             targetScore,
-                            { startBestOf3: is2v2 ? startBestOf3 : false }
+                            {
+                                startBestOf3: is2v2 ? startBestOf3 : false,
+                                picaPica: picaConfig
+                            }
                         );
                     } catch (e) {
                         alert("Error al iniciar partido: " + JSON.stringify(e));

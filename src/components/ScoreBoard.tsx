@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useMatchStore } from '../store/useMatchStore';
+import { useUserStore } from '../store/useUserStore';
 import { ScoreSquare } from './ScoreSquare';
 import type { TeamId, PointType } from '../types';
 import { getFaltaEnvidoSuggestedPoints } from '../utils/truco';
@@ -69,10 +70,28 @@ const SquareGroup = ({ points }: { points: number }) => {
 export const ScoreBoard = () => {
     const teams = useMatchStore(state => state.teams);
     const targetScore = useMatchStore(state => state.targetScore);
+    const picaPica = useMatchStore(state => state.picaPica);
+    const players = useUserStore(state => state.players);
     const addPoints = useMatchStore(state => state.addPoints);
     const subtractPoints = useMatchStore(state => state.subtractPoints);
     const hasBuenasSection = targetScore > 15;
     const scoreSplit = Math.floor(targetScore / 2);
+    const isPicaConfigured = Boolean(picaPica?.enabled && picaPica.pairings.length > 0);
+    const isPicaActive = Boolean(
+        isPicaConfigured && (
+            (teams.nosotros.score >= (picaPica?.startAt ?? 0) && teams.nosotros.score <= (picaPica?.endAt ?? 0)) ||
+            (teams.ellos.score >= (picaPica?.startAt ?? 0) && teams.ellos.score <= (picaPica?.endAt ?? 0))
+        )
+    );
+    const currentPairing = isPicaConfigured && picaPica
+        ? picaPica.pairings[picaPica.currentPairingIndex % picaPica.pairings.length]
+        : null;
+    const currentNosName = currentPairing
+        ? players.find((p) => p.id === currentPairing.nosotrosId)?.name ?? 'Jugador A'
+        : '';
+    const currentEllName = currentPairing
+        ? players.find((p) => p.id === currentPairing.ellosId)?.name ?? 'Jugador B'
+        : '';
     const faltaLabelFor = (winnerTeam: TeamId) => {
         const loserTeam: TeamId = winnerTeam === 'nosotros' ? 'ellos' : 'nosotros';
         const suggested = getFaltaEnvidoSuggestedPoints(
@@ -147,6 +166,29 @@ export const ScoreBoard = () => {
                         </h2>
                     </div>
                 </div>
+
+                {isPicaConfigured && (
+                    <div className="mb-3 px-3">
+                        <div className={`rounded-xl border px-3 py-2 text-center ${isPicaActive
+                            ? 'bg-[var(--color-accent)]/10 border-[var(--color-accent)]/35'
+                            : 'bg-[var(--color-surface)]/70 border-[var(--color-border)]'
+                            }`}>
+                            <div className={`text-[9px] font-black uppercase tracking-[0.2em] ${isPicaActive ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-muted)]'}`}>
+                                Pica pica {isPicaActive ? 'activo' : 'configurado'}
+                            </div>
+                            <div className="text-[12px] font-black leading-tight mt-0.5">
+                                {isPicaActive && currentPairing
+                                    ? `${currentNosName} vs ${currentEllName}`
+                                    : `Se activa entre ${picaPica?.startAt} y ${picaPica?.endAt} puntos`}
+                            </div>
+                            {isPicaActive && (
+                                <div className="text-[10px] text-white/60 mt-1">
+                                    Rotación mano de por medio
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* Primera mitad */}
                 <div className="flex w-full items-start">
