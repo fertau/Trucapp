@@ -94,7 +94,7 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
     const limit = getLimit();
     const isValid = nosotros.length === limit && ellos.length === limit;
     const is2v2 = limit === 2;
-    const supportsPicaPica = limit > 1;
+    const supportsPicaPica = requiredCount === 6;
     const shouldShowPicaControls = supportsPicaPica && targetScore === 30;
 
     const normalizePicaMap = (source: Record<string, string>) => {

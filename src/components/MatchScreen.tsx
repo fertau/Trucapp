@@ -6,11 +6,14 @@ import { FaltaEnvidoModal } from './FaltaEnvidoModal';
 import type { MatchState, TeamId } from '../types';
 import { formatDateInputLocal, parseDateInputLocal } from '../utils/date';
 
+type MatchFinishAction = 'home' | 'rematch' | 'series-next' | 'direct-save' | 'direct-cancel';
+
 interface MatchScreenProps {
-    onFinish: (next?: 'home' | 'rematch' | 'series-next') => void;
+    onFinish: (next?: MatchFinishAction) => void;
+    isDirectScorerMode?: boolean;
 }
 
-export const MatchScreen = ({ onFinish }: MatchScreenProps) => {
+export const MatchScreen = ({ onFinish, isDirectScorerMode = false }: MatchScreenProps) => {
     const teams = useMatchStore(state => state.teams);
     const targetScore = useMatchStore(state => state.targetScore);
     const setTargetScore = useMatchStore(state => state.setTargetScore);
@@ -21,6 +24,7 @@ export const MatchScreen = ({ onFinish }: MatchScreenProps) => {
     const [showFaltaModal, setShowFaltaModal] = useState(false);
     const [showManualScore, setShowManualScore] = useState(false);
     const [showScoreConfig, setShowScoreConfig] = useState(false);
+    const [showDirectExitModal, setShowDirectExitModal] = useState(false);
 
     const onRequestFaltaEnvido = () => {
         setShowFaltaModal(true);
@@ -51,6 +55,14 @@ export const MatchScreen = ({ onFinish }: MatchScreenProps) => {
         return <WinnerCelebration winner={winner} teams={teams} onFinish={onFinish} />;
     }
 
+    const handleFinishTap = () => {
+        if (isDirectScorerMode && !isFinished) {
+            setShowDirectExitModal(true);
+            return;
+        }
+        setShowManualScore(true);
+    };
+
     return (
         <div className="full-screen bg-[var(--color-bg)] flex flex-col">
             {/* Header / Top Bar */}
@@ -77,7 +89,7 @@ export const MatchScreen = ({ onFinish }: MatchScreenProps) => {
                 </div>
 
                 <button
-                    onClick={() => setShowManualScore(true)}
+                    onClick={handleFinishTap}
                     className="text-[var(--color-accent)] text-[10px] font-black uppercase tracking-wider px-2 py-1.5 rounded bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/20 shadow-sm"
                 >
                     FINALIZAR
@@ -115,9 +127,92 @@ export const MatchScreen = ({ onFinish }: MatchScreenProps) => {
                     }}
                 />
             )}
+            {showDirectExitModal && (
+                <DirectScorerExitModal
+                    teams={teams}
+                    targetScore={targetScore}
+                    onClose={() => setShowDirectExitModal(false)}
+                    onChangeTarget={() => {
+                        setShowDirectExitModal(false);
+                        setShowScoreConfig(true);
+                    }}
+                    onSaveNow={() => {
+                        if (teams.nosotros.score === teams.ellos.score) {
+                            alert('No podés guardar un resultado empatado. Continuá el partido o ajustá el marcador.');
+                            return;
+                        }
+                        setShowDirectExitModal(false);
+                        onFinish('direct-save');
+                    }}
+                    onDiscard={() => {
+                        const ok = window.confirm('¿Cancelar partido? Se descartará y no se guardará en historial.');
+                        if (!ok) return;
+                        setShowDirectExitModal(false);
+                        onFinish('direct-cancel');
+                    }}
+                />
+            )}
         </div>
     );
 };
+
+const DirectScorerExitModal = ({
+    teams,
+    targetScore,
+    onClose,
+    onChangeTarget,
+    onSaveNow,
+    onDiscard
+}: {
+    teams: MatchState['teams'];
+    targetScore: number;
+    onClose: () => void;
+    onChangeTarget: () => void;
+    onSaveNow: () => void;
+    onDiscard: () => void;
+}) => (
+    <div className="fixed inset-0 z-[120] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm safe-pt safe-pb safe-px">
+        <div className="w-full max-w-sm rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
+            <h3 className="text-lg font-black uppercase tracking-wide mb-1">Finalizar anotador</h3>
+            <p className="text-[11px] text-[var(--color-text-muted)] mb-4">
+                El partido no llegó a {targetScore}. Elegí cómo querés continuar.
+            </p>
+            <div className="bg-black/20 border border-white/10 rounded-xl px-3 py-2 text-sm font-black mb-4">
+                {teams.nosotros.name} {teams.nosotros.score} - {teams.ellos.score} {teams.ellos.name}
+            </div>
+            <div className="grid grid-cols-1 gap-2">
+                <button
+                    type="button"
+                    onClick={onClose}
+                    className="w-full py-2 rounded-xl border border-[var(--color-border)] text-[var(--color-text-secondary)] text-xs font-black uppercase tracking-wider"
+                >
+                    Continuar partido
+                </button>
+                <button
+                    type="button"
+                    onClick={onChangeTarget}
+                    className="w-full py-2 rounded-xl border border-[var(--color-accent)]/35 bg-[var(--color-accent)]/10 text-[var(--color-accent)] text-xs font-black uppercase tracking-wider"
+                >
+                    Cambiar objetivo (15/30)
+                </button>
+                <button
+                    type="button"
+                    onClick={onSaveNow}
+                    className="w-full py-2 rounded-xl bg-[var(--color-accent)] text-white text-xs font-black uppercase tracking-wider"
+                >
+                    Guardar resultado actual
+                </button>
+                <button
+                    type="button"
+                    onClick={onDiscard}
+                    className="w-full py-2 rounded-xl border border-red-500/35 bg-red-500/10 text-red-300 text-xs font-black uppercase tracking-wider"
+                >
+                    Cancelar partido
+                </button>
+            </div>
+        </div>
+    </div>
+);
 
 const ScoreSettingsModal = ({ currentTarget, currentNos, currentEll, onClose, onConfirm }: {
     currentTarget: number;
@@ -278,7 +373,7 @@ const createConfettiPieces = (count: number): ConfettiPiece[] =>
         animationDelay: `${Math.random() * 2}s`,
     }));
 
-const WinnerCelebration = ({ winner, teams, onFinish }: { winner: TeamId, teams: MatchState['teams'], onFinish: (next?: 'home' | 'rematch' | 'series-next') => void }) => {
+const WinnerCelebration = ({ winner, teams, onFinish }: { winner: TeamId, teams: MatchState['teams'], onFinish: (next?: MatchFinishAction) => void }) => {
     const winnerData = teams[winner];
     const matchId = useMatchStore(state => state.id);
     const series = useMatchStore(state => state.series);

@@ -106,6 +106,12 @@ export interface MatchState {
     id: string;
     mode: MatchMode;
     startDate: number; // timestamp (creation)
+    createdByUserId?: string | null;
+    createdAt?: number;
+    updatedAt?: number;
+    isDeleted?: boolean;
+    deletedAt?: number | null;
+    deletedByUserId?: string | null;
 
     // V2 Metadata
     metadata?: MatchMetadata;

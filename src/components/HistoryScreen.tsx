@@ -4,7 +4,8 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useUserStore } from '../store/useUserStore';
 import type { MatchEditField, MatchMode, MatchState, TeamId } from '../types';
 import { formatDateDisplay, formatDateInputLocal, formatDateTimeDisplay, parseDateInputLocal } from '../utils/date';
-import { canUserEditMatch } from '../utils/matchValidation';
+import { isSuperAdmin } from '../utils/authz';
+import { canUserDeleteMatch, canUserEditMatch } from '../utils/matchValidation';
 import { getMatchEffectiveDate, getTeamRefKey, getTeamRefLabel } from '../utils/matchIdentity';
 
 interface HistoryScreenProps {
@@ -15,7 +16,6 @@ interface HistoryScreenProps {
 
 type HistoryTab = 'SUMMARY' | 'MATCHES';
 type FilterMode = 'ALL' | MatchMode;
-type Scope = 'MINE' | 'GLOBAL';
 type ResultFilter = 'ALL' | 'W' | 'L';
 type MatchListView = 'SERIES' | 'MATCHES';
 type SeriesResultFilter = 'ALL' | 'G' | 'P';
@@ -24,7 +24,6 @@ type HistoryFocus = 'YO_1V1' | 'YO_2V2' | 'YO_3V3' | 'MI_EQUIPO' | 'CLASICOS';
 type SavedHistoryView = {
     id: string;
     name: string;
-    scope: Scope;
     mode: FilterMode;
     result: ResultFilter;
     opponentId: string;
@@ -67,18 +66,27 @@ const TAB_META: Record<HistoryTab, { title: string; hint: string }> = {
 export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFromHistory }: HistoryScreenProps) => {
     const matches = useHistoryStore(state => state.matches);
     const updateMatch = useHistoryStore(state => state.updateMatch);
+    const deleteMatch = useHistoryStore(state => state.deleteMatch);
+    const deleteSeries = useHistoryStore(state => state.deleteSeries);
     const loadMoreMatches = useHistoryStore(state => state.loadMoreMatches);
     const isLoading = useHistoryStore(state => state.isLoading);
     const isLoadingMore = useHistoryStore(state => state.isLoadingMore);
     const hasMore = useHistoryStore(state => state.hasMore);
     const currentUserId = useAuthStore(state => state.currentUserId);
     const players = useUserStore(state => state.players);
+    const currentUser = useMemo(
+        () => players.find((player) => player.id === currentUserId) ?? null,
+        [players, currentUserId]
+    );
+    const isCurrentUserAdmin = useMemo(
+        () => isSuperAdmin(currentUser, players),
+        [currentUser, players]
+    );
 
     const [tab, setTab] = useState<HistoryTab>(initialTab);
     const [historyFocus, setHistoryFocus] = useState<HistoryFocus>('YO_1V1');
     const [myTeamKey, setMyTeamKey] = useState<string>('ALL');
     const [classicKey, setClassicKey] = useState<string>('AUTO');
-    const [scope, setScope] = useState<Scope>('MINE');
     const [mode, setMode] = useState<FilterMode>('ALL');
     const [result, setResult] = useState<ResultFilter>('ALL');
     const [opponentId, setOpponentId] = useState<string>('ALL');
@@ -106,7 +114,6 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
             const persistedFilters = localStorage.getItem(HISTORY_FILTERS_STORAGE_KEY);
             if (persistedFilters) {
                 const parsed = JSON.parse(persistedFilters) as Partial<{
-                    scope: Scope;
                     mode: FilterMode;
                     result: ResultFilter;
                     opponentId: string;
@@ -114,7 +121,6 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                     search: string;
                     matchListView: MatchListView;
                 }>;
-                if (parsed.scope) setScope(parsed.scope);
                 if (parsed.mode) setMode(parsed.mode);
                 if (parsed.result) setResult(parsed.result);
                 if (parsed.opponentId) setOpponentId(parsed.opponentId);
@@ -155,7 +161,6 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
 
     useEffect(() => {
         localStorage.setItem(HISTORY_FILTERS_STORAGE_KEY, JSON.stringify({
-            scope,
             mode,
             result,
             opponentId,
@@ -163,7 +168,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
             search,
             matchListView
         }));
-    }, [scope, mode, result, opponentId, opponentGroupKey, search, matchListView]);
+    }, [mode, result, opponentId, opponentGroupKey, search, matchListView]);
 
     useEffect(() => {
         localStorage.setItem(HISTORY_SUMMARY_STORAGE_KEY, JSON.stringify({
@@ -188,9 +193,9 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
     }, [players]);
 
     const scopeMatches = useMemo(() => {
-        if (!currentUserId || scope === 'GLOBAL') return matches;
+        if (!currentUserId) return [];
         return matches.filter((m) => getTeamIdForUser(m, currentUserId) !== null);
-    }, [matches, currentUserId, scope]);
+    }, [matches, currentUserId]);
 
     const modeMatches = useMemo(() => {
         if (mode === 'ALL') return scopeMatches;
@@ -236,7 +241,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
             const userTeam = currentUserId ? getTeamIdForUser(m, currentUserId) : null;
 
             if (opponentId !== 'ALL') {
-                if (scope === 'MINE' && currentUserId) {
+                if (currentUserId) {
                     const selectedInNos = m.teams.nosotros.players.includes(opponentId);
                     const selectedInEll = m.teams.ellos.players.includes(opponentId);
                     if (!selectedInNos && !selectedInEll) return false;
@@ -271,7 +276,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
 
             return true;
         });
-    }, [scopeMatches, mode, scope, currentUserId, opponentId, opponentGroupKey, result, search, getPlayerName]);
+    }, [scopeMatches, mode, currentUserId, opponentId, opponentGroupKey, result, search, getPlayerName]);
 
     const statsScopedMatches = useMemo(() => {
         if (!currentUserId) return [];
@@ -540,6 +545,23 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
             .sort((a, b) => getMatchEffectiveDate(b.matches[b.matches.length - 1]) - getMatchEffectiveDate(a.matches[a.matches.length - 1]));
     }, [historyFocus, historyFocusMatches, currentUserId]);
 
+    const classicSeriesSummary = useMemo(() => {
+        if (historyFocus !== 'CLASICOS') {
+            return { total: 0, wins: 0, losses: 0 };
+        }
+        let wins = 0;
+        let losses = 0;
+        classicSeriesGroups.forEach((serie) => {
+            if (serie.winsMine > serie.winsRival) wins += 1;
+            else if (serie.winsRival > serie.winsMine) losses += 1;
+        });
+        return {
+            total: wins + losses,
+            wins,
+            losses
+        };
+    }, [historyFocus, classicSeriesGroups]);
+
     const groupedSeries = useMemo(() => {
         const map = new Map<string, MatchState[]>();
         filteredMatches
@@ -677,7 +699,6 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
 
     const activeFilterChips = useMemo(() => {
         const chips: { key: string; label: string; onClear: () => void }[] = [];
-        if (scope !== 'MINE') chips.push({ key: 'scope', label: 'Global', onClear: () => setScope('MINE') });
         if (mode !== 'ALL') chips.push({ key: 'mode', label: mode, onClear: () => setMode('ALL') });
         if (result !== 'ALL') chips.push({ key: 'result', label: result === 'W' ? 'Ganados' : 'Perdidos', onClear: () => setResult('ALL') });
         if (opponentId !== 'ALL') chips.push({ key: 'opponent', label: `Rival: ${getPlayerName(opponentId)}`, onClear: () => setOpponentId('ALL') });
@@ -687,16 +708,15 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
         }
         if (search.trim()) chips.push({ key: 'search', label: `Buscar: ${search.trim()}`, onClear: () => setSearch('') });
         return chips;
-    }, [scope, mode, result, opponentId, opponentGroupKey, search, getPlayerName, availableOpponentGroups]);
+    }, [mode, result, opponentId, opponentGroupKey, search, getPlayerName, availableOpponentGroups]);
 
     const canAutoLoadMore = useMemo(() => (
-        scope === 'MINE' &&
         mode === 'ALL' &&
         result === 'ALL' &&
         opponentId === 'ALL' &&
         opponentGroupKey === 'ALL' &&
         search.trim() === ''
-    ), [scope, mode, result, opponentId, opponentGroupKey, search]);
+    ), [mode, result, opponentId, opponentGroupKey, search]);
 
     const saveCurrentView = () => {
         const name = window.prompt('Nombre corto para esta vista (ej: Clasico 2v2)');
@@ -705,7 +725,6 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
         const next: SavedHistoryView = {
             id: crypto.randomUUID(),
             name: trimmed,
-            scope,
             mode,
             result,
             opponentId,
@@ -719,7 +738,6 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
     const applySavedView = (viewId: string) => {
         const view = savedViews.find((v) => v.id === viewId);
         if (!view) return;
-        setScope(view.scope);
         setMode(view.mode);
         setResult(view.result);
         setOpponentId(view.opponentId);
@@ -817,18 +835,6 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
             {tab === 'MATCHES' && (
                 <>
                     <div className="flex gap-2 mb-4 overflow-x-auto no-scrollbar">
-                        {(['MINE', 'GLOBAL'] as const).map((s) => (
-                            <button
-                                key={s}
-                                onClick={() => setScope(s)}
-                                className={`px-3 py-2 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap border ${scope === s ? 'bg-[var(--color-accent)] text-black border-[var(--color-accent)]' : 'bg-white/5 text-white/50 border-white/10'}`}
-                            >
-                                {s === 'MINE' ? 'Mis datos' : 'Global'}
-                            </button>
-                        ))}
-                    </div>
-
-                    <div className="flex gap-2 mb-4 overflow-x-auto no-scrollbar">
                         {MODES.map((m) => (
                             <button
                                 key={m}
@@ -844,7 +850,6 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                         <div className="flex flex-wrap gap-2 mb-4">
                             <button
                                 onClick={() => {
-                                    setScope('MINE');
                                     setMode('ALL');
                                     setResult('ALL');
                                     setOpponentId('ALL');
@@ -1040,8 +1045,35 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                                     <div className="text-[10px] text-white/45 uppercase tracking-[0.14em] font-black mb-1">
                                         Ficha resumen
                                     </div>
-                                    <div className="text-[32px] font-black leading-none tabular-nums mt-1">
-                                        {historySummary.total} <span className="text-[14px] text-white/65">PJ</span>
+                                    {historyFocus === 'CLASICOS' && classicSeriesSummary.total > 0 && (
+                                        <>
+                                            <div className="text-[32px] font-black leading-none tabular-nums mt-1">
+                                                {classicSeriesSummary.total} <span className="text-[14px] text-white/65">Series</span>
+                                            </div>
+                                            <div className="mt-2 rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                                <div className="h-3 w-full flex">
+                                                    <div
+                                                        className="h-full bg-[var(--color-nosotros)]"
+                                                        style={{ width: `${classicSeriesSummary.total ? (classicSeriesSummary.wins / classicSeriesSummary.total) * 100 : 0}%` }}
+                                                    />
+                                                    <div
+                                                        className="h-full bg-[var(--color-danger)]"
+                                                        style={{ width: `${classicSeriesSummary.total ? (classicSeriesSummary.losses / classicSeriesSummary.total) * 100 : 0}%` }}
+                                                    />
+                                                </div>
+                                                <div className="px-3 py-2 flex items-center justify-between text-[11px] font-black">
+                                                    <span className="text-[var(--color-nosotros)]">
+                                                        Series {classicSeriesSummary.wins}
+                                                    </span>
+                                                    <span className="text-[var(--color-danger)]">
+                                                        Series {classicSeriesSummary.losses}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
+                                    <div className="text-[24px] font-black leading-none tabular-nums mt-2">
+                                        {historySummary.total} <span className="text-[13px] text-white/65">PJ</span>
                                     </div>
                                     <div className="mt-2 rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                         <div className="h-3 w-full flex">
@@ -1056,10 +1088,10 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                                         </div>
                                         <div className="px-3 py-2 flex items-center justify-between text-[11px] font-black">
                                             <span className="text-[var(--color-nosotros)]">
-                                                {historySummary.wins} ({historySummary.total ? Math.round((historySummary.wins / historySummary.total) * 100) : 0}%)
+                                                G {historySummary.wins} ({historySummary.total ? Math.round((historySummary.wins / historySummary.total) * 100) : 0}%)
                                             </span>
                                             <span className="text-[var(--color-danger)]">
-                                                {historySummary.losses} ({historySummary.total ? Math.round((historySummary.losses / historySummary.total) * 100) : 0}%)
+                                                P {historySummary.losses} ({historySummary.total ? Math.round((historySummary.losses / historySummary.total) * 100) : 0}%)
                                             </span>
                                         </div>
                                     </div>
@@ -1233,7 +1265,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                             </select>
                         </div>
 
-                        {(mode === '2v2' || mode === '3v3') && scope === 'MINE' && (
+                        {(mode === '2v2' || mode === '3v3') && (
                             <select value={opponentGroupKey} onChange={(e) => setOpponentGroupKey(e.target.value)} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-xs font-bold">
                                 <option value="ALL">Todos los equipos rivales</option>
                                 {availableOpponentGroups.map((g) => <option key={g.id} value={g.id}>{g.label}</option>)}
@@ -1255,7 +1287,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                                     const first = serie.first;
                                     const lastMatch = serie.matches[serie.matches.length - 1];
                                     const lastLocation = lastMatch.metadata?.location?.trim() || 'Sin sede';
-                                    const canQuickStart = scope === 'MINE' && !!currentUserId && isParticipant(first, currentUserId);
+                                    const canQuickStart = !!currentUserId && isParticipant(first, currentUserId);
                                     return (
                                         <div key={sid} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl overflow-hidden card-smooth">
                                             <button
@@ -1363,7 +1395,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                                             {m.teams.nosotros.players.map(getPlayerName).join(', ')} vs {m.teams.ellos.players.map(getPlayerName).join(', ')}
                                         </div>
                                     )}
-                                    {scope === 'MINE' && didWin !== null && (
+                                    {didWin !== null && (
                                         <div className={`mt-2 text-[10px] font-black uppercase tracking-wider ${didWin ? 'text-[var(--color-nosotros)]' : 'text-[var(--color-ellos)]'}`}>
                                             {didWin ? 'Ganaste' : 'Perdiste'}
                                         </div>
@@ -1406,6 +1438,11 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                             alert(message);
                         }
                     }}
+                    onDelete={async (matchId) => {
+                        await deleteMatch(matchId, currentUserId, isCurrentUserAdmin);
+                        setSelectedMatch(null);
+                    }}
+                    isAdmin={isCurrentUserAdmin}
                 />
             )}
             {selectedSeriesData && (
@@ -1422,6 +1459,11 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                         setSelectedMatch(match);
                     }}
                     onUpdateSeries={updateSeriesMetadata}
+                    onDeleteSeries={async (seriesId) => {
+                        await deleteSeries(seriesId, currentUserId, isCurrentUserAdmin);
+                        setSelectedSeriesId(null);
+                    }}
+                    isAdmin={isCurrentUserAdmin}
                 />
             )}
         </div>
@@ -1447,6 +1489,8 @@ interface SeriesDetailDrawerProps {
     onClose: () => void;
     onOpenMatch: (match: MatchState) => void;
     onUpdateSeries: (seriesId: string, changes: { name?: string; closedManually?: boolean; location?: string | null; date?: number }) => Promise<void>;
+    onDeleteSeries: (seriesId: string) => Promise<void>;
+    isAdmin: boolean;
 }
 
 const SeriesDetailDrawer = ({
@@ -1457,7 +1501,9 @@ const SeriesDetailDrawer = ({
     onChangeResultFilter,
     onClose,
     onOpenMatch,
-    onUpdateSeries
+    onUpdateSeries,
+    onDeleteSeries,
+    isAdmin
 }: SeriesDetailDrawerProps) => {
     const [isSavingSeries, setIsSavingSeries] = useState(false);
     const [seriesName, setSeriesName] = useState(series.seriesName);
@@ -1467,6 +1513,7 @@ const SeriesDetailDrawer = ({
     const swipeTriggeredRef = useRef(false);
 
     const mySide = currentUserId ? getTeamIdForUser(series.first, currentUserId) : null;
+    const canDeleteSeries = Boolean(currentUserId) && series.matches.every((m) => canUserDeleteMatch(m, currentUserId, isAdmin));
     const filteredTimeline = useMemo(() => {
         if (!mySide || resultFilter === 'ALL') return series.matches;
         return series.matches.filter((m) => {
@@ -1601,6 +1648,21 @@ const SeriesDetailDrawer = ({
                         <div className="text-[10px] text-white/45 mt-1">
                             Aplica fecha y sede a todos los partidos de esta serie.
                         </div>
+                        {canDeleteSeries && (
+                            <button
+                                disabled={isSavingSeries}
+                                onClick={async () => {
+                                    const ok = window.confirm('¿Borrar la serie completa? Se eliminarán todos sus partidos y no se puede deshacer.');
+                                    if (!ok) return;
+                                    setIsSavingSeries(true);
+                                    await onDeleteSeries(series.seriesId);
+                                    setIsSavingSeries(false);
+                                }}
+                                className="w-full mt-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border border-red-500/40 bg-red-500/10 text-red-300 disabled:opacity-60"
+                            >
+                                Borrar serie completa
+                            </button>
+                        )}
                     </div>
                     <div className="flex bg-[var(--color-surface)] p-1 rounded-xl border border-[var(--color-border)]">
                         {(['ALL', 'G', 'P'] as const).map((f) => (
@@ -1663,9 +1725,11 @@ interface MatchDetailDrawerProps {
     locationSuggestions: string[];
     onClose: () => void;
     onSave: (match: MatchState) => Promise<void>;
+    onDelete: (matchId: string) => Promise<void>;
+    isAdmin: boolean;
 }
 
-const MatchDetailDrawer = ({ match, currentUserId, getPlayerName, locationSuggestions, onClose, onSave }: MatchDetailDrawerProps) => {
+const MatchDetailDrawer = ({ match, currentUserId, getPlayerName, locationSuggestions, onClose, onSave, onDelete, isAdmin }: MatchDetailDrawerProps) => {
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [location, setLocation] = useState(match.metadata?.location ?? '');
@@ -1680,6 +1744,7 @@ const MatchDetailDrawer = ({ match, currentUserId, getPlayerName, locationSugges
     const swipeTriggeredRef = useRef(false);
 
     const canEdit = isParticipant(match, currentUserId);
+    const canDelete = canUserDeleteMatch(match, currentUserId, isAdmin);
     const editTitle = useMemo(() => {
         if (!match.edits || match.edits.length === 0) return '';
         const last = match.edits[match.edits.length - 1];
@@ -1945,6 +2010,18 @@ const MatchDetailDrawer = ({ match, currentUserId, getPlayerName, locationSugges
                     <button onClick={handleShare} className="flex-1 bg-white/10 border border-white/15 rounded-xl py-3 text-sm font-black">
                         Compartir
                     </button>
+                    {canDelete && !isEditing && (
+                        <button
+                            onClick={() => {
+                                const ok = window.confirm('¿Borrar este partido? Esta acción no se puede deshacer.');
+                                if (!ok) return;
+                                void onDelete(match.id);
+                            }}
+                            className="flex-1 bg-red-500/10 border border-red-500/35 text-red-300 rounded-xl py-3 text-sm font-black"
+                        >
+                            Borrar
+                        </button>
+                    )}
                     {canEdit && !isEditing && (
                         <button onClick={() => setIsEditing(true)} className="flex-1 bg-[var(--color-accent)] text-black rounded-xl py-3 text-sm font-black">
                             Editar

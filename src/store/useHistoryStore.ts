@@ -3,7 +3,8 @@ import { collection, getDocs, query, orderBy, limit, deleteDoc, doc, setDoc, sta
 import type { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { MatchState } from '../types';
-import { canUserEditMatch, validateMatchResultConsistency } from '../utils/matchValidation';
+import { useAuthStore } from './useAuthStore';
+import { canUserDeleteMatch, canUserEditMatch, validateMatchResultConsistency } from '../utils/matchValidation';
 import { getMatchEffectiveDate, withNormalizedMatchIdentity } from '../utils/matchIdentity';
 
 const PAGE_SIZE = 50;
@@ -21,6 +22,8 @@ interface HistoryStore {
     loadMoreMatches: () => Promise<void>;
     addMatch: (match: MatchState) => Promise<void>;
     updateMatch: (match: MatchState, actorUserId?: string | null) => Promise<void>;
+    deleteMatch: (matchId: string, actorUserId?: string | null, actorIsAdmin?: boolean) => Promise<void>;
+    deleteSeries: (seriesId: string, actorUserId?: string | null, actorIsAdmin?: boolean) => Promise<void>;
     clearAllMatches: () => Promise<void>;
     clearHistory: () => void; // Deprecated: use clearAllMatches
 }
@@ -45,6 +48,7 @@ export const useHistoryStore = create<HistoryStore>((set) => ({
 
             querySnapshot.forEach((d) => {
                 const data = d.data() as MatchState;
+                if (data.isDeleted) return;
                 const matchId = data.id || d.id;
                 if (!matchId || seen.has(matchId)) return;
                 seen.add(matchId);
@@ -92,6 +96,7 @@ export const useHistoryStore = create<HistoryStore>((set) => ({
 
             querySnapshot.forEach((d) => {
                 const data = d.data() as MatchState;
+                if (data.isDeleted) return;
                 const matchId = data.id || d.id;
                 if (!matchId) return;
                 const normalized = withNormalizedMatchIdentity({ ...data, id: matchId });
@@ -134,7 +139,17 @@ export const useHistoryStore = create<HistoryStore>((set) => ({
             throw new Error(reason);
         }
 
-        const normalizedMatch = withNormalizedMatchIdentity(match);
+        const currentUserId = useAuthStore.getState().currentUserId;
+        const now = Date.now();
+        const normalizedMatch = withNormalizedMatchIdentity({
+            ...match,
+            createdByUserId: match.createdByUserId ?? currentUserId ?? null,
+            createdAt: match.createdAt ?? now,
+            updatedAt: now,
+            isDeleted: false,
+            deletedAt: null,
+            deletedByUserId: null
+        });
 
         // Optimistic upsert
         set((state) => {
@@ -165,12 +180,20 @@ export const useHistoryStore = create<HistoryStore>((set) => ({
             set({ error: reason });
             throw new Error(reason);
         }
+        if (match.isDeleted) {
+            set({ error: 'No se puede editar un partido eliminado.' });
+            throw new Error('No se puede editar un partido eliminado.');
+        }
         if (!canUserEditMatch(match, actorUserId)) {
             set({ error: 'No autorizado para editar este partido.' });
             throw new Error('No autorizado para editar este partido.');
         }
 
-        const normalizedMatch = withNormalizedMatchIdentity(match);
+        const normalizedMatch = withNormalizedMatchIdentity({
+            ...match,
+            updatedAt: Date.now(),
+            isDeleted: false
+        });
         set((state) => ({
             matches: state.matches
                 .map((m) => (m.id === normalizedMatch.id ? normalizedMatch : m))
@@ -181,6 +204,63 @@ export const useHistoryStore = create<HistoryStore>((set) => ({
             await setDoc(doc(db, 'matches', normalizedMatch.id), normalizedMatch, { merge: true });
         } catch (err: unknown) {
             console.error("Error updating match in cloud:", err);
+        }
+    },
+
+    deleteMatch: async (matchId, actorUserId = null, actorIsAdmin = false) => {
+        const current = useHistoryStore.getState().matches.find((m) => m.id === matchId);
+        if (!current) return;
+        if (!canUserDeleteMatch(current, actorUserId, actorIsAdmin)) {
+            set({ error: 'No autorizado para borrar este partido.' });
+            throw new Error('No autorizado para borrar este partido.');
+        }
+        const deletedAt = Date.now();
+        const tombstone: Partial<MatchState> = {
+            isDeleted: true,
+            deletedAt,
+            deletedByUserId: actorUserId ?? null,
+            updatedAt: deletedAt
+        };
+
+        set((state) => ({
+            matches: state.matches.filter((m) => m.id !== matchId)
+        }));
+        try {
+            await setDoc(doc(db, 'matches', matchId), tombstone, { merge: true });
+        } catch (err: unknown) {
+            console.error('Error deleting match:', err);
+            set({ error: err instanceof Error ? err.message : 'Error deleting match' });
+        }
+    },
+
+    deleteSeries: async (seriesId, actorUserId = null, actorIsAdmin = false) => {
+        const current = useHistoryStore.getState().matches;
+        const targets = current.filter((m) => m.series?.id === seriesId);
+        if (targets.length === 0) return;
+        const unauthorized = targets.find((m) => !canUserDeleteMatch(m, actorUserId, actorIsAdmin));
+        if (unauthorized) {
+            set({ error: 'No autorizado para borrar esta serie.' });
+            throw new Error('No autorizado para borrar esta serie.');
+        }
+
+        const targetIds = new Set(targets.map((m) => m.id));
+        const deletedAt = Date.now();
+        set((state) => ({
+            matches: state.matches.filter((m) => !targetIds.has(m.id))
+        }));
+
+        try {
+            await Promise.all(
+                targets.map((m) => setDoc(doc(db, 'matches', m.id), {
+                    isDeleted: true,
+                    deletedAt,
+                    deletedByUserId: actorUserId ?? null,
+                    updatedAt: deletedAt
+                } as Partial<MatchState>, { merge: true }))
+            );
+        } catch (err: unknown) {
+            console.error('Error deleting series:', err);
+            set({ error: err instanceof Error ? err.message : 'Error deleting series' });
         }
     },
 

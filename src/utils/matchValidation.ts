@@ -32,3 +32,15 @@ export const canUserEditMatch = (match: MatchState, userId: string | null | unde
     if (!userId) return false;
     return match.teams.nosotros.players.includes(userId) || match.teams.ellos.players.includes(userId);
 };
+
+export const canUserDeleteMatch = (
+    match: MatchState,
+    userId: string | null | undefined,
+    isAdmin = false
+): boolean => {
+    if (!userId) return false;
+    if (isAdmin) return true;
+    if (match.createdByUserId) return match.createdByUserId === userId;
+    // Fallback para legacy sin creador persistido.
+    return canUserEditMatch(match, userId);
+};

@@ -8,7 +8,7 @@ import { useHistoryStore } from './store/useHistoryStore';
 import { useAuthStore } from './store/useAuthStore';
 import { usePairStore } from './store/usePairStore';
 import { useUserStore } from './store/useUserStore';
-import type { MatchPicaPicaConfig, Player } from './types';
+import type { MatchPicaPicaConfig, MatchState, Player } from './types';
 import './index.css';
 
 type AppStep = 'AUTH' | 'HOME' | 'SETUP_PLAYERS_COUNT' | 'SETUP_PLAYERS_SELECT' | 'SETUP_TEAMS' |
@@ -209,14 +209,53 @@ function App() {
     setShowSplash(false);
   };
 
-  const handleFinishMatch = async (next: 'home' | 'rematch' | 'series-next' = 'home') => {
+  const handleFinishMatch = async (next: 'home' | 'rematch' | 'series-next' | 'direct-save' | 'direct-cancel' = 'home') => {
     if (isFinishingMatchRef.current) return;
     isFinishingMatchRef.current = true;
 
     const matchState = useMatchStore.getState();
     try {
-      if (!isDirectScorerMode) {
-        await addMatchToHistory(matchState);
+      if (next === 'direct-cancel') {
+        setSeries(null);
+        setIsDirectScorerMode(false);
+        setStep('HOME');
+        return;
+      }
+
+      const mustPersist = !isDirectScorerMode || next === 'direct-save';
+      if (mustPersist) {
+        const snapshot: MatchState = {
+          id: matchState.id,
+          mode: matchState.mode,
+          startDate: matchState.startDate,
+          createdByUserId: matchState.createdByUserId ?? null,
+          createdAt: matchState.createdAt,
+          updatedAt: matchState.updatedAt,
+          isDeleted: matchState.isDeleted ?? false,
+          deletedAt: matchState.deletedAt ?? null,
+          deletedByUserId: matchState.deletedByUserId ?? null,
+          metadata: matchState.metadata,
+          targetScore: matchState.targetScore,
+          teams: matchState.teams,
+          pairs: matchState.pairs,
+          teamRefs: matchState.teamRefs,
+          series: matchState.series,
+          picaPica: matchState.picaPica,
+          history: matchState.history,
+          isFinished: matchState.isFinished,
+          winner: matchState.winner ?? null,
+          editedFlags: matchState.editedFlags,
+          edits: matchState.edits
+        };
+
+        const persistable = next === 'direct-save'
+          ? {
+            ...snapshot,
+            isFinished: true,
+            winner: matchState.teams.nosotros.score > matchState.teams.ellos.score ? ('nosotros' as const) : ('ellos' as const)
+          }
+          : snapshot;
+        await addMatchToHistory(persistable);
       }
 
       if (next === 'series-next' && matchState.series && matchState.winner && !isDirectScorerMode) {
@@ -313,7 +352,7 @@ function App() {
   if (effectiveStep === 'MATCH') {
     return (
       <Suspense fallback={<ScreenLoader />}>
-        <MatchScreen onFinish={handleFinishMatch} />
+        <MatchScreen onFinish={handleFinishMatch} isDirectScorerMode={isDirectScorerMode} />
       </Suspense>
     );
   }
