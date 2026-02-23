@@ -1,13 +1,43 @@
+import { useEffect, useRef, useState } from 'react';
 import { useMatchStore } from '../store/useMatchStore';
 import { useUserStore } from '../store/useUserStore';
 import { ScoreSquare } from './ScoreSquare';
 import type { TeamId, PointType } from '../types';
 import { getFaltaEnvidoSuggestedPoints } from '../utils/truco';
 
+function useLongPress(callback: () => void, ms = 800, enabled = true) {
+    const timerRef = useRef<number | null>(null);
+    const triggeredRef = useRef(false);
+
+    const clear = () => {
+        if (timerRef.current !== null) {
+            window.clearTimeout(timerRef.current);
+            timerRef.current = null;
+        }
+    };
+
+    const start = () => {
+        if (!enabled) return;
+        clear();
+        triggeredRef.current = false;
+        timerRef.current = window.setTimeout(() => {
+            triggeredRef.current = true;
+            callback();
+        }, ms);
+    };
+
+    const wasTriggered = () => triggeredRef.current;
+    const resetTriggered = () => {
+        triggeredRef.current = false;
+    };
+
+    return { start, clear, wasTriggered, resetTriggered };
+}
+
 const ShortcutButton = ({
-    label, points, teamId, onAction
+    label, points, teamId, onAction, onPressStart, onPressEnd
 }: {
-    label: string, points: string | number, type?: PointType, teamId: TeamId, onAction: () => void
+    label: string, points: string | number, type?: PointType, teamId: TeamId, onAction: () => void, onPressStart?: () => void, onPressEnd?: () => void
 }) => {
     return (
         <button
@@ -20,6 +50,22 @@ const ShortcutButton = ({
             onClick={(e) => {
                 e.stopPropagation();
                 onAction();
+            }}
+            onPointerDown={(e) => {
+                e.stopPropagation();
+                onPressStart?.();
+            }}
+            onPointerUp={(e) => {
+                e.stopPropagation();
+                onPressEnd?.();
+            }}
+            onPointerCancel={(e) => {
+                e.stopPropagation();
+                onPressEnd?.();
+            }}
+            onPointerLeave={(e) => {
+                e.stopPropagation();
+                onPressEnd?.();
             }}
         >
             <div className="text-[10px] font-black uppercase tracking-tighter leading-none text-center group-active:scale-90 transition-transform">{label}</div>
@@ -48,6 +94,7 @@ export const ScoreBoard = () => {
     const picaPica = useMatchStore(state => state.picaPica);
     const players = useUserStore(state => state.players);
     const addPoints = useMatchStore(state => state.addPoints);
+    const subtractPoints = useMatchStore(state => state.subtractPoints);
     const hasBuenasSection = targetScore > 15;
     const scoreSplit = Math.floor(targetScore / 2);
     const isPicaConfigured = Boolean(picaPica?.enabled && picaPica.pairings.length > 0);
@@ -66,6 +113,44 @@ export const ScoreBoard = () => {
     const currentEllName = currentPairing
         ? players.find((p) => p.id === currentPairing.ellosId)?.name ?? 'Jugador B'
         : '';
+    const [shortcutInteractionLock, setShortcutInteractionLock] = useState(false);
+    const shortcutUnlockTimerRef = useRef<number | null>(null);
+
+    const lockShortcutInteraction = () => {
+        if (shortcutUnlockTimerRef.current !== null) {
+            window.clearTimeout(shortcutUnlockTimerRef.current);
+            shortcutUnlockTimerRef.current = null;
+        }
+        setShortcutInteractionLock(true);
+    };
+
+    const unlockShortcutInteraction = () => {
+        if (shortcutUnlockTimerRef.current !== null) {
+            window.clearTimeout(shortcutUnlockTimerRef.current);
+        }
+        shortcutUnlockTimerRef.current = window.setTimeout(() => {
+            setShortcutInteractionLock(false);
+            shortcutUnlockTimerRef.current = null;
+        }, 120);
+    };
+
+    useEffect(() => {
+        return () => {
+            if (shortcutUnlockTimerRef.current !== null) {
+                window.clearTimeout(shortcutUnlockTimerRef.current);
+            }
+        };
+    }, []);
+
+    const handleLongPress = (teamId: TeamId) => {
+        if (shortcutInteractionLock) return;
+        if (navigator.vibrate) navigator.vibrate(40);
+        subtractPoints(teamId, 1);
+    };
+
+    const longPressNosotros = useLongPress(() => handleLongPress('nosotros'), 800, !shortcutInteractionLock);
+    const longPressEllos = useLongPress(() => handleLongPress('ellos'), 800, !shortcutInteractionLock);
+
     const faltaLabelFor = (winnerTeam: TeamId) => {
         const loserTeam: TeamId = winnerTeam === 'nosotros' ? 'ellos' : 'nosotros';
         const suggested = getFaltaEnvidoSuggestedPoints(
@@ -77,6 +162,12 @@ export const ScoreBoard = () => {
     };
 
     const handleColumnClick = (teamId: TeamId) => {
+        if (shortcutInteractionLock) return;
+        const longPressState = teamId === 'nosotros' ? longPressNosotros : longPressEllos;
+        if (longPressState.wasTriggered()) {
+            longPressState.resetTriggered();
+            return;
+        }
         addPoints(teamId, 1, 'score_tap');
     };
 
@@ -88,6 +179,10 @@ export const ScoreBoard = () => {
                 <button
                     className="flex-1 active:bg-[var(--color-nosotros)]/10 transition-colors outline-none touch-manipulation group/n relative"
                     onClick={() => handleColumnClick('nosotros')}
+                    onPointerDown={longPressNosotros.start}
+                    onPointerUp={longPressNosotros.clear}
+                    onPointerLeave={longPressNosotros.clear}
+                    onPointerCancel={longPressNosotros.clear}
                 >
                     <div className="absolute inset-0 bg-[var(--color-nosotros)]/5 scale-90 opacity-0 group-active/n:opacity-100 group-active/n:scale-100 transition-all duration-75"></div>
                 </button>
@@ -96,6 +191,10 @@ export const ScoreBoard = () => {
                 <button
                     className="flex-1 active:bg-[var(--color-ellos)]/10 transition-colors outline-none touch-manipulation group/e relative"
                     onClick={() => handleColumnClick('ellos')}
+                    onPointerDown={longPressEllos.start}
+                    onPointerUp={longPressEllos.clear}
+                    onPointerLeave={longPressEllos.clear}
+                    onPointerCancel={longPressEllos.clear}
                 >
                     <div className="absolute inset-0 bg-[var(--color-ellos)]/5 scale-90 opacity-0 group-active/e:opacity-100 group-active/e:scale-100 transition-all duration-75"></div>
                 </button>
@@ -191,36 +290,40 @@ export const ScoreBoard = () => {
                     <div className="grid grid-cols-2 gap-4">
                         {/* Nosotros Controls */}
                         <div className="grid grid-cols-3 gap-1">
-                            <ShortcutButton label="Envido" points={2} type="envido" teamId="nosotros" onAction={() => addPoints('nosotros', 2, 'envido')} />
-                            <ShortcutButton label="Real Envido" points={3} type="real_envido" teamId="nosotros" onAction={() => addPoints('nosotros', 3, 'real_envido')} />
+                            <ShortcutButton label="Envido" points={2} type="envido" teamId="nosotros" onAction={() => addPoints('nosotros', 2, 'envido')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
+                            <ShortcutButton label="Real Envido" points={3} type="real_envido" teamId="nosotros" onAction={() => addPoints('nosotros', 3, 'real_envido')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
                             <ShortcutButton
                                 label="Falta Envido"
                                 points={faltaLabelFor('nosotros')}
                                 type="falta_envido"
                                 teamId="nosotros"
                                 onAction={() => window.dispatchEvent(new CustomEvent('requestFaltaEnvido'))}
+                                onPressStart={lockShortcutInteraction}
+                                onPressEnd={unlockShortcutInteraction}
                             />
 
-                            <ShortcutButton label="Truco" points={2} type="truco" teamId="nosotros" onAction={() => addPoints('nosotros', 2, 'truco')} />
-                            <ShortcutButton label="Retruco" points={3} type="retruco" teamId="nosotros" onAction={() => addPoints('nosotros', 3, 'retruco')} />
-                            <ShortcutButton label="Vale 4" points={4} type="vale_cuatro" teamId="nosotros" onAction={() => addPoints('nosotros', 4, 'vale_cuatro')} />
+                            <ShortcutButton label="Truco" points={2} type="truco" teamId="nosotros" onAction={() => addPoints('nosotros', 2, 'truco')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
+                            <ShortcutButton label="Retruco" points={3} type="retruco" teamId="nosotros" onAction={() => addPoints('nosotros', 3, 'retruco')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
+                            <ShortcutButton label="Vale 4" points={4} type="vale_cuatro" teamId="nosotros" onAction={() => addPoints('nosotros', 4, 'vale_cuatro')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
                         </div>
 
                         {/* Ellos Controls */}
                         <div className="grid grid-cols-3 gap-1">
-                            <ShortcutButton label="Envido" points={2} type="envido" teamId="ellos" onAction={() => addPoints('ellos', 2, 'envido')} />
-                            <ShortcutButton label="Real Envido" points={3} type="real_envido" teamId="ellos" onAction={() => addPoints('ellos', 3, 'real_envido')} />
+                            <ShortcutButton label="Envido" points={2} type="envido" teamId="ellos" onAction={() => addPoints('ellos', 2, 'envido')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
+                            <ShortcutButton label="Real Envido" points={3} type="real_envido" teamId="ellos" onAction={() => addPoints('ellos', 3, 'real_envido')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
                             <ShortcutButton
                                 label="Falta Envido"
                                 points={faltaLabelFor('ellos')}
                                 type="falta_envido"
                                 teamId="ellos"
                                 onAction={() => window.dispatchEvent(new CustomEvent('requestFaltaEnvido'))}
+                                onPressStart={lockShortcutInteraction}
+                                onPressEnd={unlockShortcutInteraction}
                             />
 
-                            <ShortcutButton label="Truco" points={2} type="truco" teamId="ellos" onAction={() => addPoints('ellos', 2, 'truco')} />
-                            <ShortcutButton label="Retruco" points={3} type="retruco" teamId="ellos" onAction={() => addPoints('ellos', 3, 'retruco')} />
-                            <ShortcutButton label="Vale 4" points={4} type="vale_cuatro" teamId="ellos" onAction={() => addPoints('ellos', 4, 'vale_cuatro')} />
+                            <ShortcutButton label="Truco" points={2} type="truco" teamId="ellos" onAction={() => addPoints('ellos', 2, 'truco')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
+                            <ShortcutButton label="Retruco" points={3} type="retruco" teamId="ellos" onAction={() => addPoints('ellos', 3, 'retruco')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
+                            <ShortcutButton label="Vale 4" points={4} type="vale_cuatro" teamId="ellos" onAction={() => addPoints('ellos', 4, 'vale_cuatro')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
                         </div>
                     </div>
                 </div>
