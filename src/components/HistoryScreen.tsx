@@ -79,8 +79,8 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
         [players, currentUserId]
     );
     const isCurrentUserAdmin = useMemo(
-        () => isSuperAdmin(currentUser, players),
-        [currentUser, players]
+        () => isSuperAdmin(currentUser),
+        [currentUser]
     );
 
     const [tab, setTab] = useState<HistoryTab>(initialTab);
