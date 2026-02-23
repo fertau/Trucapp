@@ -1,33 +1,8 @@
-import { useState, useEffect } from 'react';
 import { useMatchStore } from '../store/useMatchStore';
 import { useUserStore } from '../store/useUserStore';
 import { ScoreSquare } from './ScoreSquare';
 import type { TeamId, PointType } from '../types';
 import { getFaltaEnvidoSuggestedPoints } from '../utils/truco';
-
-// Long Press Hook
-function useLongPress(callback: () => void, ms = 500) {
-    const [startLongPress, setStartLongPress] = useState(false);
-
-    useEffect(() => {
-        let timerId: ReturnType<typeof setTimeout>;
-        if (startLongPress) {
-            timerId = setTimeout(callback, ms);
-        }
-
-        return () => {
-            clearTimeout(timerId);
-        };
-    }, [callback, ms, startLongPress]);
-
-    return {
-        onMouseDown: () => setStartLongPress(true),
-        onMouseUp: () => setStartLongPress(false),
-        onMouseLeave: () => setStartLongPress(false),
-        onTouchStart: () => setStartLongPress(true),
-        onTouchEnd: () => setStartLongPress(false),
-    };
-}
 
 const ShortcutButton = ({
     label, points, teamId, onAction
@@ -73,7 +48,6 @@ export const ScoreBoard = () => {
     const picaPica = useMatchStore(state => state.picaPica);
     const players = useUserStore(state => state.players);
     const addPoints = useMatchStore(state => state.addPoints);
-    const subtractPoints = useMatchStore(state => state.subtractPoints);
     const hasBuenasSection = targetScore > 15;
     const scoreSplit = Math.floor(targetScore / 2);
     const isPicaConfigured = Boolean(picaPica?.enabled && picaPica.pairings.length > 0);
@@ -102,28 +76,8 @@ export const ScoreBoard = () => {
         return `+${suggested}`;
     };
 
-    // Interaction Handlers
-    const [longPressTriggered, setLongPressTriggered] = useState<{ nosotros: boolean, ellos: boolean }>({ nosotros: false, ellos: false });
-
-    const handleLongPress = (teamId: TeamId) => {
-        if (navigator.vibrate) navigator.vibrate(50);
-        setLongPressTriggered((prev) => ({ ...prev, [teamId]: true }));
-        subtractPoints(teamId, 1);
-    }
-
-    // We need separate hook instances for each button
-    const longPressNosotros = useLongPress(() => handleLongPress('nosotros'), 800);
-    const longPressEllos = useLongPress(() => handleLongPress('ellos'), 800);
-
-    // Handle click - only add point if long-press wasn't triggered
     const handleColumnClick = (teamId: TeamId) => {
-        if (!longPressTriggered[teamId]) {
-            addPoints(teamId, 1, 'score_tap');
-        }
-        // Reset flag after a short delay
-        setTimeout(() => {
-            setLongPressTriggered((prev) => ({ ...prev, [teamId]: false }));
-        }, 100);
+        addPoints(teamId, 1, 'score_tap');
     };
 
     return (
@@ -134,7 +88,6 @@ export const ScoreBoard = () => {
                 <button
                     className="flex-1 active:bg-[var(--color-nosotros)]/10 transition-colors outline-none touch-manipulation group/n relative"
                     onClick={() => handleColumnClick('nosotros')}
-                    {...longPressNosotros}
                 >
                     <div className="absolute inset-0 bg-[var(--color-nosotros)]/5 scale-90 opacity-0 group-active/n:opacity-100 group-active/n:scale-100 transition-all duration-75"></div>
                 </button>
@@ -143,7 +96,6 @@ export const ScoreBoard = () => {
                 <button
                     className="flex-1 active:bg-[var(--color-ellos)]/10 transition-colors outline-none touch-manipulation group/e relative"
                     onClick={() => handleColumnClick('ellos')}
-                    {...longPressEllos}
                 >
                     <div className="absolute inset-0 bg-[var(--color-ellos)]/5 scale-90 opacity-0 group-active/e:opacity-100 group-active/e:scale-100 transition-all duration-75"></div>
                 </button>
