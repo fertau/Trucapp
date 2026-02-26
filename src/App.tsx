@@ -1,5 +1,5 @@
 // Trucapp - Build Trigger edcb59c
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { SplashScreen } from './components/SplashScreen';
 import { HomeScreen } from './components/HomeScreen';
 
@@ -19,7 +19,6 @@ type HistoryTab = 'SUMMARY' | 'MATCHES';
 import { AccountSelector } from './components/AccountSelector';
 
 const MatchScreen = lazy(() => import('./components/MatchScreen').then(m => ({ default: m.MatchScreen })));
-const PlayerSelection = lazy(() => import('./components/PlayerSelection').then(m => ({ default: m.PlayerSelection })));
 const TeamConfiguration = lazy(() => import('./components/TeamConfiguration').then(m => ({ default: m.TeamConfiguration })));
 const HistoryScreen = lazy(() => import('./components/HistoryScreen').then(m => ({ default: m.HistoryScreen })));
 const ProfileScreen = lazy(() => import('./components/ProfileScreen').then(m => ({ default: m.ProfileScreen })));
@@ -35,6 +34,10 @@ const ScreenLoader = () => (
 function App() {
   const currentUserId = useAuthStore(state => state.currentUserId);
   const players = useUserStore(state => state.players);
+  const currentUser = useMemo(
+    () => players.find((player) => player.id === currentUserId) ?? null,
+    [players, currentUserId]
+  );
 
   const [step, setStep] = useState<AppStep>(() => {
     const params = new URLSearchParams(window.location.search);
@@ -52,6 +55,22 @@ function App() {
   const [isFirebaseReady, setIsFirebaseReady] = useState(false);
   const [isDirectScorerMode, setIsDirectScorerMode] = useState(false);
   const isFinishingMatchRef = useRef(false);
+  const selectablePlayers = useMemo(() => (
+    players
+      .filter((player) => {
+        if (player.id === currentUserId) return true;
+        if (currentUser?.friends.includes(player.id)) return true;
+        return player.visibility === 'PUBLIC';
+      })
+      .sort((a, b) => {
+        if (a.id === currentUserId) return -1;
+        if (b.id === currentUserId) return 1;
+        const aIsFriend = Boolean(currentUser?.friends.includes(a.id));
+        const bIsFriend = Boolean(currentUser?.friends.includes(b.id));
+        if (aIsFriend !== bIsFriend) return aIsFriend ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      })
+  ), [players, currentUserId, currentUser]);
 
   useEffect(() => {
     localStorage.setItem('trucapp-app-step', step);
@@ -437,9 +456,9 @@ function App() {
     return (
       <Suspense fallback={<ScreenLoader />}>
         <TeamConfiguration
-          players={selectedPlayers}
+          players={selectedPlayers.length > 0 ? selectedPlayers : selectablePlayers}
           requiredCount={playerCount}
-          onBack={() => setStep('SETUP_PLAYERS_SELECT')}
+          onBack={() => setStep('SETUP_PLAYERS_COUNT')}
           onStartMatch={startMatch}
         />
       </Suspense>
@@ -449,12 +468,11 @@ function App() {
   if (effectiveStep === 'SETUP_PLAYERS_SELECT') {
     return (
       <Suspense fallback={<ScreenLoader />}>
-        <PlayerSelection
+        <TeamConfiguration
+          players={selectedPlayers.length > 0 ? selectedPlayers : selectablePlayers}
           requiredCount={playerCount}
-          onSelect={(teamPlayers) => {
-            setSelectedPlayers(teamPlayers);
-            setStep('SETUP_TEAMS');
-          }}
+          onBack={() => setStep('SETUP_PLAYERS_COUNT')}
+          onStartMatch={startMatch}
         />
       </Suspense>
     );
@@ -474,19 +492,46 @@ function App() {
 
         <div className="flex flex-col gap-4 w-full max-w-xs">
           <button
-            onClick={() => { setPlayerCount(2); setStep('SETUP_PLAYERS_SELECT'); }}
+            onClick={() => {
+              const nextCount = 2;
+              if (selectablePlayers.length < nextCount) {
+                alert(`Necesitás al menos ${nextCount} jugadores visibles para iniciar 1v1.`);
+                return;
+              }
+              setPlayerCount(nextCount);
+              setSelectedPlayers(selectablePlayers);
+              setStep('SETUP_TEAMS');
+            }}
             className="bg-[var(--color-surface)] border border-[var(--color-border)] p-6 rounded-lg font-bold text-xl hover:bg-[var(--color-surface-hover)] transition-colors text-center"
           >
             2 jugadores (1v1)
           </button>
           <button
-            onClick={() => { setPlayerCount(4); setStep('SETUP_PLAYERS_SELECT'); }}
+            onClick={() => {
+              const nextCount = 4;
+              if (selectablePlayers.length < nextCount) {
+                alert(`Necesitás al menos ${nextCount} jugadores visibles para iniciar 2v2.`);
+                return;
+              }
+              setPlayerCount(nextCount);
+              setSelectedPlayers(selectablePlayers);
+              setStep('SETUP_TEAMS');
+            }}
             className="bg-[var(--color-surface)] border border-[var(--color-border)] p-6 rounded-lg font-bold text-xl hover:bg-[var(--color-surface-hover)] transition-colors text-center"
           >
             4 jugadores (2v2)
           </button>
           <button
-            onClick={() => { setPlayerCount(6); setStep('SETUP_PLAYERS_SELECT'); }}
+            onClick={() => {
+              const nextCount = 6;
+              if (selectablePlayers.length < nextCount) {
+                alert(`Necesitás al menos ${nextCount} jugadores visibles para iniciar 3v3.`);
+                return;
+              }
+              setPlayerCount(nextCount);
+              setSelectedPlayers(selectablePlayers);
+              setStep('SETUP_TEAMS');
+            }}
             className="bg-[var(--color-surface)] border border-[var(--color-border)] p-6 rounded-lg font-bold text-xl hover:bg-[var(--color-surface-hover)] transition-colors text-center"
           >
             6 jugadores (3v3)
@@ -502,7 +547,10 @@ function App() {
 
   return (
     <HomeScreen
-      onNewMatch={() => setStep('SETUP_PLAYERS_COUNT')}
+      onNewMatch={() => {
+        setSelectedPlayers([]);
+        setStep('SETUP_PLAYERS_COUNT');
+      }}
       onQuickScore={startDirectScorer}
       onHistory={() => {
         setHistoryInitialTab('SUMMARY');

@@ -68,6 +68,7 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
     const updateMatch = useHistoryStore(state => state.updateMatch);
     const deleteMatch = useHistoryStore(state => state.deleteMatch);
     const deleteSeries = useHistoryStore(state => state.deleteSeries);
+    const addMatch = useHistoryStore(state => state.addMatch);
     const loadMoreMatches = useHistoryStore(state => state.loadMoreMatches);
     const isLoading = useHistoryStore(state => state.isLoading);
     const isLoadingMore = useHistoryStore(state => state.isLoadingMore);
@@ -99,9 +100,14 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
     const [selectedSeriesId, setSelectedSeriesId] = useState<string | null>(null);
     const [seriesResultFilter, setSeriesResultFilter] = useState<SeriesResultFilter>('ALL');
     const [selectedMatch, setSelectedMatch] = useState<MatchState | null>(null);
+    const [pendingUndo, setPendingUndo] = useState<{
+        label: string;
+        matches: MatchState[];
+    } | null>(null);
     const [favoriteClassicKeys, setFavoriteClassicKeys] = useState<string[]>([]);
     const [savedViews, setSavedViews] = useState<SavedHistoryView[]>([]);
     const loadMoreAnchorRef = useRef<HTMLDivElement | null>(null);
+    const undoTimerRef = useRef<number | null>(null);
     const edgeSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
     const edgeSwipeTriggeredRef = useRef(false);
 
@@ -186,6 +192,39 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
     useEffect(() => {
         localStorage.setItem(HISTORY_SAVED_VIEWS_STORAGE_KEY, JSON.stringify(savedViews));
     }, [savedViews]);
+
+    useEffect(() => () => {
+        if (undoTimerRef.current !== null) {
+            window.clearTimeout(undoTimerRef.current);
+        }
+    }, []);
+
+    const queueUndoRestore = useCallback((label: string, deletedMatches: MatchState[]) => {
+        if (undoTimerRef.current !== null) {
+            window.clearTimeout(undoTimerRef.current);
+        }
+        setPendingUndo({ label, matches: deletedMatches });
+        undoTimerRef.current = window.setTimeout(() => {
+            setPendingUndo(null);
+            undoTimerRef.current = null;
+        }, 6000);
+    }, []);
+
+    const handleUndoDelete = useCallback(async () => {
+        if (!pendingUndo) return;
+        const toRestore = [...pendingUndo.matches];
+        setPendingUndo(null);
+        if (undoTimerRef.current !== null) {
+            window.clearTimeout(undoTimerRef.current);
+            undoTimerRef.current = null;
+        }
+        try {
+            await Promise.all(toRestore.map((match) => addMatch(match)));
+        } catch (err) {
+            console.error('Error restaurando partidos borrados:', err);
+            alert('No se pudieron restaurar algunos partidos.');
+        }
+    }, [pendingUndo, addMatch]);
 
     const getPlayerName = useCallback((id: string): string => {
         const player = players.find((p) => p.id === id);
@@ -1439,7 +1478,11 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                         }
                     }}
                     onDelete={async (matchId) => {
+                        const snapshot = matches.find((m) => m.id === matchId);
                         await deleteMatch(matchId, currentUserId, isCurrentUserAdmin);
+                        if (snapshot) {
+                            queueUndoRestore('Partido borrado', [snapshot]);
+                        }
                         setSelectedMatch(null);
                     }}
                     isAdmin={isCurrentUserAdmin}
@@ -1460,11 +1503,33 @@ export const HistoryScreen = ({ onBack, initialTab = 'SUMMARY', onStartSeriesFro
                     }}
                     onUpdateSeries={updateSeriesMetadata}
                     onDeleteSeries={async (seriesId) => {
+                        const snapshots = matches.filter((match) => match.series?.id === seriesId);
                         await deleteSeries(seriesId, currentUserId, isCurrentUserAdmin);
+                        if (snapshots.length > 0) {
+                            queueUndoRestore(`Serie borrada (${snapshots.length} partidos)`, snapshots);
+                        }
                         setSelectedSeriesId(null);
                     }}
                     isAdmin={isCurrentUserAdmin}
                 />
+            )}
+
+            {pendingUndo && (
+                <div
+                    className="fixed left-1/2 -translate-x-1/2 z-[130] w-[min(92vw,420px)] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl px-4 py-3 shadow-2xl"
+                    style={{ bottom: 'max(16px, env(safe-area-inset-bottom))' }}
+                >
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="text-[11px] font-black uppercase tracking-wider text-white/80">{pendingUndo.label}</div>
+                        <button
+                            type="button"
+                            onClick={() => void handleUndoDelete()}
+                            className="px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-[var(--color-accent)]/40 bg-[var(--color-accent)]/15 text-[var(--color-accent)]"
+                        >
+                            Deshacer
+                        </button>
+                    </div>
+                </div>
             )}
         </div>
     );
