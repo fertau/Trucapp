@@ -247,13 +247,13 @@ function App() {
     setShowSplash(false);
   };
 
-  const handleFinishMatch = async (next: 'home' | 'rematch' | 'series-next' | 'direct-save' | 'direct-cancel' = 'home') => {
+  const handleFinishMatch = async (next: 'home' | 'rematch' | 'series-next' | 'direct-save' | 'direct-cancel' | 'cancel' = 'home') => {
     if (isFinishingMatchRef.current) return;
     isFinishingMatchRef.current = true;
 
     const matchState = useMatchStore.getState();
     try {
-      if (next === 'direct-cancel') {
+      if (next === 'direct-cancel' || next === 'cancel') {
         setSeries(null);
         setIsDirectScorerMode(false);
         setStep('HOME');

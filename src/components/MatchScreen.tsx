@@ -5,7 +5,7 @@ import { ScoreBoard } from './ScoreBoard';
 import type { MatchState, TeamId } from '../types';
 import { formatDateInputLocal, parseDateInputLocal } from '../utils/date';
 
-type MatchFinishAction = 'home' | 'rematch' | 'series-next' | 'direct-save' | 'direct-cancel';
+type MatchFinishAction = 'home' | 'rematch' | 'series-next' | 'direct-save' | 'direct-cancel' | 'cancel';
 
 interface MatchScreenProps {
     onFinish: (next?: MatchFinishAction) => void;
@@ -23,6 +23,7 @@ export const MatchScreen = ({ onFinish, isDirectScorerMode = false }: MatchScree
     const [showManualScore, setShowManualScore] = useState(false);
     const [showScoreConfig, setShowScoreConfig] = useState(false);
     const [showDirectExitModal, setShowDirectExitModal] = useState(false);
+    const [showCancelModal, setShowCancelModal] = useState(false);
 
     const addPoints = useMatchStore(state => state.addPoints);
 
@@ -47,6 +48,10 @@ export const MatchScreen = ({ onFinish, isDirectScorerMode = false }: MatchScree
             return;
         }
         setShowManualScore(true);
+    };
+
+    const handleCancelTap = () => {
+        setShowCancelModal(true);
     };
 
     return (
@@ -74,12 +79,20 @@ export const MatchScreen = ({ onFinish, isDirectScorerMode = false }: MatchScree
                     </button>
                 </div>
 
-                <button
-                    onClick={handleFinishTap}
-                    className="text-[var(--color-accent)] text-[10px] font-black uppercase tracking-wider px-2 py-1.5 rounded bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/20 shadow-sm"
-                >
-                    FINALIZAR
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={handleCancelTap}
+                        className="text-red-300 text-[10px] font-black uppercase tracking-wider px-2 py-1.5 rounded bg-red-500/10 border border-red-500/30 shadow-sm"
+                    >
+                        CANCELAR
+                    </button>
+                    <button
+                        onClick={handleFinishTap}
+                        className="text-[var(--color-accent)] text-[10px] font-black uppercase tracking-wider px-2 py-1.5 rounded bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/20 shadow-sm"
+                    >
+                        FINALIZAR
+                    </button>
+                </div>
             </div>
 
             {/* Score Area */}
@@ -130,6 +143,31 @@ export const MatchScreen = ({ onFinish, isDirectScorerMode = false }: MatchScree
                         if (!ok) return;
                         setShowDirectExitModal(false);
                         onFinish('direct-cancel');
+                    }}
+                />
+            )}
+            {showCancelModal && (
+                <DirectScorerExitModal
+                    teams={teams}
+                    targetScore={targetScore}
+                    onClose={() => setShowCancelModal(false)}
+                    onChangeTarget={() => {
+                        setShowCancelModal(false);
+                        setShowScoreConfig(true);
+                    }}
+                    onSaveNow={() => {
+                        if (teams.nosotros.score === teams.ellos.score) {
+                            alert('No podés guardar un resultado empatado. Continuá el partido o ajustá el marcador.');
+                            return;
+                        }
+                        setShowCancelModal(false);
+                        onFinish(isDirectScorerMode ? 'direct-save' : 'home');
+                    }}
+                    onDiscard={() => {
+                        const ok = window.confirm('¿Cancelar partido? Se descartará y no se guardará en historial.');
+                        if (!ok) return;
+                        setShowCancelModal(false);
+                        onFinish(isDirectScorerMode ? 'direct-cancel' : 'cancel');
                     }}
                 />
             )}

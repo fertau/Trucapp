@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { usePairStore } from '../store/usePairStore';
 import { useHistoryStore } from '../store/useHistoryStore';
 import type { MatchPicaPicaConfig, Player, TeamId } from '../types';
@@ -18,16 +18,79 @@ interface TeamConfigurationProps {
     ) => void;
 }
 
+type AutoDetectedTemplate = {
+    matchId: string;
+    date: number;
+    nosotros: Player[];
+    ellos: Player[];
+    teamNames: {
+        nosotros: string;
+        ellos: string;
+    };
+};
+
+const detectAutoTemplate = (
+    players: Player[],
+    matches: ReturnType<typeof useHistoryStore.getState>['matches'],
+    mode: '1v1' | '2v2' | '3v3',
+    limit: number
+): AutoDetectedTemplate | null => {
+    const availableMap = new Map(players.map((player) => [player.id, player]));
+    const sortedMatches = [...matches].sort((a, b) => getMatchEffectiveDate(b) - getMatchEffectiveDate(a));
+    const candidate = sortedMatches.find((match) => {
+        if (match.mode !== mode) return false;
+        if (match.teams.nosotros.players.length !== limit || match.teams.ellos.players.length !== limit) return false;
+        return [...match.teams.nosotros.players, ...match.teams.ellos.players].every((playerId) => availableMap.has(playerId));
+    });
+    if (!candidate) return null;
+
+    const nextNosotros = candidate.teams.nosotros.players
+        .map((playerId) => availableMap.get(playerId))
+        .filter((player): player is Player => Boolean(player));
+    const nextEllos = candidate.teams.ellos.players
+        .map((playerId) => availableMap.get(playerId))
+        .filter((player): player is Player => Boolean(player));
+    if (nextNosotros.length !== limit || nextEllos.length !== limit) return null;
+
+    return {
+        matchId: candidate.id,
+        date: getMatchEffectiveDate(candidate),
+        nosotros: nextNosotros,
+        ellos: nextEllos,
+        teamNames: {
+            nosotros: candidate.teams.nosotros.name || 'Equipo 1',
+            ellos: candidate.teams.ellos.name || 'Equipo 2'
+        }
+    };
+};
+
 export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch }: TeamConfigurationProps) => {
+    const limit = requiredCount === 2 ? 1 : requiredCount === 4 ? 2 : 3;
+    const mode = requiredCount === 2 ? '1v1' : requiredCount === 4 ? '2v2' : '3v3';
+    const is2v2 = limit === 2;
+    const supportsPicaPica = requiredCount === 6;
+    const shouldShowPicaControls = supportsPicaPica;
+
+    const matches = useHistoryStore(state => state.matches);
+    const [detectedTemplate] = useState<AutoDetectedTemplate | null>(() => (
+        detectAutoTemplate(players, matches, mode, limit)
+    ));
+
     // We use a pool for unassigned players
-    const [pool, setPool] = useState<Player[]>(() => players);
-    const [nosotros, setNosotros] = useState<Player[]>([]);
-    const [ellos, setEllos] = useState<Player[]>([]);
-    const [targetScore, setTargetScore] = useState<number>(30);
+    const [pool, setPool] = useState<Player[]>(() => {
+        if (!detectedTemplate) return players;
+        const selectedIds = new Set([
+            ...detectedTemplate.nosotros.map((player) => player.id),
+            ...detectedTemplate.ellos.map((player) => player.id)
+        ]);
+        return players.filter((player) => !selectedIds.has(player.id));
+    });
+    const [nosotros, setNosotros] = useState<Player[]>(() => detectedTemplate?.nosotros ?? []);
+    const [ellos, setEllos] = useState<Player[]>(() => detectedTemplate?.ellos ?? []);
+    const teamsSectionRef = useRef<HTMLDivElement | null>(null);
 
     const [location, setLocation] = useState('');
     const [customDate, setCustomDate] = useState<string>(() => formatDateInputLocal(Date.now()));
-    const matches = useHistoryStore(state => state.matches);
     const locationSuggestions = Array.from(
         new Set(
             matches
@@ -41,8 +104,8 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
     const [ellosPairName, setEllosPairName] = useState('');
     const [isEditingNosotrosPair, setIsEditingNosotrosPair] = useState(false);
     const [isEditingEllosPair, setIsEditingEllosPair] = useState(false);
-    const [nosotrosTeamName, setNosotrosTeamName] = useState('Equipo 1');
-    const [ellosTeamName, setEllosTeamName] = useState('Equipo 2');
+    const [nosotrosTeamName, setNosotrosTeamName] = useState(() => detectedTemplate?.teamNames.nosotros ?? 'Equipo 1');
+    const [ellosTeamName, setEllosTeamName] = useState(() => detectedTemplate?.teamNames.ellos ?? 'Equipo 2');
     const [isEditingNosotrosTeam, setIsEditingNosotrosTeam] = useState(false);
     const [isEditingEllosTeam, setIsEditingEllosTeam] = useState(false);
     const [startBestOf3, setStartBestOf3] = useState(false);
@@ -91,11 +154,7 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
         else setEllos(prev => [...prev, player]);
     };
 
-    const limit = getLimit();
     const isValid = nosotros.length === limit && ellos.length === limit;
-    const is2v2 = limit === 2;
-    const supportsPicaPica = requiredCount === 6;
-    const shouldShowPicaControls = supportsPicaPica && targetScore === 30;
 
     const normalizePicaMap = (source: Record<string, string>) => {
         if (!supportsPicaPica || nosotros.length !== limit || ellos.length !== limit) return source;
@@ -217,6 +276,27 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
             <h2 className="text-2xl font-black mb-1 uppercase italic tracking-tighter text-center">ARMAR EQUIPOS</h2>
             <p className="text-[10px] font-bold text-[var(--color-text-muted)] text-center mb-8 uppercase tracking-[0.2em]">Arrastrar para asignar</p>
 
+            {detectedTemplate && (
+                <div className="mb-6 rounded-2xl border border-[var(--color-accent)]/35 bg-[var(--color-accent)]/10 px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                        <div>
+                            <div className="text-[10px] font-black uppercase tracking-wider text-[var(--color-accent)]">Equipos detectados</div>
+                            <div className="text-[11px] text-white/70">
+                                Usamos la ultima formacion de {mode} ({new Date(detectedTemplate.date).toLocaleDateString('es-AR')}).
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => teamsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                            className="px-3 py-1.5 rounded-full border border-white/20 bg-white/10 text-[10px] font-black uppercase tracking-widest"
+                            title="Editar equipos"
+                        >
+                            ✎ Editar
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* POOL SECTION */}
             <div
                 className={`p-6 rounded-3xl border-2 border-dashed mb-10 transition-colors ${draggedPlayer ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5' : 'border-[var(--color-border)] bg-[var(--color-surface)]/30'}`}
@@ -245,7 +325,7 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
             </div>
 
             {/* TEAMS GRID */}
-            <div className="grid grid-cols-2 gap-4 mb-10">
+            <div ref={teamsSectionRef} className="grid grid-cols-2 gap-4 mb-10">
                 {/* NOSOTROS */}
                 <div
                     className={`flex flex-col p-4 rounded-3xl border-2 transition-all min-h-[160px] ${draggedPlayer ? 'border-dashed border-[var(--color-nosotros)]/40 bg-[var(--color-nosotros)]/5' : 'border-transparent bg-[var(--color-surface)] shadow-inner'} ${nosotros.length >= getLimit() ? 'opacity-60' : ''}`}
@@ -390,27 +470,6 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
                 </div>
             )}
 
-            {/* Target Score Section */}
-            <div className="mb-8">
-                <div className="text-[10px] font-black uppercase text-[var(--color-text-muted)] mb-4 tracking-widest border-b border-[var(--color-border)] pb-2">Puntos a Jugar</div>
-                <div className="flex bg-[var(--color-surface)] p-1 rounded-2xl border border-[var(--color-border)]">
-                    <button
-                        onClick={() => setTargetScore(15)}
-                        className={`flex-1 py-3 rounded-xl font-black text-sm transition-all ${targetScore === 15 ? 'bg-[var(--color-accent)] text-white shadow-md' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'}`}
-                    >
-                        15 PUNTOS
-                        <span className="block text-[8px] font-normal opacity-70">RÁPIDO</span>
-                    </button>
-                    <button
-                        onClick={() => setTargetScore(30)}
-                        className={`flex-1 py-3 rounded-xl font-black text-sm transition-all ${targetScore === 30 ? 'bg-[var(--color-accent)] text-white shadow-md' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'}`}
-                    >
-                        30 PUNTOS
-                        <span className="block text-[8px] font-normal opacity-70">ESTÁNDAR</span>
-                    </button>
-                </div>
-            </div>
-
             {is2v2 && (
                 <div className="mb-8">
                     <div className="text-[10px] font-black uppercase text-[var(--color-text-muted)] mb-3 tracking-widest border-b border-[var(--color-border)] pb-2">Formato</div>
@@ -493,6 +552,25 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
                             value={location}
                             onChange={(e) => setLocation(e.target.value)}
                         />
+                        <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
+                            <button
+                                type="button"
+                                onClick={() => setLocation('')}
+                                className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wide whitespace-nowrap border ${location.trim() === '' ? 'bg-[var(--color-accent)] text-black border-[var(--color-accent)]' : 'bg-white/5 text-white/55 border-white/15'}`}
+                            >
+                                Opcional
+                            </button>
+                            {locationSuggestions.map((loc) => (
+                                <button
+                                    key={`loc-chip-${loc}`}
+                                    type="button"
+                                    onClick={() => setLocation(loc)}
+                                    className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wide whitespace-nowrap border ${location === loc ? 'bg-[var(--color-accent)] text-black border-[var(--color-accent)]' : 'bg-white/5 text-white/55 border-white/15'}`}
+                                >
+                                    {loc}
+                                </button>
+                            ))}
+                        </div>
                         <datalist id="location-suggestions">
                             {locationSuggestions.map((loc) => (
                                 <option key={loc} value={loc} />
@@ -546,7 +624,7 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
                                 teamNames: { nosotros: displayNosotrosTeamName, ellos: displayEllosTeamName }
                             },
                             pIds,
-                            targetScore,
+                            undefined,
                             {
                                 startBestOf3: is2v2 ? startBestOf3 : false,
                                 picaPica: picaConfig
