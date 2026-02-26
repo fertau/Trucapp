@@ -2,14 +2,28 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth, signInAnonymously } from "firebase/auth";
 
+const env = import.meta.env as Record<string, string | undefined>;
+const readRequiredEnv = (key: string): string => {
+    const value = env[key]?.trim();
+    if (!value) {
+        throw new Error(`Missing required env var: ${key}`);
+    }
+    return value;
+};
+
+const readOptionalEnv = (key: string): string | undefined => {
+    const value = env[key]?.trim();
+    return value || undefined;
+};
+
 const firebaseConfig = {
-    apiKey: "AIzaSyDZXg60YvmYYIz2BbI0Yek2C_XamqgJZzI",
-    authDomain: "trucapp-b1f1f.firebaseapp.com",
-    projectId: "trucapp-b1f1f",
-    storageBucket: "trucapp-b1f1f.firebasestorage.app",
-    messagingSenderId: "902489387441",
-    appId: "1:902489387441:web:c6f70334c612b8b2440d90",
-    measurementId: "G-1VM8MPSVZX"
+    apiKey: readRequiredEnv("VITE_FIREBASE_API_KEY"),
+    authDomain: readRequiredEnv("VITE_FIREBASE_AUTH_DOMAIN"),
+    projectId: readRequiredEnv("VITE_FIREBASE_PROJECT_ID"),
+    storageBucket: readRequiredEnv("VITE_FIREBASE_STORAGE_BUCKET"),
+    messagingSenderId: readRequiredEnv("VITE_FIREBASE_MESSAGING_SENDER_ID"),
+    appId: readRequiredEnv("VITE_FIREBASE_APP_ID"),
+    measurementId: readOptionalEnv("VITE_FIREBASE_MEASUREMENT_ID")
 };
 
 // Initialize Firebase
