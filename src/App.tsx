@@ -9,6 +9,7 @@ import { useAuthStore } from './store/useAuthStore';
 import { usePairStore } from './store/usePairStore';
 import { useUserStore } from './store/useUserStore';
 import type { MatchPicaPicaConfig, MatchState, Player } from './types';
+import { ensureFirebaseSession } from './firebase';
 import './index.css';
 
 type AppStep = 'AUTH' | 'HOME' | 'SETUP_PLAYERS_COUNT' | 'SETUP_PLAYERS_SELECT' | 'SETUP_TEAMS' |
@@ -48,6 +49,7 @@ function App() {
   const [selectedPlayers, setSelectedPlayers] = useState<Player[]>([]);
   const [historyInitialTab, setHistoryInitialTab] = useState<HistoryTab>('SUMMARY');
   const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const [isFirebaseReady, setIsFirebaseReady] = useState(false);
   const [isDirectScorerMode, setIsDirectScorerMode] = useState(false);
   const isFinishingMatchRef = useRef(false);
 
@@ -59,12 +61,27 @@ function App() {
     let cancelled = false;
 
     const bootstrap = async () => {
-      await Promise.all([
-        useHistoryStore.getState().fetchMatches(),
-        useUserStore.getState().fetchPlayers(),
-      ]);
-      if (!cancelled) {
-        setIsBootstrapping(false);
+      try {
+        await ensureFirebaseSession();
+      } catch (error) {
+        console.error('Firebase session bootstrap failed:', error);
+      } finally {
+        if (!cancelled) {
+          setIsFirebaseReady(true);
+        }
+      }
+
+      try {
+        await Promise.all([
+          useHistoryStore.getState().fetchMatches(),
+          useUserStore.getState().fetchPlayers(),
+        ]);
+      } catch (error) {
+        console.error('Initial data bootstrap failed:', error);
+      } finally {
+        if (!cancelled) {
+          setIsBootstrapping(false);
+        }
       }
     };
 
@@ -76,9 +93,10 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (!isFirebaseReady) return;
     const unsubscribe = useUserStore.getState().subscribeToPlayers();
     return () => unsubscribe();
-  }, []);
+  }, [isFirebaseReady]);
 
   useEffect(() => {
     if (isBootstrapping) return;
@@ -117,12 +135,13 @@ function App() {
   }, [isBootstrapping, currentUserId]);
 
   useEffect(() => {
+    if (!isFirebaseReady) return;
     const params = new URLSearchParams(window.location.search);
     const sharedMatchId = params.get('matchId');
     if (sharedMatchId) {
       useMatchStore.getState().listenToMatch(sharedMatchId);
     }
-  }, []);
+  }, [isFirebaseReady]);
 
   const resetMatch = useMatchStore(state => state.resetMatch);
   const setPlayers = useMatchStore(state => state.setPlayers);

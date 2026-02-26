@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+import { getAuth, signInAnonymously } from "firebase/auth";
 
 const firebaseConfig = {
     apiKey: "AIzaSyDZXg60YvmYYIz2BbI0Yek2C_XamqgJZzI",
@@ -16,5 +16,24 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+
+let authBootstrapPromise: Promise<void> | null = null;
+
+export const ensureFirebaseSession = async (): Promise<void> => {
+    if (auth.currentUser) return;
+    if (!authBootstrapPromise) {
+        authBootstrapPromise = signInAnonymously(auth)
+            .then(() => undefined)
+            .catch((error) => {
+                // Auth anónima puede no estar habilitada en algunos entornos.
+                // No bloqueamos la app: seguimos con la sesión local.
+                console.warn('Anonymous Firebase auth unavailable, continuing without auth session.', error);
+            })
+            .finally(() => {
+                authBootstrapPromise = null;
+            });
+    }
+    await authBootstrapPromise;
+};
 
 export { db, auth };
