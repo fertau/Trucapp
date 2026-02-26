@@ -190,25 +190,25 @@ export const ScoreBoard = () => {
             </div>
 
             {/* 2. Visual Layer (Foreground Content) */}
-            <div className="absolute inset-0 flex flex-col pointer-events-none z-10 py-4">
+            <div className="absolute inset-0 flex flex-col pointer-events-none z-10 py-2 sm:py-4">
 
                 {/* Headers */}
-                <div className="flex w-full mb-4">
+                <div className="flex w-full mb-2 sm:mb-4">
                     <div className="flex-1 text-center px-2">
-                        <h2 className="text-sm font-black uppercase tracking-[0.1em] text-[var(--color-nosotros)] truncate">
+                        <h2 className="text-xs sm:text-sm font-black uppercase tracking-[0.1em] text-[var(--color-nosotros)] truncate">
                             {teams.nosotros.name}
                         </h2>
                     </div>
                     <div className="w-[1px]"></div> {/* Spacer for grid alignment */}
                     <div className="flex-1 text-center px-2">
-                        <h2 className="text-sm font-black uppercase tracking-[0.1em] text-[var(--color-ellos)] truncate">
+                        <h2 className="text-xs sm:text-sm font-black uppercase tracking-[0.1em] text-[var(--color-ellos)] truncate">
                             {teams.ellos.name}
                         </h2>
                     </div>
                 </div>
 
                 {isPicaConfigured && (
-                    <div className="mb-3 px-3">
+                    <div className="mb-2 sm:mb-3 px-2.5 sm:px-3">
                         <div className={`rounded-xl border px-3 py-2 text-center ${isPicaActive
                             ? 'bg-[var(--color-accent)]/10 border-[var(--color-accent)]/35'
                             : 'bg-[var(--color-surface)]/70 border-[var(--color-border)]'

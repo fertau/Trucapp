@@ -58,37 +58,37 @@ export const MatchScreen = ({ onFinish, isDirectScorerMode = false }: MatchScree
         <div className="full-screen bg-[var(--color-bg)] flex flex-col">
             {/* Header / Top Bar */}
             <div
-                className="flex justify-between items-center p-4 border-b border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur z-50"
-                style={{ paddingTop: 'max(16px, env(safe-area-inset-top))', minHeight: '60px' }}
+                className="flex justify-between items-center gap-2 px-2.5 py-2 sm:p-4 border-b border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur z-50"
+                style={{ paddingTop: 'max(10px, env(safe-area-inset-top))', minHeight: '52px' }}
             >
                 <button
                     onClick={undo}
-                    className="text-[var(--color-text-secondary)] text-xs font-bold uppercase tracking-wider px-3 py-1 rounded border border-[var(--color-border)] active:bg-[var(--color-surface-hover)]"
+                    className="text-[var(--color-text-secondary)] text-[10px] sm:text-xs font-bold uppercase tracking-wider px-2.5 sm:px-3 py-1 rounded border border-[var(--color-border)] active:bg-[var(--color-surface-hover)]"
                 >
                     DESHACER
                 </button>
 
-                <div className="flex items-center gap-2">
-                    <div className="text-xs font-black text-[var(--color-text-muted)] tracking-[0.2em]">TRUCAPP</div>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                    <div className="text-[10px] sm:text-xs font-black text-[var(--color-text-muted)] tracking-[0.2em]">TRUCAPP</div>
                     <button
                         onClick={() => setShowScoreConfig(true)}
-                        className="text-[var(--color-text-secondary)] text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded border border-[var(--color-border)] active:bg-[var(--color-surface-hover)]"
+                        className="text-[var(--color-text-secondary)] text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-1.5 sm:px-2 py-1 rounded border border-[var(--color-border)] active:bg-[var(--color-surface-hover)]"
                         title="Configurar puntaje objetivo"
                     >
                         ⚙ {targetScore}
                     </button>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2">
                     <button
                         onClick={handleCancelTap}
-                        className="text-red-300 text-[10px] font-black uppercase tracking-wider px-2 py-1.5 rounded bg-red-500/10 border border-red-500/30 shadow-sm"
+                        className="text-red-300 text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-1.5 sm:px-2 py-1.5 rounded bg-red-500/10 border border-red-500/30 shadow-sm"
                     >
                         CANCELAR
                     </button>
                     <button
                         onClick={handleFinishTap}
-                        className="text-[var(--color-accent)] text-[10px] font-black uppercase tracking-wider px-2 py-1.5 rounded bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/20 shadow-sm"
+                        className="text-[var(--color-accent)] text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-1.5 sm:px-2 py-1.5 rounded bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/20 shadow-sm"
                     >
                         FINALIZAR
                     </button>
