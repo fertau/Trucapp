@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useMatchStore } from '../store/useMatchStore';
 import { useUserStore } from '../store/useUserStore';
 import { ScoreSquare } from './ScoreSquare';
-import type { TeamId, PointType } from '../types';
-import { getFaltaEnvidoSuggestedPoints } from '../utils/truco';
+import type { TeamId } from '../types';
 
 function useLongPress(callback: () => void, ms = 800, enabled = true) {
     const timerRef = useRef<number | null>(null);
@@ -37,14 +36,14 @@ function useLongPress(callback: () => void, ms = 800, enabled = true) {
 const ShortcutButton = ({
     label, points, teamId, onAction, onPressStart, onPressEnd
 }: {
-    label: string, points: string | number, type?: PointType, teamId: TeamId, onAction: () => void, onPressStart?: () => void, onPressEnd?: () => void
+    label: string, points: string | number, teamId: TeamId, onAction: () => void, onPressStart?: () => void, onPressEnd?: () => void
 }) => {
     return (
         <button
             className={`
-                px-1 py-1.5 rounded flex flex-col items-center justify-center gap-0.5
+                px-1 py-2 rounded-xl flex flex-col items-center justify-center gap-1
                 border border-[var(--color-border)] active:scale-95 transition-all
-                min-h-[64px] relative overflow-hidden group
+                min-h-[72px] relative overflow-hidden group
                 ${teamId === 'nosotros' ? 'bg-[var(--color-nosotros)]/10 text-[var(--color-nosotros)] border-[var(--color-nosotros)]/30 active:bg-[var(--color-nosotros)]/20 shadow-[0_0_15px_rgba(74,222,128,0.1)]' : 'bg-[var(--color-ellos)]/10 text-[var(--color-ellos)] border-[var(--color-ellos)]/30 active:bg-[var(--color-ellos)]/20 shadow-[0_0_15px_rgba(251,191,36,0.1)]'}
             `}
             onClick={(e) => {
@@ -68,8 +67,8 @@ const ShortcutButton = ({
                 onPressEnd?.();
             }}
         >
-            <div className="text-[10px] font-black uppercase tracking-tighter leading-none text-center group-active:scale-90 transition-transform">{label}</div>
-            <div className="text-[12px] font-black opacity-60 leading-none">
+            <div className="text-[10px] font-black uppercase tracking-[0.18em] leading-none text-center opacity-70 group-active:scale-90 transition-transform">{label}</div>
+            <div className="text-[20px] font-black leading-none tabular-nums">
                 {typeof points === 'number' ? `+${points}` : points}
             </div>
             {/* Visual feedback for interaction */}
@@ -150,16 +149,6 @@ export const ScoreBoard = () => {
 
     const longPressNosotros = useLongPress(() => handleLongPress('nosotros'), 800, !shortcutInteractionLock);
     const longPressEllos = useLongPress(() => handleLongPress('ellos'), 800, !shortcutInteractionLock);
-
-    const faltaLabelFor = (winnerTeam: TeamId) => {
-        const loserTeam: TeamId = winnerTeam === 'nosotros' ? 'ellos' : 'nosotros';
-        const suggested = getFaltaEnvidoSuggestedPoints(
-            targetScore,
-            teams[winnerTeam].score,
-            teams[loserTeam].score
-        );
-        return `+${suggested}`;
-    };
 
     const handleColumnClick = (teamId: TeamId) => {
         if (shortcutInteractionLock) return;
@@ -278,10 +267,14 @@ export const ScoreBoard = () => {
                 {/* Big Score Numbers (Fills remaining space) */}
                 <div className={`flex-1 flex items-center w-full ${hasBuenasSection ? 'mt-4' : 'mt-8'}`}>
                     <div className="flex-1 flex justify-center">
-                        <span className="text-6xl font-black opacity-10 tabular-nums tracking-tighter mix-blend-overlay">{teams.nosotros.score}</span>
+                        <span className="text-[5.75rem] sm:text-[6.5rem] font-black opacity-25 tabular-nums tracking-[-0.04em] leading-none text-[var(--color-nosotros)]/80 drop-shadow-[0_0_18px_rgba(74,222,128,0.28)]">
+                            {teams.nosotros.score}
+                        </span>
                     </div>
                     <div className="flex-1 flex justify-center">
-                        <span className="text-6xl font-black opacity-10 tabular-nums tracking-tighter mix-blend-overlay">{teams.ellos.score}</span>
+                        <span className="text-[5.75rem] sm:text-[6.5rem] font-black opacity-25 tabular-nums tracking-[-0.04em] leading-none text-[var(--color-ellos)]/80 drop-shadow-[0_0_18px_rgba(251,191,36,0.25)]">
+                            {teams.ellos.score}
+                        </span>
                     </div>
                 </div>
 
@@ -289,41 +282,19 @@ export const ScoreBoard = () => {
                 <div className="mt-auto w-full px-2 pointer-events-auto z-30 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
                     <div className="grid grid-cols-2 gap-4">
                         {/* Nosotros Controls */}
-                        <div className="grid grid-cols-3 gap-1">
-                            <ShortcutButton label="Envido" points={2} type="envido" teamId="nosotros" onAction={() => addPoints('nosotros', 2, 'envido')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
-                            <ShortcutButton label="Real Envido" points={3} type="real_envido" teamId="nosotros" onAction={() => addPoints('nosotros', 3, 'real_envido')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
-                            <ShortcutButton
-                                label="Falta Envido"
-                                points={faltaLabelFor('nosotros')}
-                                type="falta_envido"
-                                teamId="nosotros"
-                                onAction={() => window.dispatchEvent(new CustomEvent('requestFaltaEnvido'))}
-                                onPressStart={lockShortcutInteraction}
-                                onPressEnd={unlockShortcutInteraction}
-                            />
-
-                            <ShortcutButton label="Truco" points={2} type="truco" teamId="nosotros" onAction={() => addPoints('nosotros', 2, 'truco')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
-                            <ShortcutButton label="Retruco" points={3} type="retruco" teamId="nosotros" onAction={() => addPoints('nosotros', 3, 'retruco')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
-                            <ShortcutButton label="Vale 4" points={4} type="vale_cuatro" teamId="nosotros" onAction={() => addPoints('nosotros', 4, 'vale_cuatro')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
+                        <div className="grid grid-cols-2 gap-2">
+                            <ShortcutButton label="Atajo" points={2} teamId="nosotros" onAction={() => addPoints('nosotros', 2, 'envido')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
+                            <ShortcutButton label="Atajo" points={3} teamId="nosotros" onAction={() => addPoints('nosotros', 3, 'real_envido')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
+                            <ShortcutButton label="Atajo" points={4} teamId="nosotros" onAction={() => addPoints('nosotros', 4, 'vale_cuatro')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
+                            <ShortcutButton label="Atajo" points={5} teamId="nosotros" onAction={() => addPoints('nosotros', 5, 'penalty')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
                         </div>
 
                         {/* Ellos Controls */}
-                        <div className="grid grid-cols-3 gap-1">
-                            <ShortcutButton label="Envido" points={2} type="envido" teamId="ellos" onAction={() => addPoints('ellos', 2, 'envido')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
-                            <ShortcutButton label="Real Envido" points={3} type="real_envido" teamId="ellos" onAction={() => addPoints('ellos', 3, 'real_envido')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
-                            <ShortcutButton
-                                label="Falta Envido"
-                                points={faltaLabelFor('ellos')}
-                                type="falta_envido"
-                                teamId="ellos"
-                                onAction={() => window.dispatchEvent(new CustomEvent('requestFaltaEnvido'))}
-                                onPressStart={lockShortcutInteraction}
-                                onPressEnd={unlockShortcutInteraction}
-                            />
-
-                            <ShortcutButton label="Truco" points={2} type="truco" teamId="ellos" onAction={() => addPoints('ellos', 2, 'truco')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
-                            <ShortcutButton label="Retruco" points={3} type="retruco" teamId="ellos" onAction={() => addPoints('ellos', 3, 'retruco')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
-                            <ShortcutButton label="Vale 4" points={4} type="vale_cuatro" teamId="ellos" onAction={() => addPoints('ellos', 4, 'vale_cuatro')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
+                        <div className="grid grid-cols-2 gap-2">
+                            <ShortcutButton label="Atajo" points={2} teamId="ellos" onAction={() => addPoints('ellos', 2, 'envido')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
+                            <ShortcutButton label="Atajo" points={3} teamId="ellos" onAction={() => addPoints('ellos', 3, 'real_envido')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
+                            <ShortcutButton label="Atajo" points={4} teamId="ellos" onAction={() => addPoints('ellos', 4, 'vale_cuatro')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
+                            <ShortcutButton label="Atajo" points={5} teamId="ellos" onAction={() => addPoints('ellos', 5, 'penalty')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
                         </div>
                     </div>
                 </div>

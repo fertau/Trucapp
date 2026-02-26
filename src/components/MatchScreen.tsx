@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useMatchStore } from '../store/useMatchStore';
 import { useHistoryStore } from '../store/useHistoryStore';
 import { ScoreBoard } from './ScoreBoard';
-import { FaltaEnvidoModal } from './FaltaEnvidoModal';
 import type { MatchState, TeamId } from '../types';
 import { formatDateInputLocal, parseDateInputLocal } from '../utils/date';
 
@@ -21,14 +20,9 @@ export const MatchScreen = ({ onFinish, isDirectScorerMode = false }: MatchScree
     const winner = useMatchStore(state => state.winner);
     const undo = useMatchStore(state => state.undo);
 
-    const [showFaltaModal, setShowFaltaModal] = useState(false);
     const [showManualScore, setShowManualScore] = useState(false);
     const [showScoreConfig, setShowScoreConfig] = useState(false);
     const [showDirectExitModal, setShowDirectExitModal] = useState(false);
-
-    const onRequestFaltaEnvido = () => {
-        setShowFaltaModal(true);
-    };
 
     const addPoints = useMatchStore(state => state.addPoints);
 
@@ -42,14 +36,6 @@ export const MatchScreen = ({ onFinish, isDirectScorerMode = false }: MatchScree
 
         setShowManualScore(false);
     };
-
-    // Listen for custom event from ScoreBoard button
-    useEffect(() => {
-        const handler = () => onRequestFaltaEnvido();
-        window.addEventListener('requestFaltaEnvido', handler);
-        return () => window.removeEventListener('requestFaltaEnvido', handler);
-    }, []);
-
 
     if (isFinished && winner) {
         return <WinnerCelebration winner={winner} teams={teams} onFinish={onFinish} />;
@@ -102,11 +88,6 @@ export const MatchScreen = ({ onFinish, isDirectScorerMode = false }: MatchScree
             </div>
 
             {/* Modals */}
-            {showFaltaModal && (
-                <FaltaEnvidoModal
-                    onClose={() => setShowFaltaModal(false)}
-                />
-            )}
             {showManualScore && (
                 <ManualScoreModal
                     nosotros={{ name: teams.nosotros.name, score: teams.nosotros.score }}
