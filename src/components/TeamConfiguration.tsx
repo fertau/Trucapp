@@ -277,21 +277,25 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
             <p className="text-[10px] font-bold text-[var(--color-text-muted)] text-center mb-8 uppercase tracking-[0.2em]">Arrastrar para asignar</p>
 
             {detectedTemplate && (
-                <div className="mb-6 rounded-2xl border border-[var(--color-accent)]/35 bg-[var(--color-accent)]/10 px-4 py-3">
-                    <div className="flex items-center justify-between gap-3">
-                        <div>
-                            <div className="text-[10px] font-black uppercase tracking-wider text-[var(--color-accent)]">Equipos detectados</div>
-                            <div className="text-[11px] text-white/70">
-                                Usamos la ultima formacion de {mode} ({new Date(detectedTemplate.date).toLocaleDateString('es-AR')}).
+                <div className="mb-5 rounded-2xl border border-[var(--color-accent)]/35 bg-[var(--color-accent)]/10 px-3 py-2.5 sm:px-4 sm:py-3">
+                    <div className="flex items-start gap-2.5">
+                        <div className="mt-0.5 h-7 w-7 shrink-0 rounded-full border border-[var(--color-accent)]/40 bg-[var(--color-accent)]/15 flex items-center justify-center text-[11px]">
+                            ✓
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <div className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-[var(--color-accent)]">Equipos detectados</div>
+                            <div className="text-[11px] leading-tight text-white/70">
+                                Tomamos la ultima formacion de {mode} ({new Date(detectedTemplate.date).toLocaleDateString('es-AR')}).
                             </div>
                         </div>
                         <button
                             type="button"
                             onClick={() => teamsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                            className="px-3 py-1.5 rounded-full border border-white/20 bg-white/10 text-[10px] font-black uppercase tracking-widest"
+                            className="h-8 w-8 shrink-0 rounded-full border border-white/20 bg-white/10 text-[14px] flex items-center justify-center"
                             title="Editar equipos"
+                            aria-label="Editar equipos"
                         >
-                            ✎ Editar
+                            ✎
                         </button>
                     </div>
                 </div>

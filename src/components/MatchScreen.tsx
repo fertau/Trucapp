@@ -190,41 +190,42 @@ const DirectScorerExitModal = ({
     onSaveNow: () => void;
     onDiscard: () => void;
 }) => (
-    <div className="fixed inset-0 z-[120] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm safe-pt safe-pb safe-px">
-        <div className="w-full max-w-sm rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
-            <h3 className="text-lg font-black uppercase tracking-wide mb-1">Finalizar anotador</h3>
-            <p className="text-[11px] text-[var(--color-text-muted)] mb-4">
-                El partido no llegó a {targetScore}. Elegí cómo querés continuar.
+    <div className="fixed inset-0 z-[120] bg-black/80 flex items-end sm:items-center justify-center p-0 sm:p-6 backdrop-blur-sm safe-pt safe-pb safe-px">
+        <div className="w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 pt-3 pb-[calc(16px+env(safe-area-inset-bottom))] sm:p-6 max-h-[85vh] overflow-y-auto">
+            <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-white/20 sm:hidden" />
+            <h3 className="text-base sm:text-lg font-black uppercase tracking-wide mb-1">Salir del partido</h3>
+            <p className="text-[11px] text-[var(--color-text-muted)] mb-3 sm:mb-4">
+                No llegó a {targetScore}. Elegí cómo querés continuar.
             </p>
-            <div className="bg-black/20 border border-white/10 rounded-xl px-3 py-2 text-sm font-black mb-4">
+            <div className="bg-black/20 border border-white/10 rounded-xl px-3 py-2 text-[13px] sm:text-sm font-black mb-3 sm:mb-4">
                 {teams.nosotros.name} {teams.nosotros.score} - {teams.ellos.score} {teams.ellos.name}
             </div>
             <div className="grid grid-cols-1 gap-2">
                 <button
                     type="button"
                     onClick={onClose}
-                    className="w-full py-2 rounded-xl border border-[var(--color-border)] text-[var(--color-text-secondary)] text-xs font-black uppercase tracking-wider"
+                    className="w-full min-h-11 py-2 rounded-xl border border-[var(--color-border)] text-[var(--color-text-secondary)] text-xs font-black uppercase tracking-wider"
                 >
                     Continuar partido
                 </button>
                 <button
                     type="button"
                     onClick={onChangeTarget}
-                    className="w-full py-2 rounded-xl border border-[var(--color-accent)]/35 bg-[var(--color-accent)]/10 text-[var(--color-accent)] text-xs font-black uppercase tracking-wider"
+                    className="w-full min-h-11 py-2 rounded-xl border border-[var(--color-accent)]/35 bg-[var(--color-accent)]/10 text-[var(--color-accent)] text-xs font-black uppercase tracking-wider"
                 >
                     Cambiar objetivo (15/30)
                 </button>
                 <button
                     type="button"
                     onClick={onSaveNow}
-                    className="w-full py-2 rounded-xl bg-[var(--color-accent)] text-white text-xs font-black uppercase tracking-wider"
+                    className="w-full min-h-11 py-2 rounded-xl bg-[var(--color-accent)] text-white text-xs font-black uppercase tracking-wider"
                 >
                     Guardar resultado actual
                 </button>
                 <button
                     type="button"
                     onClick={onDiscard}
-                    className="w-full py-2 rounded-xl border border-red-500/35 bg-red-500/10 text-red-300 text-xs font-black uppercase tracking-wider"
+                    className="w-full min-h-11 py-2 rounded-xl border border-red-500/35 bg-red-500/10 text-red-300 text-xs font-black uppercase tracking-wider"
                 >
                     Cancelar partido
                 </button>
