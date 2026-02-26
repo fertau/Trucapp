@@ -260,12 +260,12 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
     const [draggedPlayer, setDraggedPlayer] = useState<{ p: Player, from: 'pool' | TeamId } | null>(null);
 
     return (
-        <div className="flex flex-col h-full bg-[var(--color-bg)] p-6 overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col h-full bg-[var(--color-bg)] px-4 pt-4 pb-[calc(14px+env(safe-area-inset-bottom))] sm:p-6 overflow-y-auto">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <button
                     type="button"
                     onClick={onBack}
-                    className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-text-muted)] bg-[var(--color-surface)] border border-[var(--color-border)] px-3 py-2 rounded-full"
+                    className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-text-muted)] bg-[var(--color-surface)] border border-[var(--color-border)] px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-full"
                 >
                     ← Volver
                 </button>
@@ -273,8 +273,8 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
                     {requiredCount === 2 ? '1v1' : requiredCount === 4 ? '2v2' : '3v3'}
                 </div>
             </div>
-            <h2 className="text-2xl font-black mb-1 uppercase italic tracking-tighter text-center">ARMAR EQUIPOS</h2>
-            <p className="text-[10px] font-bold text-[var(--color-text-muted)] text-center mb-8 uppercase tracking-[0.2em]">Arrastrar para asignar</p>
+            <h2 className="text-xl sm:text-2xl font-black mb-0.5 sm:mb-1 uppercase italic tracking-tighter text-center">ARMAR EQUIPOS</h2>
+            <p className="text-[9px] sm:text-[10px] font-bold text-[var(--color-text-muted)] text-center mb-5 sm:mb-8 uppercase tracking-[0.2em]">Arrastrar para asignar</p>
 
             {detectedTemplate && (
                 <div className="mb-5 rounded-2xl border border-[var(--color-accent)]/35 bg-[var(--color-accent)]/10 px-3 py-2.5 sm:px-4 sm:py-3">
@@ -303,12 +303,12 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
 
             {/* POOL SECTION */}
             <div
-                className={`p-6 rounded-3xl border-2 border-dashed mb-10 transition-colors ${draggedPlayer ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5' : 'border-[var(--color-border)] bg-[var(--color-surface)]/30'}`}
+                className={`p-4 sm:p-6 rounded-2xl sm:rounded-3xl border-2 border-dashed mb-6 sm:mb-10 transition-colors ${draggedPlayer ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5' : 'border-[var(--color-border)] bg-[var(--color-surface)]/30'}`}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={() => draggedPlayer && moveToTeam(draggedPlayer.p, draggedPlayer.from, 'pool')}
             >
-                <div className="text-[10px] font-black uppercase text-[var(--color-text-muted)] mb-4 tracking-widest text-center">Banquillo de Jugadores</div>
-                <div className="flex flex-wrap gap-2 justify-center min-h-[50px]">
+                <div className="text-[9px] sm:text-[10px] font-black uppercase text-[var(--color-text-muted)] mb-3 sm:mb-4 tracking-widest text-center">Banquillo de Jugadores</div>
+                <div className="flex flex-wrap gap-2 justify-center min-h-[44px] sm:min-h-[50px]">
                     {pool.map(p => (
                         <div
                             key={p.id}
@@ -319,7 +319,7 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
                                 if (nosotros.length < getLimit()) moveToTeam(p, 'pool', 'nosotros');
                                 else if (ellos.length < getLimit()) moveToTeam(p, 'pool', 'ellos');
                             }}
-                            className={`bg-[var(--color-surface)] border border-[var(--color-border)] px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm cursor-grab active:scale-95 transition-all text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] ${draggedPlayer ? 'opacity-50' : ''}`}
+                            className={`bg-[var(--color-surface)] border border-[var(--color-border)] px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-sm cursor-grab active:scale-95 transition-all text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] ${draggedPlayer ? 'opacity-50' : ''}`}
                         >
                             {p.name}
                         </div>
@@ -329,14 +329,14 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
             </div>
 
             {/* TEAMS GRID */}
-            <div ref={teamsSectionRef} className="grid grid-cols-2 gap-4 mb-10">
+            <div ref={teamsSectionRef} className="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-10">
                 {/* NOSOTROS */}
                 <div
-                    className={`flex flex-col p-4 rounded-3xl border-2 transition-all min-h-[160px] ${draggedPlayer ? 'border-dashed border-[var(--color-nosotros)]/40 bg-[var(--color-nosotros)]/5' : 'border-transparent bg-[var(--color-surface)] shadow-inner'} ${nosotros.length >= getLimit() ? 'opacity-60' : ''}`}
+                    className={`flex flex-col p-3 sm:p-4 rounded-2xl sm:rounded-3xl border-2 transition-all min-h-[136px] sm:min-h-[160px] ${draggedPlayer ? 'border-dashed border-[var(--color-nosotros)]/40 bg-[var(--color-nosotros)]/5' : 'border-transparent bg-[var(--color-surface)] shadow-inner'} ${nosotros.length >= getLimit() ? 'opacity-60' : ''}`}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={() => draggedPlayer && moveToTeam(draggedPlayer.p, draggedPlayer.from, 'nosotros')}
                 >
-                    <div className="flex justify-center items-center mb-4 px-2 overflow-hidden">
+                    <div className="flex justify-center items-center mb-3 sm:mb-4 px-2 overflow-hidden">
                         {isEditingNosotrosTeam ? (
                             <input
                                 autoFocus
@@ -365,7 +365,7 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
                                 onDragStart={() => setDraggedPlayer({ p, from: 'nosotros' })}
                                 onDragEnd={() => setDraggedPlayer(null)}
                                 onClick={() => moveToTeam(p, 'nosotros', 'pool')}
-                                className="bg-[var(--color-nosotros)] text-black p-4 rounded-2xl font-black text-sm shadow-sm hover:scale-[1.02] active:scale-95 transition-all text-center"
+                                className="bg-[var(--color-nosotros)] text-black p-3 sm:p-4 rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm shadow-sm hover:scale-[1.02] active:scale-95 transition-all text-center"
                             >
                                 {p.name}
                             </div>
@@ -375,11 +375,11 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
 
                 {/* ELLOS */}
                 <div
-                    className={`flex flex-col p-4 rounded-3xl border-2 transition-all min-h-[160px] ${draggedPlayer ? 'border-dashed border-[var(--color-ellos)]/40 bg-[var(--color-ellos)]/5' : 'border-transparent bg-[var(--color-surface)] shadow-inner'} ${ellos.length >= getLimit() ? 'opacity-60' : ''}`}
+                    className={`flex flex-col p-3 sm:p-4 rounded-2xl sm:rounded-3xl border-2 transition-all min-h-[136px] sm:min-h-[160px] ${draggedPlayer ? 'border-dashed border-[var(--color-ellos)]/40 bg-[var(--color-ellos)]/5' : 'border-transparent bg-[var(--color-surface)] shadow-inner'} ${ellos.length >= getLimit() ? 'opacity-60' : ''}`}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={() => draggedPlayer && moveToTeam(draggedPlayer.p, draggedPlayer.from, 'ellos')}
                 >
-                    <div className="flex justify-center items-center mb-4 px-2 overflow-hidden">
+                    <div className="flex justify-center items-center mb-3 sm:mb-4 px-2 overflow-hidden">
                         {isEditingEllosTeam ? (
                             <input
                                 autoFocus
@@ -408,7 +408,7 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
                                 onDragStart={() => setDraggedPlayer({ p, from: 'ellos' })}
                                 onDragEnd={() => setDraggedPlayer(null)}
                                 onClick={() => moveToTeam(p, 'ellos', 'pool')}
-                                className="bg-[var(--color-ellos)] text-black p-4 rounded-2xl font-black text-sm shadow-sm hover:scale-[1.02] active:scale-95 transition-all text-center"
+                                className="bg-[var(--color-ellos)] text-black p-3 sm:p-4 rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm shadow-sm hover:scale-[1.02] active:scale-95 transition-all text-center"
                             >
                                 {p.name}
                             </div>
@@ -419,8 +419,8 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
 
             {/* PAIRS UI */}
             {is2v2 && (
-                <div className="mb-10 flex flex-col gap-3">
-                    <div className="bg-[var(--color-surface)] p-4 rounded-3xl border border-[var(--color-border)] shadow-sm">
+                <div className="mb-6 sm:mb-10 flex flex-col gap-2.5 sm:gap-3">
+                    <div className="bg-[var(--color-surface)] p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl border border-[var(--color-border)] shadow-sm">
                         <div className="text-[9px] text-[var(--color-text-muted)] uppercase font-black mb-2 tracking-widest">Nombre Pareja (Nosotros)</div>
                         {isEditingNosotrosPair ? (
                             <div className="flex gap-2">
@@ -446,7 +446,7 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
                         )}
                     </div>
 
-                    <div className="bg-[var(--color-surface)] p-4 rounded-3xl border border-[var(--color-border)] shadow-sm">
+                    <div className="bg-[var(--color-surface)] p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl border border-[var(--color-border)] shadow-sm">
                         <div className="text-[9px] text-[var(--color-text-muted)] uppercase font-black mb-2 tracking-widest">Nombre Pareja (Ellos)</div>
                         {isEditingEllosPair ? (
                             <div className="flex gap-2">
@@ -475,14 +475,14 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
             )}
 
             {is2v2 && (
-                <div className="mb-8">
-                    <div className="text-[10px] font-black uppercase text-[var(--color-text-muted)] mb-3 tracking-widest border-b border-[var(--color-border)] pb-2">Formato</div>
+                <div className="mb-6 sm:mb-8">
+                    <div className="text-[10px] font-black uppercase text-[var(--color-text-muted)] mb-2.5 sm:mb-3 tracking-widest border-b border-[var(--color-border)] pb-2">Formato</div>
                     <button
                         type="button"
                         onClick={() => setStartBestOf3((v) => !v)}
-                        className={`w-full rounded-2xl border px-4 py-3 text-left transition-all ${startBestOf3 ? 'bg-[var(--color-accent)]/15 border-[var(--color-accent)]/40 text-[var(--color-accent)]' : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text-secondary)]'}`}
+                        className={`w-full rounded-2xl border px-3.5 sm:px-4 py-2.5 sm:py-3 text-left transition-all ${startBestOf3 ? 'bg-[var(--color-accent)]/15 border-[var(--color-accent)]/40 text-[var(--color-accent)]' : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text-secondary)]'}`}
                     >
-                        <div className="text-sm font-black uppercase tracking-wide">Serie al mejor de 3</div>
+                        <div className="text-xs sm:text-sm font-black uppercase tracking-wide">Serie al mejor de 3</div>
                         <div className="text-[11px] opacity-80 mt-1">
                             {startBestOf3 ? 'Activado: se encadenan hasta 2 victorias.' : 'Desactivado: partido suelto.'}
                         </div>
@@ -491,17 +491,17 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
             )}
 
             {shouldShowPicaControls && (
-                <div className="mb-8">
-                    <div className="text-[10px] font-black uppercase text-[var(--color-text-muted)] mb-3 tracking-widest border-b border-[var(--color-border)] pb-2">Pica Pica</div>
+                <div className="mb-6 sm:mb-8">
+                    <div className="text-[10px] font-black uppercase text-[var(--color-text-muted)] mb-2.5 sm:mb-3 tracking-widest border-b border-[var(--color-border)] pb-2">Pica Pica</div>
                     <button
                         type="button"
                         onClick={() => setIsPicaPicaEnabled((value) => !value)}
-                        className={`w-full rounded-2xl border px-4 py-3 text-left transition-all ${isPicaPicaEnabled
+                        className={`w-full rounded-2xl border px-3.5 sm:px-4 py-2.5 sm:py-3 text-left transition-all ${isPicaPicaEnabled
                             ? 'bg-[var(--color-accent)]/15 border-[var(--color-accent)]/40 text-[var(--color-accent)]'
                             : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text-secondary)]'
                             }`}
                     >
-                        <div className="text-sm font-black uppercase tracking-wide">Activar pica pica (20 a 25)</div>
+                        <div className="text-xs sm:text-sm font-black uppercase tracking-wide">Activar pica pica (20 a 25)</div>
                         <div className="text-[11px] opacity-80 mt-1">
                             {isPicaPicaEnabled
                                 ? 'Encendido: rota mano de por medio según emparejamientos.'
@@ -543,16 +543,16 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
             )}
 
             {/* Metadata Section */}
-            <div className="mb-12">
-                <div className="text-[10px] font-black uppercase text-[var(--color-text-muted)] mb-4 tracking-widest border-b border-[var(--color-border)] pb-2">Información del Partido</div>
-                <div className="flex flex-col gap-4">
+            <div className="mb-8 sm:mb-12">
+                <div className="text-[10px] font-black uppercase text-[var(--color-text-muted)] mb-3 sm:mb-4 tracking-widest border-b border-[var(--color-border)] pb-2">Información del Partido</div>
+                <div className="flex flex-col gap-3 sm:gap-4">
                     <div className="flex flex-col gap-1.5">
                         <label className="text-[9px] font-black uppercase text-[var(--color-text-muted)] ml-2">Sede / Ubicación</label>
                         <input
                             type="text"
                             placeholder="Ej. Quincho de Julian"
                             list="location-suggestions"
-                            className="bg-[var(--color-surface)] border border-[var(--color-border)] p-4 rounded-2xl w-full font-bold text-sm outline-none focus:border-[var(--color-accent)]"
+                            className="bg-[var(--color-surface)] border border-[var(--color-border)] p-3.5 sm:p-4 rounded-2xl w-full font-bold text-sm outline-none focus:border-[var(--color-accent)]"
                             value={location}
                             onChange={(e) => setLocation(e.target.value)}
                         />
@@ -585,7 +585,7 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
                         <label className="text-[9px] font-black uppercase text-[var(--color-text-muted)] ml-2">Fecha (Opcional)</label>
                         <input
                             type="date"
-                            className="bg-[var(--color-surface)] border border-[var(--color-border)] p-4 rounded-2xl w-full font-bold text-sm outline-none focus:border-[var(--color-accent)]"
+                            className="bg-[var(--color-surface)] border border-[var(--color-border)] p-3.5 sm:p-4 rounded-2xl w-full font-bold text-sm outline-none focus:border-[var(--color-accent)]"
                             value={customDate}
                             onChange={(e) => setCustomDate(e.target.value)}
                         />
@@ -594,7 +594,7 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
             </div>
 
             <button
-                className="w-full bg-[var(--color-accent)] text-white py-5 rounded-3xl font-black text-xl disabled:opacity-30 mt-auto shadow-2xl shadow-green-900/40 active:scale-95 transition-all"
+                className="w-full bg-[var(--color-accent)] text-white py-4 sm:py-5 rounded-2xl sm:rounded-3xl font-black text-lg sm:text-xl disabled:opacity-30 mt-auto shadow-2xl shadow-green-900/40 active:scale-95 transition-all"
                 disabled={!isValid || !isPicaConfigValid}
                 onClick={() => {
                     try {
