@@ -2,13 +2,33 @@ export type TeamId = 'nosotros' | 'ellos';
 export type MatchMode = '1v1' | '2v2' | '3v3';
 export type PointType = 'envido' | 'real_envido' | 'falta_envido' | 'truco' | 'retruco' | 'vale_cuatro' | 'score_tap' | 'penalty';
 
+// Pica-pica (3v3) hand system
+export type HandType = 'redondo' | 'picapica';
+export type PicaPicaScoringMode = 'sumar_todos' | 'sumar_diferencia';
+
+export interface PicaPicaPairing {
+    pairIndex: number;
+    playerNosotrosId: string;
+    playerEllosId: string;
+    scoreNosotros: number;
+    scoreEllos: number;
+    history: GameAction[];
+}
+
+export interface HandRecord {
+    handNumber: number;
+    type: HandType;
+    pointsNosotros: number;
+    pointsEllos: number;
+    pairings?: PicaPicaPairing[];
+}
+
 export interface Player {
     id: string;
     name: string;
     nickname?: string; // Short name for display
     avatar?: string; // Emoji or Icon ID
     pinHash?: string; // Replaces plain text PIN
-    pin?: string; // Legacy PIN support
     visibility: 'PUBLIC' | 'PRIVATE';
     friends: string[]; // List of friend player IDs
     createdAt: number;
@@ -61,57 +81,10 @@ export interface MatchMetadata {
     customDate?: number | null; // If user edits the date
 }
 
-export interface MatchEditField {
-    key: 'winner' | 'score_nosotros' | 'score_ellos' | 'location' | 'date';
-    before: string | number | null;
-    after: string | number | null;
-}
-
-export interface MatchEditLog {
-    at: number;
-    byUserId: string;
-    fields: MatchEditField[];
-}
-
-export interface MatchSeriesInfo {
-    id: string;
-    targetWins: number;
-    gameNumber: number;
-    name?: string;
-    closedManually?: boolean;
-    closedAt?: number | null;
-}
-
-export interface MatchPicaPicaPairing {
-    nosotrosId: string;
-    ellosId: string;
-}
-
-export interface MatchPicaPicaConfig {
-    enabled: boolean;
-    startAt: number; // inclusive
-    endAt: number; // inclusive
-    pairings: MatchPicaPicaPairing[];
-    currentPairingIndex: number;
-}
-
-export interface MatchTeamRef {
-    key: string;
-    label: string;
-    playerIds: string[];
-    pairId?: string | null;
-}
-
 export interface MatchState {
     id: string;
     mode: MatchMode;
     startDate: number; // timestamp (creation)
-    createdByUserId?: string | null;
-    createdAt?: number;
-    updatedAt?: number;
-    isDeleted?: boolean;
-    deletedAt?: number | null;
-    deletedByUserId?: string | null;
 
     // V2 Metadata
     metadata?: MatchMetadata;
@@ -127,19 +100,11 @@ export interface MatchState {
         nosotros?: string | null; // PairId
         ellos?: string | null;    // PairId
     } | null;
-    teamRefs?: {
-        nosotros: MatchTeamRef;
-        ellos: MatchTeamRef;
-    } | null;
-    series?: MatchSeriesInfo | null;
-    picaPica?: MatchPicaPicaConfig | null;
 
     history: GameAction[];
     isFinished: boolean;
     winner?: TeamId | null;
-    editedFlags?: {
-        resultEdited?: boolean;
-        metadataEdited?: boolean;
-    };
-    edits?: MatchEditLog[];
+
+    // 3v3 Pica-pica config
+    picaPicaScoringMode?: PicaPicaScoringMode | null;
 }
