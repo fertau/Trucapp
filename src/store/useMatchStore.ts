@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import type { MatchState, TeamId, PointType, GameAction, MatchSeriesInfo, MatchPicaPicaConfig } from '../types';
+import type { MatchState, TeamId, PointType, GameAction, MatchSeriesInfo, MatchPicaPicaConfig, PicaPicaScoringMode } from '../types';
 
 interface MatchStore extends MatchState {
     // Actions
@@ -19,6 +19,9 @@ interface MatchStore extends MatchState {
     setPairId: (team: TeamId, pairId: string) => void;
     setSeries: (series: MatchSeriesInfo | null) => void;
     setPicaPica: (config: MatchPicaPicaConfig | null) => void;
+
+    // V3 Pica-pica
+    setPicaPicaScoringMode: (mode: PicaPicaScoringMode | null) => void;
 
     // Cloud Persistence
     isCloudSynced: boolean;
@@ -90,10 +93,10 @@ const getMatchData = (state: MatchStore) => ({
     isFinished: state.isFinished,
     winner: state.winner ?? null,
     metadata: state.metadata ?? null,
-    pairs: state.pairs ?? null
-    ,
+    pairs: state.pairs ?? null,
     series: state.series ?? null,
-    picaPica: state.picaPica ?? null
+    picaPica: state.picaPica ?? null,
+    picaPicaScoringMode: state.picaPicaScoringMode ?? null
 });
 
 export const useMatchStore = create<MatchStore>()(
@@ -227,8 +230,8 @@ export const useMatchStore = create<MatchStore>()(
                     if (state.isCloudSynced) {
                         updateDoc(doc(db, 'matches', state.id), newState).catch(err => console.error("Cloud update failed", err));
                     } else {
-                        // First write -> Create doc to start syncing? 
-                        // For now we assume listeners are set up explicitly, 
+                        // First write -> Create doc to start syncing?
+                        // For now we assume listeners are set up explicitly,
                         // but let's auto-create if we are in "Cloud Mode" intended.
                         // Actually, let's just write if we have an ID.
                         const matchData = getMatchData(state);
@@ -413,10 +416,11 @@ export const useMatchStore = create<MatchStore>()(
                 pairs: { ...state.pairs, [team]: pairId }
             })),
 
-            setSeries: (series) => set({ series })
-            ,
+            setSeries: (series) => set({ series }),
 
-            setPicaPica: (config) => set({ picaPica: config })
+            setPicaPica: (config) => set({ picaPica: config }),
+
+            setPicaPicaScoringMode: (mode) => set({ picaPicaScoringMode: mode })
         }),
         {
             name: 'trucapp-match-storage-v1', // unique name
@@ -431,7 +435,8 @@ export const useMatchStore = create<MatchStore>()(
                 metadata: state.metadata,
                 pairs: state.pairs,
                 series: state.series,
-                picaPica: state.picaPica
+                picaPica: state.picaPica,
+                picaPicaScoringMode: state.picaPicaScoringMode
             })
         }
     )

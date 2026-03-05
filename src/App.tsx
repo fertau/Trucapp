@@ -8,12 +8,13 @@ import { useHistoryStore } from './store/useHistoryStore';
 import { useAuthStore } from './store/useAuthStore';
 import { usePairStore } from './store/usePairStore';
 import { useUserStore } from './store/useUserStore';
+import { usePicaPicaStore } from './store/usePicaPicaStore';
 import type { MatchPicaPicaConfig, MatchState, Player } from './types';
 import { ensureFirebaseSession } from './firebase';
 import './index.css';
 
 type AppStep = 'AUTH' | 'HOME' | 'SETUP_PLAYERS_COUNT' | 'SETUP_PLAYERS_SELECT' | 'SETUP_TEAMS' |
-  'MATCH' | 'HISTORY' | 'PROFILE';
+  'MATCH' | 'HISTORY' | 'PROFILE' | 'PICAPICA_SETUP';
 type HistoryTab = 'SUMMARY' | 'MATCHES';
 
 import { AccountSelector } from './components/AccountSelector';
@@ -22,6 +23,7 @@ const MatchScreen = lazy(() => import('./components/MatchScreen').then(m => ({ d
 const TeamConfiguration = lazy(() => import('./components/TeamConfiguration').then(m => ({ default: m.TeamConfiguration })));
 const HistoryScreen = lazy(() => import('./components/HistoryScreen').then(m => ({ default: m.HistoryScreen })));
 const ProfileScreen = lazy(() => import('./components/ProfileScreen').then(m => ({ default: m.ProfileScreen })));
+const PicaPicaSetup = lazy(() => import('./components/PicaPicaSetup').then(m => ({ default: m.PicaPicaSetup })));
 
 const ScreenLoader = () => (
   <div className="full-screen bg-[var(--color-bg)] flex items-center justify-center">
@@ -55,6 +57,10 @@ function App() {
   const [isFirebaseReady, setIsFirebaseReady] = useState(false);
   const [isDirectScorerMode, setIsDirectScorerMode] = useState(false);
   const isFinishingMatchRef = useRef(false);
+
+  // Teams for PicaPica setup
+  const [teamsConfig, setTeamsConfig] = useState<{ nosotros: Player[], ellos: Player[] } | null>(null);
+
   const selectablePlayers = useMemo(() => (
     players
       .filter((player) => {
@@ -171,6 +177,7 @@ function App() {
   const setSeries = useMatchStore(state => state.setSeries);
   const setPicaPica = useMatchStore(state => state.setPicaPica);
   const recordPairResult = usePairStore(state => state.recordMatchResult);
+  const picaPicaReset = usePicaPicaStore(state => state.reset);
 
   const startMatch = (
     teams: { nosotros: Player[], ellos: Player[] },
@@ -182,6 +189,13 @@ function App() {
     const expectedPlayersPerTeam = playerCount === 2 ? 1 : playerCount === 4 ? 2 : 3;
     if (teams.nosotros.length !== expectedPlayersPerTeam || teams.ellos.length !== expectedPlayersPerTeam) {
       alert(`Para ${playerCount === 2 ? '1v1' : playerCount === 4 ? '2v2' : '3v3'} debés tener ${expectedPlayersPerTeam} jugador(es) por equipo antes de comenzar.`);
+      return;
+    }
+
+    // 6-player matches go through PicaPica setup
+    if (playerCount === 6) {
+      setTeamsConfig(teams);
+      setStep('PICAPICA_SETUP');
       return;
     }
 
@@ -256,6 +270,7 @@ function App() {
       if (next === 'direct-cancel' || next === 'cancel') {
         setSeries(null);
         setIsDirectScorerMode(false);
+        picaPicaReset();
         setStep('HOME');
         return;
       }
@@ -343,6 +358,8 @@ function App() {
         }
       }
 
+      // Reset pica-pica state when finishing any match
+      picaPicaReset();
       setSeries(null);
 
       if (next === 'rematch') {
@@ -448,6 +465,18 @@ function App() {
     return (
       <Suspense fallback={<ScreenLoader />}>
         <ProfileScreen onBack={() => setStep('HOME')} />
+      </Suspense>
+    );
+  }
+
+  if (effectiveStep === 'PICAPICA_SETUP' && teamsConfig) {
+    return (
+      <Suspense fallback={<ScreenLoader />}>
+        <PicaPicaSetup
+          nosotros={teamsConfig.nosotros}
+          ellos={teamsConfig.ellos}
+          onStart={() => setStep('MATCH')}
+        />
       </Suspense>
     );
   }

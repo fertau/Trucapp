@@ -1,7 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMatchStore } from '../store/useMatchStore';
 import { useHistoryStore } from '../store/useHistoryStore';
+import { usePicaPicaStore } from '../store/usePicaPicaStore';
 import { ScoreBoard } from './ScoreBoard';
+import { PicaPicaScoreBoard } from './PicaPicaScoreBoard';
+import { HandIndicator } from './HandIndicator';
+import { CerrarManoButton } from './CerrarManoButton';
+import { PairingReorder } from './PairingReorder';
 import type { MatchState, TeamId } from '../types';
 import { formatDateInputLocal, parseDateInputLocal } from '../utils/date';
 
@@ -14,18 +19,140 @@ interface MatchScreenProps {
 
 export const MatchScreen = ({ onFinish, isDirectScorerMode = false }: MatchScreenProps) => {
     const teams = useMatchStore(state => state.teams);
+    const mode = useMatchStore(state => state.mode);
     const targetScore = useMatchStore(state => state.targetScore);
     const setTargetScore = useMatchStore(state => state.setTargetScore);
     const isFinished = useMatchStore(state => state.isFinished);
     const winner = useMatchStore(state => state.winner);
     const undo = useMatchStore(state => state.undo);
+    const addPoints = useMatchStore(state => state.addPoints);
+    const history = useMatchStore(state => state.history);
+
+    // Pica-pica state
+    const picaPicaActive = usePicaPicaStore(state => state.isActive);
+    const currentHandNumber = usePicaPicaStore(state => state.currentHandNumber);
+    const currentHandType = usePicaPicaStore(state => state.currentHandType);
+    const currentHandHasPoints = usePicaPicaStore(state => state.currentHandHasPoints);
+    const isFirstPicaPicaHand = usePicaPicaStore(state => state.isFirstPicaPicaHand);
+    const trackRedondoPoints = usePicaPicaStore(state => state.trackRedondoPoints);
+    const closeHand = usePicaPicaStore(state => state.closeHand);
+    const startHand = usePicaPicaStore(state => state.startHand);
+    const rotatePairings = usePicaPicaStore(state => state.rotatePairings);
+
+    const is3v3 = mode === '3v3' && picaPicaActive;
 
     const [showManualScore, setShowManualScore] = useState(false);
     const [showScoreConfig, setShowScoreConfig] = useState(false);
     const [showDirectExitModal, setShowDirectExitModal] = useState(false);
     const [showCancelModal, setShowCancelModal] = useState(false);
+    const [showPairingReorder, setShowPairingReorder] = useState(false);
 
-    const addPoints = useMatchStore(state => state.addPoints);
+    // Track redondo hand points via history changes
+    const [lastHistoryLength, setLastHistoryLength] = useState(history.length);
+    useEffect(() => {
+        if (!is3v3 || currentHandType !== 'redondo') {
+            setLastHistoryLength(history.length);
+            return;
+        }
+        if (history.length > lastHistoryLength) {
+            const lastAction = history[history.length - 1];
+            if (lastAction && lastAction.type === 'ADD_POINTS') {
+                trackRedondoPoints(lastAction.team, lastAction.amount);
+            }
+        }
+        setLastHistoryLength(history.length);
+    }, [history.length, is3v3, currentHandType]);
+
+    // Show pairing reorder when first pica-pica hand starts
+    useEffect(() => {
+        if (is3v3 && currentHandType === 'picapica' && isFirstPicaPicaHand) {
+            setShowPairingReorder(true);
+        }
+    }, [is3v3, currentHandType, isFirstPicaPicaHand]);
+
+    const handleCerrarMano = () => {
+        const { pointsNosotros, pointsEllos } = closeHand();
+
+        // Flush pica-pica points to general score
+        if (pointsNosotros > 0) {
+            addPoints('nosotros', pointsNosotros, 'score_tap');
+        }
+        if (pointsEllos > 0) {
+            addPoints('ellos', pointsEllos, 'score_tap');
+        }
+
+        // Check if match ended
+        const matchState = useMatchStore.getState();
+        if (!matchState.isFinished) {
+            // Auto-rotate pairings if this was a pica-pica hand
+            if (currentHandType === 'picapica') {
+                rotatePairings();
+            }
+            startHand(matchState.teams.nosotros.score, matchState.teams.ellos.score);
+        }
+    };
+
+    const subtractPoints = useMatchStore(state => state.subtractPoints);
+
+    const handleUndo = () => {
+        if (is3v3) {
+            const picaState = usePicaPicaStore.getState();
+
+            if (currentHandType === 'picapica') {
+                // Check if current pica-pica hand has any actions
+                const hasActions = picaState.currentPairings.some(p => p.history.length > 0);
+
+                if (hasActions) {
+                    // Undo the most recent action across all pairs
+                    let latestPairIndex = -1;
+                    let latestTimestamp = 0;
+                    picaState.currentPairings.forEach((p) => {
+                        if (p.history.length > 0) {
+                            const lastAction = p.history[p.history.length - 1];
+                            if (lastAction.timestamp > latestTimestamp) {
+                                latestTimestamp = lastAction.timestamp;
+                                latestPairIndex = p.pairIndex;
+                            }
+                        }
+                    });
+                    if (latestPairIndex >= 0) {
+                        picaState.undoPairAction(latestPairIndex);
+                    }
+                } else {
+                    // No actions in current hand — try to reopen last closed hand
+                    handleReopenLastHand();
+                }
+            } else {
+                // Redondo hand in 3v3
+                if (!currentHandHasPoints && picaState.closedHands.length > 0) {
+                    // No points in current redondo hand — reopen last closed hand
+                    handleReopenLastHand();
+                } else {
+                    // Has points in redondo — normal undo
+                    undo();
+                }
+            }
+        } else {
+            // 1v1 / 2v2 — standard undo
+            undo();
+        }
+    };
+
+    const handleReopenLastHand = () => {
+        const result = usePicaPicaStore.getState().reopenLastHand();
+        if (!result) return;
+
+        // Revert general score for pica-pica hands (points were flushed at close)
+        if (result.revertNosotros > 0) {
+            subtractPoints('nosotros', result.revertNosotros);
+        }
+        if (result.revertEllos > 0) {
+            subtractPoints('ellos', result.revertEllos);
+        }
+        // For redondo hands, the points were added directly to matchStore,
+        // and reopenLastHand restores the tracking state. The user can then
+        // use normal undo to revert individual point additions.
+    };
 
     const onFinishManualMatch = (scoreNos: number, scoreEll: number) => {
         // Set points directly to trigger win
@@ -62,7 +189,7 @@ export const MatchScreen = ({ onFinish, isDirectScorerMode = false }: MatchScree
                 style={{ paddingTop: 'max(10px, env(safe-area-inset-top))', minHeight: '52px' }}
             >
                 <button
-                    onClick={undo}
+                    onClick={handleUndo}
                     className="text-[var(--color-text-secondary)] text-[10px] sm:text-xs font-bold uppercase tracking-wider px-2.5 sm:px-3 py-1 rounded border border-[var(--color-border)] active:bg-[var(--color-surface-hover)]"
                 >
                     DESHACER
@@ -95,9 +222,40 @@ export const MatchScreen = ({ onFinish, isDirectScorerMode = false }: MatchScree
                 </div>
             </div>
 
+            {/* Hand Indicator (3v3 only) */}
+            {is3v3 && (
+                <div className="border-b border-[var(--color-border)] flex items-center justify-between px-4">
+                    <HandIndicator handNumber={currentHandNumber} handType={currentHandType} />
+                    {currentHandType === 'picapica' && (
+                        <button
+                            onClick={() => setShowPairingReorder(true)}
+                            className="text-[9px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider px-2 py-1 rounded border border-[var(--color-border)] active:bg-[var(--color-surface-hover)]"
+                        >
+                            Rotar
+                        </button>
+                    )}
+                </div>
+            )}
+
             {/* Score Area */}
-            <div className="flex-1 relative overflow-hidden">
-                <ScoreBoard />
+            <div className="flex-1 relative overflow-hidden flex flex-col">
+                <div className="flex-1 relative overflow-hidden">
+                    {is3v3 && currentHandType === 'picapica' ? (
+                        <PicaPicaScoreBoard />
+                    ) : (
+                        <ScoreBoard />
+                    )}
+                </div>
+
+                {/* Cerrar Mano Button (3v3 only) */}
+                {is3v3 && (
+                    <div className="px-4 pb-2">
+                        <CerrarManoButton
+                            visible={currentHandHasPoints}
+                            onClose={handleCerrarMano}
+                        />
+                    </div>
+                )}
             </div>
 
             {/* Modals */}
@@ -168,6 +326,18 @@ export const MatchScreen = ({ onFinish, isDirectScorerMode = false }: MatchScree
                         if (!ok) return;
                         setShowCancelModal(false);
                         onFinish(isDirectScorerMode ? 'direct-cancel' : 'cancel');
+                    }}
+                />
+            )}
+            {showPairingReorder && (
+                <PairingReorder
+                    onConfirm={() => {
+                        setShowPairingReorder(false);
+                        // Rebuild pairings with new order if we're in a pica-pica hand
+                        if (currentHandType === 'picapica') {
+                            const matchState = useMatchStore.getState();
+                            startHand(matchState.teams.nosotros.score, matchState.teams.ellos.score);
+                        }
                     }}
                 />
             )}
