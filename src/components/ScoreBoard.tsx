@@ -1,31 +1,80 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMatchStore } from '../store/useMatchStore';
+import { useUserStore } from '../store/useUserStore';
 import { ScoreSquare } from './ScoreSquare';
-import { ShortcutButton } from './ShortcutButton';
 import type { TeamId } from '../types';
 
-// Long Press Hook
-function useLongPress(callback: () => void, ms = 500) {
-    const [startLongPress, setStartLongPress] = useState(false);
+function useLongPress(callback: () => void, ms = 800, enabled = true) {
+    const timerRef = useRef<number | null>(null);
+    const triggeredRef = useRef(false);
 
-    useEffect(() => {
-        let timerId: ReturnType<typeof setTimeout>;
-        if (startLongPress) {
-            timerId = setTimeout(callback, ms);
+    const clear = () => {
+        if (timerRef.current !== null) {
+            window.clearTimeout(timerRef.current);
+            timerRef.current = null;
         }
-
-        return () => {
-            clearTimeout(timerId);
-        };
-    }, [callback, ms, startLongPress]);
-
-    return {
-        onMouseDown: () => setStartLongPress(true),
-        onMouseUp: () => setStartLongPress(false),
-        onMouseLeave: () => setStartLongPress(false),
-        onTouchStart: () => setStartLongPress(true),
-        onTouchEnd: () => setStartLongPress(false),
     };
+
+    const start = () => {
+        if (!enabled) return;
+        clear();
+        triggeredRef.current = false;
+        timerRef.current = window.setTimeout(() => {
+            triggeredRef.current = true;
+            callback();
+        }, ms);
+    };
+
+    const wasTriggered = () => triggeredRef.current;
+    const resetTriggered = () => {
+        triggeredRef.current = false;
+    };
+
+    return { start, clear, wasTriggered, resetTriggered };
+}
+
+const ShortcutButton = ({
+    label, points, teamId, onAction, onPressStart, onPressEnd
+}: {
+    label: string, points: string | number, teamId: TeamId, onAction: () => void, onPressStart?: () => void, onPressEnd?: () => void
+}) => {
+    return (
+        <button
+            className={`
+                px-1 py-2 rounded-xl flex flex-col items-center justify-center gap-1
+                border border-[var(--color-border)] active:scale-95 transition-all
+                min-h-[72px] relative overflow-hidden group
+                ${teamId === 'nosotros' ? 'bg-[var(--color-nosotros)]/10 text-[var(--color-nosotros)] border-[var(--color-nosotros)]/30 active:bg-[var(--color-nosotros)]/20 shadow-[0_0_15px_rgba(74,222,128,0.1)]' : 'bg-[var(--color-ellos)]/10 text-[var(--color-ellos)] border-[var(--color-ellos)]/30 active:bg-[var(--color-ellos)]/20 shadow-[0_0_15px_rgba(251,191,36,0.1)]'}
+            `}
+            onClick={(e) => {
+                e.stopPropagation();
+                onAction();
+            }}
+            onPointerDown={(e) => {
+                e.stopPropagation();
+                onPressStart?.();
+            }}
+            onPointerUp={(e) => {
+                e.stopPropagation();
+                onPressEnd?.();
+            }}
+            onPointerCancel={(e) => {
+                e.stopPropagation();
+                onPressEnd?.();
+            }}
+            onPointerLeave={(e) => {
+                e.stopPropagation();
+                onPressEnd?.();
+            }}
+        >
+            <div className="text-[10px] font-black uppercase tracking-[0.18em] leading-none text-center opacity-70 group-active:scale-90 transition-transform">{label}</div>
+            <div className="text-[20px] font-black leading-none tabular-nums">
+                {typeof points === 'number' ? `+${points}` : points}
+            </div>
+            {/* Visual feedback for interaction */}
+            <div className="absolute inset-0 bg-white/5 opacity-0 group-active:opacity-100 transition-opacity"></div>
+        </button>
+    )
 }
 
 const SquareGroup = ({ points }: { points: number }) => {
@@ -40,32 +89,75 @@ const SquareGroup = ({ points }: { points: number }) => {
 
 export const ScoreBoard = () => {
     const teams = useMatchStore(state => state.teams);
+    const targetScore = useMatchStore(state => state.targetScore);
+    const picaPica = useMatchStore(state => state.picaPica);
+    const players = useUserStore(state => state.players);
     const addPoints = useMatchStore(state => state.addPoints);
-    // @ts-ignore
     const subtractPoints = useMatchStore(state => state.subtractPoints);
+    const hasBuenasSection = targetScore > 15;
+    const scoreSplit = Math.floor(targetScore / 2);
+    const isPicaConfigured = Boolean(picaPica?.enabled && picaPica.pairings.length > 0);
+    const isPicaActive = Boolean(
+        isPicaConfigured && (
+            (teams.nosotros.score >= (picaPica?.startAt ?? 0) && teams.nosotros.score <= (picaPica?.endAt ?? 0)) ||
+            (teams.ellos.score >= (picaPica?.startAt ?? 0) && teams.ellos.score <= (picaPica?.endAt ?? 0))
+        )
+    );
+    const currentPairing = isPicaConfigured && picaPica
+        ? picaPica.pairings[picaPica.currentPairingIndex % picaPica.pairings.length]
+        : null;
+    const currentNosName = currentPairing
+        ? players.find((p) => p.id === currentPairing.nosotrosId)?.name ?? 'Jugador A'
+        : '';
+    const currentEllName = currentPairing
+        ? players.find((p) => p.id === currentPairing.ellosId)?.name ?? 'Jugador B'
+        : '';
+    const [shortcutInteractionLock, setShortcutInteractionLock] = useState(false);
+    const shortcutUnlockTimerRef = useRef<number | null>(null);
 
-    // Interaction Handlers
-    const [longPressTriggered, setLongPressTriggered] = useState<{ nosotros: boolean, ellos: boolean }>({ nosotros: false, ellos: false });
+    const lockShortcutInteraction = () => {
+        if (shortcutUnlockTimerRef.current !== null) {
+            window.clearTimeout(shortcutUnlockTimerRef.current);
+            shortcutUnlockTimerRef.current = null;
+        }
+        setShortcutInteractionLock(true);
+    };
+
+    const unlockShortcutInteraction = () => {
+        if (shortcutUnlockTimerRef.current !== null) {
+            window.clearTimeout(shortcutUnlockTimerRef.current);
+        }
+        shortcutUnlockTimerRef.current = window.setTimeout(() => {
+            setShortcutInteractionLock(false);
+            shortcutUnlockTimerRef.current = null;
+        }, 120);
+    };
+
+    useEffect(() => {
+        return () => {
+            if (shortcutUnlockTimerRef.current !== null) {
+                window.clearTimeout(shortcutUnlockTimerRef.current);
+            }
+        };
+    }, []);
 
     const handleLongPress = (teamId: TeamId) => {
-        if (navigator.vibrate) navigator.vibrate(50);
-        setLongPressTriggered({ ...longPressTriggered, [teamId]: true });
+        if (shortcutInteractionLock) return;
+        if (navigator.vibrate) navigator.vibrate(40);
         subtractPoints(teamId, 1);
-    }
+    };
 
-    // We need separate hook instances for each button
-    const longPressNosotros = useLongPress(() => handleLongPress('nosotros'), 800);
-    const longPressEllos = useLongPress(() => handleLongPress('ellos'), 800);
+    const longPressNosotros = useLongPress(() => handleLongPress('nosotros'), 800, !shortcutInteractionLock);
+    const longPressEllos = useLongPress(() => handleLongPress('ellos'), 800, !shortcutInteractionLock);
 
-    // Handle click - only add point if long-press wasn't triggered
     const handleColumnClick = (teamId: TeamId) => {
-        if (!longPressTriggered[teamId]) {
-            addPoints(teamId, 1, 'score_tap');
+        if (shortcutInteractionLock) return;
+        const longPressState = teamId === 'nosotros' ? longPressNosotros : longPressEllos;
+        if (longPressState.wasTriggered()) {
+            longPressState.resetTriggered();
+            return;
         }
-        // Reset flag after a short delay
-        setTimeout(() => {
-            setLongPressTriggered({ ...longPressTriggered, [teamId]: false });
-        }, 100);
+        addPoints(teamId, 1, 'score_tap');
     };
 
     return (
@@ -76,7 +168,10 @@ export const ScoreBoard = () => {
                 <button
                     className="flex-1 active:bg-[var(--color-nosotros)]/10 transition-colors outline-none touch-manipulation group/n relative"
                     onClick={() => handleColumnClick('nosotros')}
-                    {...longPressNosotros}
+                    onPointerDown={longPressNosotros.start}
+                    onPointerUp={longPressNosotros.clear}
+                    onPointerLeave={longPressNosotros.clear}
+                    onPointerCancel={longPressNosotros.clear}
                 >
                     <div className="absolute inset-0 bg-[var(--color-nosotros)]/5 scale-90 opacity-0 group-active/n:opacity-100 group-active/n:scale-100 transition-all duration-75"></div>
                 </button>
@@ -85,104 +180,122 @@ export const ScoreBoard = () => {
                 <button
                     className="flex-1 active:bg-[var(--color-ellos)]/10 transition-colors outline-none touch-manipulation group/e relative"
                     onClick={() => handleColumnClick('ellos')}
-                    {...longPressEllos}
+                    onPointerDown={longPressEllos.start}
+                    onPointerUp={longPressEllos.clear}
+                    onPointerLeave={longPressEllos.clear}
+                    onPointerCancel={longPressEllos.clear}
                 >
                     <div className="absolute inset-0 bg-[var(--color-ellos)]/5 scale-90 opacity-0 group-active/e:opacity-100 group-active/e:scale-100 transition-all duration-75"></div>
                 </button>
             </div>
 
             {/* 2. Visual Layer (Foreground Content) */}
-            <div className="absolute inset-0 flex flex-col pointer-events-none z-10 py-4">
+            <div className="absolute inset-0 flex flex-col pointer-events-none z-10 py-2 sm:py-4">
 
                 {/* Headers */}
-                <div className="flex w-full mb-4">
+                <div className="flex w-full mb-2 sm:mb-4">
                     <div className="flex-1 text-center px-2">
-                        <h2 className="text-sm font-black uppercase tracking-[0.1em] text-[var(--color-nosotros)] truncate">
+                        <h2 className="text-xs sm:text-sm font-black uppercase tracking-[0.1em] text-[var(--color-nosotros)] truncate">
                             {teams.nosotros.name}
                         </h2>
                     </div>
                     <div className="w-[1px]"></div> {/* Spacer for grid alignment */}
                     <div className="flex-1 text-center px-2">
-                        <h2 className="text-sm font-black uppercase tracking-[0.1em] text-[var(--color-ellos)] truncate">
+                        <h2 className="text-xs sm:text-sm font-black uppercase tracking-[0.1em] text-[var(--color-ellos)] truncate">
                             {teams.ellos.name}
                         </h2>
                     </div>
                 </div>
 
-                {/* Malas Section (Flex Row) */}
+                {isPicaConfigured && (
+                    <div className="mb-2 sm:mb-3 px-2.5 sm:px-3">
+                        <div className={`rounded-xl border px-3 py-2 text-center ${isPicaActive
+                            ? 'bg-[var(--color-accent)]/10 border-[var(--color-accent)]/35'
+                            : 'bg-[var(--color-surface)]/70 border-[var(--color-border)]'
+                            }`}>
+                            <div className={`text-[9px] font-black uppercase tracking-[0.2em] ${isPicaActive ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-muted)]'}`}>
+                                Pica pica {isPicaActive ? 'activo' : 'configurado'}
+                            </div>
+                            <div className="text-[12px] font-black leading-tight mt-0.5">
+                                {isPicaActive && currentPairing
+                                    ? `${currentNosName} vs ${currentEllName}`
+                                    : `Se activa entre ${picaPica?.startAt} y ${picaPica?.endAt} puntos`}
+                            </div>
+                            {isPicaActive && (
+                                <div className="text-[10px] text-white/60 mt-1">
+                                    Rotación mano de por medio
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Primera mitad */}
                 <div className="flex w-full items-start">
                     <div className="flex-1 flex flex-col items-center gap-2">
-                        <SquareGroup points={Math.min(teams.nosotros.score, 15)} />
+                        <SquareGroup points={Math.min(teams.nosotros.score, hasBuenasSection ? scoreSplit : targetScore)} />
                     </div>
                     <div className="w-[1px]"></div>
                     <div className="flex-1 flex flex-col items-center gap-2">
-                        <SquareGroup points={Math.min(teams.ellos.score, 15)} />
+                        <SquareGroup points={Math.min(teams.ellos.score, hasBuenasSection ? scoreSplit : targetScore)} />
                     </div>
                 </div>
 
-                {/* Dynamic Divider Row */}
-                <div className="w-full flex items-center justify-center py-6 relative shrink-0">
-                    <div className="absolute w-full h-[1px] bg-[var(--color-border)] -z-10 opacity-30 dashed"></div>
-                    <div className="bg-[var(--color-bg)] px-3 py-0.5 text-[9px] font-black text-[var(--color-text-muted)] tracking-[0.3em] border border-[var(--color-border)] rounded-full shadow-lg uppercase z-20">
-                        Buenas
-                    </div>
-                </div>
+                {hasBuenasSection && (
+                    <>
+                        {/* Dynamic Divider Row */}
+                        <div className="w-full flex items-center justify-center py-6 relative shrink-0">
+                            <div className="absolute w-full h-[1px] bg-[var(--color-border)] -z-10 opacity-30 dashed"></div>
+                            <div className="bg-[var(--color-bg)] px-3 py-0.5 text-[9px] font-black text-[var(--color-text-muted)] tracking-[0.3em] border border-[var(--color-border)] rounded-full shadow-lg uppercase z-20">
+                                Buenas
+                            </div>
+                        </div>
 
-                {/* Buenas Section (Flex Row) */}
-                <div className="flex w-full items-start">
-                    <div className="flex-1 flex flex-col items-center gap-2">
-                        <SquareGroup points={Math.max(0, teams.nosotros.score - 15)} />
-                    </div>
-                    <div className="w-[1px]"></div>
-                    <div className="flex-1 flex flex-col items-center gap-2">
-                        <SquareGroup points={Math.max(0, teams.ellos.score - 15)} />
-                    </div>
-                </div>
+                        {/* Segunda mitad */}
+                        <div className="flex w-full items-start">
+                            <div className="flex-1 flex flex-col items-center gap-2">
+                                <SquareGroup points={Math.max(0, teams.nosotros.score - scoreSplit)} />
+                            </div>
+                            <div className="w-[1px]"></div>
+                            <div className="flex-1 flex flex-col items-center gap-2">
+                                <SquareGroup points={Math.max(0, teams.ellos.score - scoreSplit)} />
+                            </div>
+                        </div>
+                    </>
+                )}
 
                 {/* Big Score Numbers (Fills remaining space) */}
-                <div className="flex-1 flex items-center w-full mt-4">
+                <div className={`flex-1 flex items-center w-full ${hasBuenasSection ? 'mt-4' : 'mt-8'}`}>
                     <div className="flex-1 flex justify-center">
-                        <span className="text-6xl font-black opacity-10 tabular-nums tracking-tighter mix-blend-overlay">{teams.nosotros.score}</span>
+                        <span className="text-[5.75rem] sm:text-[6.5rem] font-black opacity-25 tabular-nums tracking-[-0.04em] leading-none text-[var(--color-nosotros)]/80 drop-shadow-[0_0_18px_rgba(74,222,128,0.28)]">
+                            {teams.nosotros.score}
+                        </span>
                     </div>
                     <div className="flex-1 flex justify-center">
-                        <span className="text-6xl font-black opacity-10 tabular-nums tracking-tighter mix-blend-overlay">{teams.ellos.score}</span>
+                        <span className="text-[5.75rem] sm:text-[6.5rem] font-black opacity-25 tabular-nums tracking-[-0.04em] leading-none text-[var(--color-ellos)]/80 drop-shadow-[0_0_18px_rgba(251,191,36,0.25)]">
+                            {teams.ellos.score}
+                        </span>
                     </div>
                 </div>
 
                 {/* Controls - Pointer Events Enabed */}
-                <div className="mt-auto w-full px-2 grid grid-cols-2 gap-4 pointer-events-auto z-30 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
-                    {/* Nosotros Controls */}
-                    <div className="grid grid-cols-3 gap-1">
-                        <ShortcutButton label="Envido" points={2} type="envido" teamId="nosotros" onAction={() => addPoints('nosotros', 2, 'envido')} />
-                        <ShortcutButton label="Real Envido" points={3} type="real_envido" teamId="nosotros" onAction={() => addPoints('nosotros', 3, 'real_envido')} />
-                        <ShortcutButton
-                            label="Falta Envido"
-                            points={teams.ellos.score < 15 ? 'MATCH' : `+${30 - teams.ellos.score}`}
-                            type="falta_envido"
-                            teamId="nosotros"
-                            onAction={() => window.dispatchEvent(new CustomEvent('requestFaltaEnvido'))}
-                        />
+                <div className="mt-auto w-full px-2 pointer-events-auto z-30 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+                    <div className="grid grid-cols-2 gap-4">
+                        {/* Nosotros Controls */}
+                        <div className="grid grid-cols-2 gap-2">
+                            <ShortcutButton label="Atajo" points={2} teamId="nosotros" onAction={() => addPoints('nosotros', 2, 'envido')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
+                            <ShortcutButton label="Atajo" points={3} teamId="nosotros" onAction={() => addPoints('nosotros', 3, 'real_envido')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
+                            <ShortcutButton label="Atajo" points={4} teamId="nosotros" onAction={() => addPoints('nosotros', 4, 'vale_cuatro')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
+                            <ShortcutButton label="Atajo" points={5} teamId="nosotros" onAction={() => addPoints('nosotros', 5, 'penalty')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
+                        </div>
 
-                        <ShortcutButton label="Truco" points={2} type="truco" teamId="nosotros" onAction={() => addPoints('nosotros', 2, 'truco')} />
-                        <ShortcutButton label="Retruco" points={3} type="retruco" teamId="nosotros" onAction={() => addPoints('nosotros', 3, 'retruco')} />
-                        <ShortcutButton label="Vale 4" points={4} type="vale_cuatro" teamId="nosotros" onAction={() => addPoints('nosotros', 4, 'vale_cuatro')} />
-                    </div>
-
-                    {/* Ellos Controls */}
-                    <div className="grid grid-cols-3 gap-1">
-                        <ShortcutButton label="Envido" points={2} type="envido" teamId="ellos" onAction={() => addPoints('ellos', 2, 'envido')} />
-                        <ShortcutButton label="Real Envido" points={3} type="real_envido" teamId="ellos" onAction={() => addPoints('ellos', 3, 'real_envido')} />
-                        <ShortcutButton
-                            label="Falta Envido"
-                            points={teams.nosotros.score < 15 ? 'MATCH' : `+${30 - teams.nosotros.score}`}
-                            type="falta_envido"
-                            teamId="ellos"
-                            onAction={() => window.dispatchEvent(new CustomEvent('requestFaltaEnvido'))}
-                        />
-
-                        <ShortcutButton label="Truco" points={2} type="truco" teamId="ellos" onAction={() => addPoints('ellos', 2, 'truco')} />
-                        <ShortcutButton label="Retruco" points={3} type="retruco" teamId="ellos" onAction={() => addPoints('ellos', 3, 'retruco')} />
-                        <ShortcutButton label="Vale 4" points={4} type="vale_cuatro" teamId="ellos" onAction={() => addPoints('ellos', 4, 'vale_cuatro')} />
+                        {/* Ellos Controls */}
+                        <div className="grid grid-cols-2 gap-2">
+                            <ShortcutButton label="Atajo" points={2} teamId="ellos" onAction={() => addPoints('ellos', 2, 'envido')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
+                            <ShortcutButton label="Atajo" points={3} teamId="ellos" onAction={() => addPoints('ellos', 3, 'real_envido')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
+                            <ShortcutButton label="Atajo" points={4} teamId="ellos" onAction={() => addPoints('ellos', 4, 'vale_cuatro')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
+                            <ShortcutButton label="Atajo" points={5} teamId="ellos" onAction={() => addPoints('ellos', 5, 'penalty')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
+                        </div>
                     </div>
                 </div>
             </div>

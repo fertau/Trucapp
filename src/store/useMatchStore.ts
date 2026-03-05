@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import type { MatchState, TeamId, PointType, GameAction, PicaPicaScoringMode } from '../types';
+import type { MatchState, TeamId, PointType, GameAction, MatchSeriesInfo, MatchPicaPicaConfig, PicaPicaScoringMode } from '../types';
 
 interface MatchStore extends MatchState {
     // Actions
@@ -17,6 +17,8 @@ interface MatchStore extends MatchState {
     // V2 Actions
     setMetadata: (location: string, date?: number) => void;
     setPairId: (team: TeamId, pairId: string) => void;
+    setSeries: (series: MatchSeriesInfo | null) => void;
+    setPicaPica: (config: MatchPicaPicaConfig | null) => void;
 
     // V3 Pica-pica
     setPicaPicaScoringMode: (mode: PicaPicaScoringMode | null) => void;
@@ -26,6 +28,9 @@ interface MatchStore extends MatchState {
     unsubscribe: (() => void) | null;
     listenToMatch: (matchId: string) => void;
     stopListening: () => void;
+
+    // UX safeguard: allows reverting accidental 30 -> 15 target switch.
+    targetSwitchBackup: { nosotros: number; ellos: number } | null;
 }
 
 const INITIAL_STATE: Omit<MatchState, 'id' | 'startDate'> = {
@@ -35,8 +40,46 @@ const INITIAL_STATE: Omit<MatchState, 'id' | 'startDate'> = {
         nosotros: { id: 'nosotros', name: 'Equipo 1', players: [], score: 0 },
         ellos: { id: 'ellos', name: 'Equipo 2', players: [], score: 0 },
     },
+    picaPica: null,
     history: [],
     isFinished: false,
+};
+
+const isPicaPicaWindow = (
+    config: MatchPicaPicaConfig | null | undefined,
+    scoreNos: number,
+    scoreEll: number
+): boolean => {
+    if (!config?.enabled || config.pairings.length === 0) return false;
+    const inNos = scoreNos >= config.startAt && scoreNos <= config.endAt;
+    const inEll = scoreEll >= config.startAt && scoreEll <= config.endAt;
+    return inNos || inEll;
+};
+
+const recomputeFromHistory = (
+    history: GameAction[],
+    targetScore: number
+): { teams: MatchState['teams']; isFinished: boolean; winner: TeamId | null } => {
+    const nextTeams: MatchState['teams'] = {
+        nosotros: { id: 'nosotros', name: 'Equipo 1', players: [], score: 0 },
+        ellos: { id: 'ellos', name: 'Equipo 2', players: [], score: 0 }
+    };
+
+    let winner: TeamId | null = null;
+    for (const action of history) {
+        if (action.type !== 'ADD_POINTS') continue;
+        const current = nextTeams[action.team].score;
+        const raw = current + action.amount;
+        const clamped = raw >= targetScore ? targetScore : raw;
+        nextTeams[action.team] = { ...nextTeams[action.team], score: clamped };
+        if (clamped >= targetScore) winner = action.team;
+    }
+
+    return {
+        teams: nextTeams,
+        isFinished: winner !== null,
+        winner
+    };
 };
 
 // Helper to extract only data from the store for persistence
@@ -51,6 +94,8 @@ const getMatchData = (state: MatchStore) => ({
     winner: state.winner ?? null,
     metadata: state.metadata ?? null,
     pairs: state.pairs ?? null,
+    series: state.series ?? null,
+    picaPica: state.picaPica ?? null,
     picaPicaScoringMode: state.picaPicaScoringMode ?? null
 });
 
@@ -60,6 +105,7 @@ export const useMatchStore = create<MatchStore>()(
             id: crypto.randomUUID(),
             startDate: Date.now(),
             ...INITIAL_STATE,
+            targetSwitchBackup: null,
             isCloudSynced: false,
             unsubscribe: null,
 
@@ -94,14 +140,26 @@ export const useMatchStore = create<MatchStore>()(
                                 isCloudSynced: true,
                             });
                         } else {
-                            // If history is same length, we could still update if there are specific changes (like names)
-                            // But for scores, history length is the primary driver.
-                            // Let's at least update metadata/names if they changed?
-                            // Actually, simpler is better for now: only overwrite if cloud is ahead.
-                            if (JSON.stringify(data.teams.nosotros.name) !== JSON.stringify(currentState.teams.nosotros.name) ||
-                                JSON.stringify(data.teams.ellos.name) !== JSON.stringify(currentState.teams.ellos.name)) {
+                            // IMPORTANT:
+                            // Do not overwrite local scores when cloud history is not newer.
+                            // This prevents regressions after re-opening PWA with transient stale cloud/team payloads.
+                            const namesChanged =
+                                data.teams.nosotros.name !== currentState.teams.nosotros.name ||
+                                data.teams.ellos.name !== currentState.teams.ellos.name;
+
+                            if (namesChanged) {
                                 set({
-                                    teams: data.teams,
+                                    teams: {
+                                        ...currentState.teams,
+                                        nosotros: {
+                                            ...currentState.teams.nosotros,
+                                            name: data.teams.nosotros.name
+                                        },
+                                        ellos: {
+                                            ...currentState.teams.ellos,
+                                            name: data.teams.ellos.name
+                                        }
+                                    },
                                     isCloudSynced: true
                                 });
                             }
@@ -138,6 +196,11 @@ export const useMatchStore = create<MatchStore>()(
 
                     const newHistory = [...state.history, action];
                     const currentScore = state.teams[teamId].score;
+                    const wasPicaWindow = isPicaPicaWindow(
+                        state.picaPica,
+                        state.teams.nosotros.score,
+                        state.teams.ellos.score
+                    );
                     let newScore = currentScore + amount;
                     const isWin = newScore >= state.targetScore;
                     if (isWin) newScore = state.targetScore;
@@ -151,15 +214,24 @@ export const useMatchStore = create<MatchStore>()(
                         teams: newTeams,
                         history: newHistory,
                         isFinished: isWin,
-                        winner: isWin ? teamId : null
+                        winner: isWin ? teamId : null,
+                        targetSwitchBackup: null,
+                        picaPica: state.picaPica
+                            ? {
+                                ...state.picaPica,
+                                currentPairingIndex: wasPicaWindow && state.picaPica.pairings.length > 0
+                                    ? (state.picaPica.currentPairingIndex + 1) % state.picaPica.pairings.length
+                                    : state.picaPica.currentPairingIndex
+                            }
+                            : null
                     };
 
                     // Cloud Write
                     if (state.isCloudSynced) {
                         updateDoc(doc(db, 'matches', state.id), newState).catch(err => console.error("Cloud update failed", err));
                     } else {
-                        // First write -> Create doc to start syncing? 
-                        // For now we assume listeners are set up explicitly, 
+                        // First write -> Create doc to start syncing?
+                        // For now we assume listeners are set up explicitly,
                         // but let's auto-create if we are in "Cloud Mode" intended.
                         // Actually, let's just write if we have an ID.
                         const matchData = getMatchData(state);
@@ -186,7 +258,7 @@ export const useMatchStore = create<MatchStore>()(
                         [teamId]: { ...state.teams[teamId], score: newScore }
                     };
 
-                    const newState = { teams: newTeams };
+                    const newState = { teams: newTeams, targetSwitchBackup: null as MatchStore['targetSwitchBackup'] };
 
                     // Cloud Write
                     if (state.id) {
@@ -208,21 +280,35 @@ export const useMatchStore = create<MatchStore>()(
                 const lastAction = newHistory.pop();
 
                 if (!lastAction || lastAction.type !== 'ADD_POINTS') return { history: newHistory };
-
-                const teamId = lastAction.team;
-                const currentScore = state.teams[teamId].score;
-                const newScore = currentScore - lastAction.amount;
-
-                const newTeams = {
-                    ...state.teams,
-                    [teamId]: { ...state.teams[teamId], score: newScore }
-                };
-
+                const recomputed = recomputeFromHistory(newHistory, state.targetScore);
+                const currentInPicaWindow = isPicaPicaWindow(
+                    state.picaPica,
+                    state.teams.nosotros.score,
+                    state.teams.ellos.score
+                );
                 const newState = {
                     history: newHistory,
-                    teams: newTeams,
-                    isFinished: false,
-                    winner: null
+                    teams: {
+                        nosotros: {
+                            ...state.teams.nosotros,
+                            score: recomputed.teams.nosotros.score
+                        },
+                        ellos: {
+                            ...state.teams.ellos,
+                            score: recomputed.teams.ellos.score
+                        }
+                    },
+                    isFinished: recomputed.isFinished,
+                    winner: recomputed.winner,
+                    targetSwitchBackup: null as MatchStore['targetSwitchBackup'],
+                    picaPica: state.picaPica
+                        ? {
+                            ...state.picaPica,
+                            currentPairingIndex: currentInPicaWindow && state.picaPica.pairings.length > 0
+                                ? (state.picaPica.currentPairingIndex - 1 + state.picaPica.pairings.length) % state.picaPica.pairings.length
+                                : state.picaPica.currentPairingIndex
+                        }
+                        : null
                 };
 
                 // Cloud Write
@@ -247,6 +333,7 @@ export const useMatchStore = create<MatchStore>()(
                     mode,
                     winner: null, // Ensure reset
                     isFinished: false,
+                    targetSwitchBackup: null,
                     isCloudSynced: false // Start local until shared/synced
                 });
             },
@@ -269,17 +356,69 @@ export const useMatchStore = create<MatchStore>()(
             setPlayers: (team, playerIds) => set((state) => ({
                 teams: {
                     ...state.teams,
-                    [team]: { ...state.teams[team], players: playerIds.map(id => ({ id } as any)) } // Simplified for store
+                    [team]: { ...state.teams[team], players: playerIds }
                 }
             })),
 
-            setTargetScore: (score) => set({ targetScore: score }),
+            setTargetScore: (score) => set((state) => {
+                const nextTarget = score === 15 ? 15 : 30;
+                let nextNos = Math.min(state.teams.nosotros.score, nextTarget);
+                let nextEll = Math.min(state.teams.ellos.score, nextTarget);
+                let nextBackup: MatchStore['targetSwitchBackup'] = state.targetSwitchBackup;
+
+                const isSwitchingTo15 = state.targetScore === 30 && nextTarget === 15;
+                const isSwitchingBackTo30 = state.targetScore === 15 && nextTarget === 30;
+
+                if (isSwitchingTo15) {
+                    nextBackup = {
+                        nosotros: state.teams.nosotros.score,
+                        ellos: state.teams.ellos.score
+                    };
+                }
+
+                if (isSwitchingBackTo30 && nextBackup) {
+                    // Restore previous 30-point progress on quick revert.
+                    nextNos = Math.min(nextTarget, nextBackup.nosotros);
+                    nextEll = Math.min(nextTarget, nextBackup.ellos);
+                    nextBackup = null;
+                }
+
+                let nextWinner: TeamId | null = null;
+                if (nextNos >= nextTarget && nextEll < nextTarget) nextWinner = 'nosotros';
+                if (nextEll >= nextTarget && nextNos < nextTarget) nextWinner = 'ellos';
+                if (nextNos >= nextTarget && nextEll >= nextTarget) {
+                    nextWinner = nextNos >= nextEll ? 'nosotros' : 'ellos';
+                }
+
+                const newState = {
+                    targetScore: nextTarget,
+                    teams: {
+                        ...state.teams,
+                        nosotros: { ...state.teams.nosotros, score: nextNos },
+                        ellos: { ...state.teams.ellos, score: nextEll }
+                    },
+                    isFinished: nextWinner !== null,
+                    winner: nextWinner,
+                    targetSwitchBackup: nextBackup
+                };
+
+                if (state.id) {
+                    const matchData = getMatchData(state);
+                    setDoc(doc(db, 'matches', state.id), { ...matchData, ...newState }, { merge: true }).catch(console.error);
+                }
+
+                return newState;
+            }),
 
             setMetadata: (location, date) => set({ metadata: { location, date } }),
 
             setPairId: (team, pairId) => set((state) => ({
                 pairs: { ...state.pairs, [team]: pairId }
             })),
+
+            setSeries: (series) => set({ series }),
+
+            setPicaPica: (config) => set({ picaPica: config }),
 
             setPicaPicaScoringMode: (mode) => set({ picaPicaScoringMode: mode })
         }),
@@ -295,6 +434,8 @@ export const useMatchStore = create<MatchStore>()(
                 winner: state.winner,
                 metadata: state.metadata,
                 pairs: state.pairs,
+                series: state.series,
+                picaPica: state.picaPica,
                 picaPicaScoringMode: state.picaPicaScoringMode
             })
         }
