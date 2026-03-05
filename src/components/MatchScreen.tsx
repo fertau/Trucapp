@@ -92,27 +92,66 @@ export const MatchScreen = ({ onFinish, isDirectScorerMode = false }: MatchScree
         }
     };
 
+    const subtractPoints = useMatchStore(state => state.subtractPoints);
+
     const handleUndo = () => {
-        if (is3v3 && currentHandType === 'picapica') {
-            // In pica-pica, undo the most recent action across all pairs
-            const pairings = usePicaPicaStore.getState().currentPairings;
-            let latestPairIndex = -1;
-            let latestTimestamp = 0;
-            pairings.forEach((p) => {
-                if (p.history.length > 0) {
-                    const lastAction = p.history[p.history.length - 1];
-                    if (lastAction.timestamp > latestTimestamp) {
-                        latestTimestamp = lastAction.timestamp;
-                        latestPairIndex = p.pairIndex;
+        if (is3v3) {
+            const picaState = usePicaPicaStore.getState();
+
+            if (currentHandType === 'picapica') {
+                // Check if current pica-pica hand has any actions
+                const hasActions = picaState.currentPairings.some(p => p.history.length > 0);
+
+                if (hasActions) {
+                    // Undo the most recent action across all pairs
+                    let latestPairIndex = -1;
+                    let latestTimestamp = 0;
+                    picaState.currentPairings.forEach((p) => {
+                        if (p.history.length > 0) {
+                            const lastAction = p.history[p.history.length - 1];
+                            if (lastAction.timestamp > latestTimestamp) {
+                                latestTimestamp = lastAction.timestamp;
+                                latestPairIndex = p.pairIndex;
+                            }
+                        }
+                    });
+                    if (latestPairIndex >= 0) {
+                        picaState.undoPairAction(latestPairIndex);
                     }
+                } else {
+                    // No actions in current hand — try to reopen last closed hand
+                    handleReopenLastHand();
                 }
-            });
-            if (latestPairIndex >= 0) {
-                usePicaPicaStore.getState().undoPairAction(latestPairIndex);
+            } else {
+                // Redondo hand in 3v3
+                if (!currentHandHasPoints && picaState.closedHands.length > 0) {
+                    // No points in current redondo hand — reopen last closed hand
+                    handleReopenLastHand();
+                } else {
+                    // Has points in redondo — normal undo
+                    undo();
+                }
             }
         } else {
+            // 1v1 / 2v2 — standard undo
             undo();
         }
+    };
+
+    const handleReopenLastHand = () => {
+        const result = usePicaPicaStore.getState().reopenLastHand();
+        if (!result) return;
+
+        // Revert general score for pica-pica hands (points were flushed at close)
+        if (result.revertNosotros > 0) {
+            subtractPoints('nosotros', result.revertNosotros);
+        }
+        if (result.revertEllos > 0) {
+            subtractPoints('ellos', result.revertEllos);
+        }
+        // For redondo hands, the points were added directly to matchStore,
+        // and reopenLastHand restores the tracking state. The user can then
+        // use normal undo to revert individual point additions.
     };
 
     const onFinishManualMatch = (scoreNos: number, scoreEll: number) => {

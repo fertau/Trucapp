@@ -25,7 +25,9 @@ function useLongPress(callback: () => void, ms = 500) {
     };
 }
 
-const PairMiniBoard = ({ pairIndex }: { pairIndex: number }) => {
+const FALTA_ENVIDO_PICA_PICA_POINTS = 6;
+
+const PairMiniBoard = ({ pairIndex, onRequestFalta }: { pairIndex: number; onRequestFalta: (pairIndex: number) => void }) => {
     const pairing = usePicaPicaStore(state => state.currentPairings[pairIndex]);
     const addPairPoints = usePicaPicaStore(state => state.addPairPoints);
     const undoPairAction = usePicaPicaStore(state => state.undoPairAction);
@@ -90,21 +92,90 @@ const PairMiniBoard = ({ pairIndex }: { pairIndex: number }) => {
                 </button>
             </div>
 
-            {/* Compact scoring buttons */}
+            {/* Scoring buttons — 2 rows per side */}
             <div className="grid grid-cols-2 gap-1 p-1 border-t border-[var(--color-border)]">
                 {/* Nosotros buttons */}
-                <div className="grid grid-cols-3 gap-0.5">
-                    <CompactShortcutButton label="Env" points={2} teamId="nosotros" onAction={() => handleAddPoints('nosotros', 2, 'envido')} />
-                    <CompactShortcutButton label="RE" points={3} teamId="nosotros" onAction={() => handleAddPoints('nosotros', 3, 'real_envido')} />
-                    <CompactShortcutButton label="Tru" points={2} teamId="nosotros" onAction={() => handleAddPoints('nosotros', 2, 'truco')} />
+                <div className="flex flex-col gap-0.5">
+                    <div className="grid grid-cols-3 gap-0.5">
+                        <CompactShortcutButton label="Env" points={2} teamId="nosotros" onAction={() => handleAddPoints('nosotros', 2, 'envido')} />
+                        <CompactShortcutButton label="RE" points={3} teamId="nosotros" onAction={() => handleAddPoints('nosotros', 3, 'real_envido')} />
+                        <CompactShortcutButton label="Falta" points={6} teamId="nosotros" onAction={() => onRequestFalta(pairIndex)} />
+                    </div>
+                    <div className="grid grid-cols-3 gap-0.5">
+                        <CompactShortcutButton label="Tru" points={2} teamId="nosotros" onAction={() => handleAddPoints('nosotros', 2, 'truco')} />
+                        <CompactShortcutButton label="Ret" points={3} teamId="nosotros" onAction={() => handleAddPoints('nosotros', 3, 'retruco')} />
+                        <CompactShortcutButton label="V4" points={4} teamId="nosotros" onAction={() => handleAddPoints('nosotros', 4, 'vale_cuatro')} />
+                    </div>
                 </div>
                 {/* Ellos buttons */}
-                <div className="grid grid-cols-3 gap-0.5">
-                    <CompactShortcutButton label="Env" points={2} teamId="ellos" onAction={() => handleAddPoints('ellos', 2, 'envido')} />
-                    <CompactShortcutButton label="RE" points={3} teamId="ellos" onAction={() => handleAddPoints('ellos', 3, 'real_envido')} />
-                    <CompactShortcutButton label="Tru" points={2} teamId="ellos" onAction={() => handleAddPoints('ellos', 2, 'truco')} />
+                <div className="flex flex-col gap-0.5">
+                    <div className="grid grid-cols-3 gap-0.5">
+                        <CompactShortcutButton label="Env" points={2} teamId="ellos" onAction={() => handleAddPoints('ellos', 2, 'envido')} />
+                        <CompactShortcutButton label="RE" points={3} teamId="ellos" onAction={() => handleAddPoints('ellos', 3, 'real_envido')} />
+                        <CompactShortcutButton label="Falta" points={6} teamId="ellos" onAction={() => onRequestFalta(pairIndex)} />
+                    </div>
+                    <div className="grid grid-cols-3 gap-0.5">
+                        <CompactShortcutButton label="Tru" points={2} teamId="ellos" onAction={() => handleAddPoints('ellos', 2, 'truco')} />
+                        <CompactShortcutButton label="Ret" points={3} teamId="ellos" onAction={() => handleAddPoints('ellos', 3, 'retruco')} />
+                        <CompactShortcutButton label="V4" points={4} teamId="ellos" onAction={() => handleAddPoints('ellos', 4, 'vale_cuatro')} />
+                    </div>
                 </div>
             </div>
+        </div>
+    );
+};
+
+const FaltaEnvidoOverlay = ({
+    pairIndex,
+    onClose,
+}: {
+    pairIndex: number;
+    onClose: () => void;
+}) => {
+    const pairing = usePicaPicaStore(state => state.currentPairings[pairIndex]);
+    const addPairPoints = usePicaPicaStore(state => state.addPairPoints);
+    const players = useUserStore(state => state.players);
+
+    if (!pairing) return null;
+
+    const nosPlayer = players.find(p => p.id === pairing.playerNosotrosId);
+    const ellPlayer = players.find(p => p.id === pairing.playerEllosId);
+    const nosName = nosPlayer?.nickname || nosPlayer?.name || '?';
+    const ellName = ellPlayer?.nickname || ellPlayer?.name || '?';
+
+    const handleSelect = (team: TeamId) => {
+        addPairPoints(pairIndex, team, FALTA_ENVIDO_PICA_PICA_POINTS, 'falta_envido');
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/85 flex flex-col items-center justify-center z-[200] p-6 backdrop-blur-md animate-in fade-in duration-200 safe-pt safe-pb safe-px">
+            <div className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--color-text-muted)] mb-2">
+                Falta Envido — Pareja {pairIndex + 1}
+            </div>
+            <h2 className="text-xl font-black mb-8 text-white tracking-wide">
+                ¿QUIÉN GANÓ? (+{FALTA_ENVIDO_PICA_PICA_POINTS})
+            </h2>
+            <div className="flex gap-4 w-full max-w-sm">
+                <button
+                    onClick={() => handleSelect('nosotros')}
+                    className="flex-1 bg-[var(--color-nosotros)] text-black py-6 rounded-2xl text-lg font-black shadow-2xl shadow-green-900/40 active:scale-95 transition-all truncate px-3"
+                >
+                    {nosName.toUpperCase()}
+                </button>
+                <button
+                    onClick={() => handleSelect('ellos')}
+                    className="flex-1 bg-[var(--color-ellos)] text-black py-6 rounded-2xl text-lg font-black shadow-2xl shadow-amber-900/40 active:scale-95 transition-all truncate px-3"
+                >
+                    {ellName.toUpperCase()}
+                </button>
+            </div>
+            <button
+                onClick={onClose}
+                className="mt-10 text-[var(--color-text-muted)] font-bold uppercase tracking-[0.2em] text-xs"
+            >
+                Cancelar
+            </button>
         </div>
     );
 };
@@ -112,6 +183,7 @@ const PairMiniBoard = ({ pairIndex }: { pairIndex: number }) => {
 export const PicaPicaScoreBoard = () => {
     const currentPairings = usePicaPicaStore(state => state.currentPairings);
     const teams = useMatchStore(state => state.teams);
+    const [faltaPairIndex, setFaltaPairIndex] = useState<number | null>(null);
 
     return (
         <div className="flex flex-col w-full h-full bg-[var(--color-bg)] overflow-hidden select-none">
@@ -133,9 +205,21 @@ export const PicaPicaScoreBoard = () => {
             {/* 3 mini-scoreboards */}
             <div className="flex-1 flex flex-col gap-2 p-2 overflow-y-auto">
                 {currentPairings.map((_, idx) => (
-                    <PairMiniBoard key={idx} pairIndex={idx} />
+                    <PairMiniBoard
+                        key={idx}
+                        pairIndex={idx}
+                        onRequestFalta={(pi) => setFaltaPairIndex(pi)}
+                    />
                 ))}
             </div>
+
+            {/* Falta Envido overlay */}
+            {faltaPairIndex !== null && (
+                <FaltaEnvidoOverlay
+                    pairIndex={faltaPairIndex}
+                    onClose={() => setFaltaPairIndex(null)}
+                />
+            )}
         </div>
     );
 };

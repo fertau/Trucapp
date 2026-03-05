@@ -49,6 +49,8 @@ interface PicaPicaState {
 
     closeHand: () => { pointsNosotros: number; pointsEllos: number };
 
+    reopenLastHand: () => { revertNosotros: number; revertEllos: number } | null;
+
     rotatePairings: () => void;
     setPairingOrder: (order: [number, number][]) => void;
 
@@ -277,6 +279,32 @@ export const usePicaPicaStore = create<PicaPicaState>()(
 
                 // For pica-pica, return points to flush to matchStore
                 return { pointsNosotros, pointsEllos };
+            },
+
+            reopenLastHand: () => {
+                const state = get();
+                if (state.closedHands.length === 0) return null;
+
+                const lastHand = state.closedHands[state.closedHands.length - 1];
+                const newClosedHands = state.closedHands.slice(0, -1);
+
+                set({
+                    closedHands: newClosedHands,
+                    currentHandNumber: lastHand.handNumber,
+                    currentHandType: lastHand.type,
+                    currentHandHasPoints: true,
+                    currentPairings: lastHand.pairings ? [...lastHand.pairings] : [],
+                    redondoHandPointsNosotros: lastHand.type === 'redondo' ? lastHand.pointsNosotros : 0,
+                    redondoHandPointsEllos: lastHand.type === 'redondo' ? lastHand.pointsEllos : 0,
+                });
+
+                // Return points to revert from general score
+                // For pica-pica: points were flushed at closeHand, need to revert
+                // For redondo: points went directly to matchStore, caller handles undo
+                return {
+                    revertNosotros: lastHand.type === 'picapica' ? lastHand.pointsNosotros : 0,
+                    revertEllos: lastHand.type === 'picapica' ? lastHand.pointsEllos : 0,
+                };
             },
 
             rotatePairings: () => {
