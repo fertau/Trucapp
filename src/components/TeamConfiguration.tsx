@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { usePairStore } from '../store/usePairStore';
 import { useHistoryStore } from '../store/useHistoryStore';
-import type { MatchPicaPicaConfig, Player, TeamId } from '../types';
+import type { MatchPicaPicaConfig, PicaPicaScoringMode, Player, TeamId } from '../types';
 import { formatDateInputLocal, parseDateInputLocal } from '../utils/date';
 import { getMatchEffectiveDate } from '../utils/matchIdentity';
 
@@ -14,7 +14,7 @@ interface TeamConfigurationProps {
         metadata: { location: string, date: number, teamNames?: { nosotros: string, ellos: string } },
         pairIds: { nosotros?: string, ellos?: string },
         targetScore?: number,
-        options?: { startBestOf3?: boolean; picaPica?: MatchPicaPicaConfig | null }
+        options?: { startBestOf3?: boolean; picaPica?: MatchPicaPicaConfig | null; picaScoringMode?: PicaPicaScoringMode }
     ) => void;
 }
 
@@ -110,6 +110,7 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
     const [isEditingEllosTeam, setIsEditingEllosTeam] = useState(false);
     const [startBestOf3, setStartBestOf3] = useState(false);
     const [isPicaPicaEnabled, setIsPicaPicaEnabled] = useState(requiredCount === 6);
+    const [picaScoringMode, setPicaScoringMode] = useState<PicaPicaScoringMode>('sumar_todos');
     const [picaPairingMap, setPicaPairingMap] = useState<Record<string, string>>({});
 
     const handlePairNameSave = (team: TeamId, name: string) => {
@@ -510,34 +511,69 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
                     </button>
 
                     {isPicaPicaEnabled && isValid && (
-                        <div className="mt-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3">
-                            <div className="text-[9px] uppercase tracking-widest text-[var(--color-text-muted)] font-black mb-2">
-                                Elegí los cruces 1v1
-                            </div>
-                            <div className="space-y-2">
-                                {nosotros.map((player) => (
-                                    <div key={`pica-row-${player.id}`} className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-                                        <div className="text-xs font-black text-[var(--color-nosotros)] truncate">{player.name}</div>
-                                        <div className="text-[10px] text-[var(--color-text-muted)] font-black uppercase">vs</div>
-                                        <select
-                                            value={normalizedPicaPairingMap[player.id] ?? ''}
-                                            onChange={(event) => handlePicaPairingChange(player.id, event.target.value)}
-                                            className="bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg px-2 py-1.5 text-xs font-black text-[var(--color-ellos)]"
-                                        >
-                                            <option value="" disabled>Elegir rival</option>
-                                            {ellos.map((rival) => (
-                                                <option key={`pica-rival-${player.id}-${rival.id}`} value={rival.id}>{rival.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                ))}
-                            </div>
-                            {!isPicaConfigValid && (
-                                <div className="mt-3 text-[10px] font-black uppercase tracking-widest text-[var(--color-danger)]">
-                                    Configurá cruces únicos para todos.
+                        <>
+                            <div className="mt-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3">
+                                <div className="text-[9px] uppercase tracking-widest text-[var(--color-text-muted)] font-black mb-2">
+                                    Elegí los cruces 1v1
                                 </div>
-                            )}
-                        </div>
+                                <div className="space-y-2">
+                                    {nosotros.map((player) => (
+                                        <div key={`pica-row-${player.id}`} className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                                            <div className="text-xs font-black text-[var(--color-nosotros)] truncate">{player.name}</div>
+                                            <div className="text-[10px] text-[var(--color-text-muted)] font-black uppercase">vs</div>
+                                            <select
+                                                value={normalizedPicaPairingMap[player.id] ?? ''}
+                                                onChange={(event) => handlePicaPairingChange(player.id, event.target.value)}
+                                                className="bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg px-2 py-1.5 text-xs font-black text-[var(--color-ellos)]"
+                                            >
+                                                <option value="" disabled>Elegir rival</option>
+                                                {ellos.map((rival) => (
+                                                    <option key={`pica-rival-${player.id}-${rival.id}`} value={rival.id}>{rival.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    ))}
+                                </div>
+                                {!isPicaConfigValid && (
+                                    <div className="mt-3 text-[10px] font-black uppercase tracking-widest text-[var(--color-danger)]">
+                                        Configurá cruces únicos para todos.
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Scoring mode selector */}
+                            <div className="mt-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3">
+                                <div className="text-[9px] uppercase tracking-widest text-[var(--color-text-muted)] font-black mb-2">
+                                    Modo de puntaje
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setPicaScoringMode('sumar_todos')}
+                                        className={`p-2.5 rounded-xl border text-left transition-all ${
+                                            picaScoringMode === 'sumar_todos'
+                                                ? 'bg-amber-500/20 border-amber-500/50 text-amber-400'
+                                                : 'border-[var(--color-border)] text-[var(--color-text-muted)]'
+                                        }`}
+                                    >
+                                        <div className="font-black text-xs mb-0.5">Sumar todos</div>
+                                        <div className="text-[8px] opacity-70 normal-case leading-tight">Cada equipo suma todos los puntos</div>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPicaScoringMode('sumar_diferencia')}
+                                        className={`p-2.5 rounded-xl border text-left transition-all ${
+                                            picaScoringMode === 'sumar_diferencia'
+                                                ? 'bg-amber-500/20 border-amber-500/50 text-amber-400'
+                                                : 'border-[var(--color-border)] text-[var(--color-text-muted)]'
+                                        }`}
+                                    >
+                                        <div className="font-black text-xs mb-0.5">Sumar diferencia</div>
+                                        <div className="text-[8px] opacity-70 normal-case leading-tight">Solo la diferencia neta al ganador</div>
+                                    </button>
+                                </div>
+                            </div>
+                        </>
                     )}
                 </div>
             )}
@@ -631,7 +667,8 @@ export const TeamConfiguration = ({ players, requiredCount, onBack, onStartMatch
                             undefined,
                             {
                                 startBestOf3: is2v2 ? startBestOf3 : false,
-                                picaPica: picaConfig
+                                picaPica: picaConfig,
+                                picaScoringMode: isPicaPicaEnabled ? picaScoringMode : undefined
                             }
                         );
                     } catch (e) {

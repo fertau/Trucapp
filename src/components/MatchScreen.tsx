@@ -339,6 +339,7 @@ export const MatchScreen = ({ onFinish, isDirectScorerMode = false }: MatchScree
                             startHand(matchState.teams.nosotros.score, matchState.teams.ellos.score);
                         }
                     }}
+                    onCancel={() => setShowPairingReorder(false)}
                 />
             )}
         </div>

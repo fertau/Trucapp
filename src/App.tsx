@@ -9,12 +9,12 @@ import { useAuthStore } from './store/useAuthStore';
 import { usePairStore } from './store/usePairStore';
 import { useUserStore } from './store/useUserStore';
 import { usePicaPicaStore } from './store/usePicaPicaStore';
-import type { MatchPicaPicaConfig, MatchState, Player } from './types';
+import type { MatchPicaPicaConfig, MatchState, PicaPicaScoringMode, Player } from './types';
 import { ensureFirebaseSession } from './firebase';
 import './index.css';
 
 type AppStep = 'AUTH' | 'HOME' | 'SETUP_PLAYERS_COUNT' | 'SETUP_PLAYERS_SELECT' | 'SETUP_TEAMS' |
-  'MATCH' | 'HISTORY' | 'PROFILE' | 'PICAPICA_SETUP';
+  'MATCH' | 'HISTORY' | 'PROFILE';
 type HistoryTab = 'SUMMARY' | 'MATCHES';
 
 import { AccountSelector } from './components/AccountSelector';
@@ -23,7 +23,6 @@ const MatchScreen = lazy(() => import('./components/MatchScreen').then(m => ({ d
 const TeamConfiguration = lazy(() => import('./components/TeamConfiguration').then(m => ({ default: m.TeamConfiguration })));
 const HistoryScreen = lazy(() => import('./components/HistoryScreen').then(m => ({ default: m.HistoryScreen })));
 const ProfileScreen = lazy(() => import('./components/ProfileScreen').then(m => ({ default: m.ProfileScreen })));
-const PicaPicaSetup = lazy(() => import('./components/PicaPicaSetup').then(m => ({ default: m.PicaPicaSetup })));
 
 const ScreenLoader = () => (
   <div className="full-screen bg-[var(--color-bg)] flex items-center justify-center">
@@ -58,8 +57,6 @@ function App() {
   const [isDirectScorerMode, setIsDirectScorerMode] = useState(false);
   const isFinishingMatchRef = useRef(false);
 
-  // Teams for PicaPica setup
-  const [teamsConfig, setTeamsConfig] = useState<{ nosotros: Player[], ellos: Player[] } | null>(null);
 
   const selectablePlayers = useMemo(() => (
     players
@@ -184,7 +181,7 @@ function App() {
     metadata?: { location: string, date: number, teamNames?: { nosotros: string, ellos: string } },
     pairIds?: { nosotros?: string, ellos?: string },
     targetScore?: number,
-    options?: { startBestOf3?: boolean; picaPica?: MatchPicaPicaConfig | null }
+    options?: { startBestOf3?: boolean; picaPica?: MatchPicaPicaConfig | null; picaScoringMode?: PicaPicaScoringMode }
   ) => {
     const expectedPlayersPerTeam = playerCount === 2 ? 1 : playerCount === 4 ? 2 : 3;
     if (teams.nosotros.length !== expectedPlayersPerTeam || teams.ellos.length !== expectedPlayersPerTeam) {
@@ -192,17 +189,17 @@ function App() {
       return;
     }
 
-    // 6-player matches go through PicaPica setup
-    if (playerCount === 6) {
-      setTeamsConfig(teams);
-      setStep('PICAPICA_SETUP');
-      return;
-    }
-
     const mode = playerCount === 2 ? '1v1' : playerCount === 4 ? '2v2' : '3v3';
+    const is3v3PicaPica = playerCount === 6 && options?.picaPica?.enabled;
+    const scoringMode = options?.picaScoringMode ?? 'sumar_todos';
+
     resetMatch(mode);
     setIsDirectScorerMode(false);
-    if (targetScore) {
+
+    // 3v3 pica-pica: fixed target of 25, otherwise use provided or default
+    if (is3v3PicaPica) {
+      useMatchStore.getState().setTargetScore(25);
+    } else if (targetScore) {
       useMatchStore.getState().setTargetScore(targetScore);
     }
 
@@ -238,6 +235,28 @@ function App() {
       });
     } else {
       setSeries(null);
+    }
+
+    // Setup pica-pica store for 3v3
+    if (is3v3PicaPica && options?.picaPica) {
+      usePicaPicaStore.getState().setup({
+        playersNosotros: teams.nosotros.map(p => p.id),
+        playersEllos: teams.ellos.map(p => p.id),
+        scoringMode,
+      });
+
+      // Convert pairings config to index-based pairing order
+      const pairOrder: [number, number][] = options.picaPica.pairings.map(pairing => {
+        const nosIdx = teams.nosotros.findIndex(p => p.id === pairing.nosotrosId);
+        const ellIdx = teams.ellos.findIndex(p => p.id === pairing.ellosId);
+        return [nosIdx, ellIdx];
+      });
+      usePicaPicaStore.getState().setPairingOrder(pairOrder);
+
+      useMatchStore.getState().setPicaPicaScoringMode(scoringMode);
+
+      // Start first hand (scores are 0,0 so it'll be redondo)
+      usePicaPicaStore.getState().startHand(0, 0);
     }
 
     setStep('MATCH');
@@ -469,18 +488,6 @@ function App() {
     );
   }
 
-  if (effectiveStep === 'PICAPICA_SETUP' && teamsConfig) {
-    return (
-      <Suspense fallback={<ScreenLoader />}>
-        <PicaPicaSetup
-          nosotros={teamsConfig.nosotros}
-          ellos={teamsConfig.ellos}
-          onStart={() => setStep('MATCH')}
-        />
-      </Suspense>
-    );
-  }
-
   if (effectiveStep === 'SETUP_TEAMS') {
     return (
       <Suspense fallback={<ScreenLoader />}>
@@ -509,66 +516,72 @@ function App() {
 
   if (effectiveStep === 'SETUP_PLAYERS_COUNT') {
     return (
-      <div className="flex flex-col h-full bg-[var(--color-bg)] p-8 justify-center items-center relative safe-px safe-pt safe-pb">
-        <button
-          onClick={() => setStep('HOME')}
-          className="absolute top-6 left-6 text-[var(--color-text-muted)] font-black text-[10px] uppercase tracking-[0.3em] bg-white/5 py-2 px-4 rounded-full active:scale-95 transition-all z-20"
-        >
-          ← VOLVER
-        </button>
-
-        <h2 className="text-2xl font-bold mb-8">¿Cuántos juegan?</h2>
-
-        <div className="flex flex-col gap-4 w-full max-w-xs">
+      <div className="flex flex-col h-full bg-[var(--color-bg)] safe-px safe-pt safe-pb">
+        {/* Header with back button */}
+        <div className="flex items-center px-4 pt-4">
           <button
-            onClick={() => {
-              const nextCount = 2;
-              if (selectablePlayers.length < nextCount) {
-                alert(`Necesitás al menos ${nextCount} jugadores visibles para iniciar 1v1.`);
-                return;
-              }
-              setPlayerCount(nextCount);
-              setSelectedPlayers(selectablePlayers);
-              setStep('SETUP_TEAMS');
-            }}
-            className="bg-[var(--color-surface)] border border-[var(--color-border)] p-6 rounded-lg font-bold text-xl hover:bg-[var(--color-surface-hover)] transition-colors text-center"
+            onClick={() => setStep('HOME')}
+            className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-text-muted)] bg-[var(--color-surface)] border border-[var(--color-border)] px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-full active:scale-95 transition-all"
           >
-            2 jugadores (1v1)
+            ← Volver
           </button>
-          <button
-            onClick={() => {
-              const nextCount = 4;
-              if (selectablePlayers.length < nextCount) {
-                alert(`Necesitás al menos ${nextCount} jugadores visibles para iniciar 2v2.`);
-                return;
-              }
-              setPlayerCount(nextCount);
-              setSelectedPlayers(selectablePlayers);
-              setStep('SETUP_TEAMS');
-            }}
-            className="bg-[var(--color-surface)] border border-[var(--color-border)] p-6 rounded-lg font-bold text-xl hover:bg-[var(--color-surface-hover)] transition-colors text-center"
-          >
-            4 jugadores (2v2)
-          </button>
-          <button
-            onClick={() => {
-              const nextCount = 6;
-              if (selectablePlayers.length < nextCount) {
-                alert(`Necesitás al menos ${nextCount} jugadores visibles para iniciar 3v3.`);
-                return;
-              }
-              setPlayerCount(nextCount);
-              setSelectedPlayers(selectablePlayers);
-              setStep('SETUP_TEAMS');
-            }}
-            className="bg-[var(--color-surface)] border border-[var(--color-border)] p-6 rounded-lg font-bold text-xl hover:bg-[var(--color-surface-hover)] transition-colors text-center"
-          >
-            6 jugadores (3v3)
-          </button>
+        </div>
 
-          <button onClick={() => setStep('HOME')} className="mt-8 text-[var(--color-text-muted)]">
-            Cancelar
-          </button>
+        {/* Centered content */}
+        <div className="flex-1 flex flex-col justify-center items-center p-8">
+          <h2 className="text-2xl font-bold mb-8">¿Cuántos juegan?</h2>
+
+          <div className="flex flex-col gap-4 w-full max-w-xs">
+            <button
+              onClick={() => {
+                const nextCount = 2;
+                if (selectablePlayers.length < nextCount) {
+                  alert(`Necesitás al menos ${nextCount} jugadores visibles para iniciar 1v1.`);
+                  return;
+                }
+                setPlayerCount(nextCount);
+                setSelectedPlayers(selectablePlayers);
+                setStep('SETUP_TEAMS');
+              }}
+              className="bg-[var(--color-surface)] border border-[var(--color-border)] p-6 rounded-lg font-bold text-xl hover:bg-[var(--color-surface-hover)] transition-colors text-center"
+            >
+              2 jugadores (1v1)
+            </button>
+            <button
+              onClick={() => {
+                const nextCount = 4;
+                if (selectablePlayers.length < nextCount) {
+                  alert(`Necesitás al menos ${nextCount} jugadores visibles para iniciar 2v2.`);
+                  return;
+                }
+                setPlayerCount(nextCount);
+                setSelectedPlayers(selectablePlayers);
+                setStep('SETUP_TEAMS');
+              }}
+              className="bg-[var(--color-surface)] border border-[var(--color-border)] p-6 rounded-lg font-bold text-xl hover:bg-[var(--color-surface-hover)] transition-colors text-center"
+            >
+              4 jugadores (2v2)
+            </button>
+            <button
+              onClick={() => {
+                const nextCount = 6;
+                if (selectablePlayers.length < nextCount) {
+                  alert(`Necesitás al menos ${nextCount} jugadores visibles para iniciar 3v3.`);
+                  return;
+                }
+                setPlayerCount(nextCount);
+                setSelectedPlayers(selectablePlayers);
+                setStep('SETUP_TEAMS');
+              }}
+              className="bg-[var(--color-surface)] border border-[var(--color-border)] p-6 rounded-lg font-bold text-xl hover:bg-[var(--color-surface-hover)] transition-colors text-center"
+            >
+              6 jugadores (3v3)
+            </button>
+
+            <button onClick={() => setStep('HOME')} className="mt-8 text-[var(--color-text-muted)]">
+              Cancelar
+            </button>
+          </div>
         </div>
       </div>
     );

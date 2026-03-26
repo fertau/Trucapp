@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { usePicaPicaStore } from '../store/usePicaPicaStore';
 import { useUserStore } from '../store/useUserStore';
 
 interface PairingReorderProps {
     onConfirm: () => void;
+    onCancel?: () => void;
 }
 
-export const PairingReorder = ({ onConfirm }: PairingReorderProps) => {
+export const PairingReorder = ({ onConfirm, onCancel }: PairingReorderProps) => {
     const pairingOrder = usePicaPicaStore(state => state.pairingOrder);
     const playersNosotros = usePicaPicaStore(state => state.playersNosotros);
     const playersEllos = usePicaPicaStore(state => state.playersEllos);
@@ -15,6 +16,7 @@ export const PairingReorder = ({ onConfirm }: PairingReorderProps) => {
     const allPlayers = useUserStore(state => state.players);
 
     const [dragIndex, setDragIndex] = useState<number | null>(null);
+    const originalOrderRef = useRef<[number, number][]>(pairingOrder.map(p => [...p] as [number, number]));
 
     const getPlayerName = (id: string) => {
         const p = allPlayers.find(pl => pl.id === id);
@@ -86,19 +88,33 @@ export const PairingReorder = ({ onConfirm }: PairingReorderProps) => {
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-2">
-                    <button
-                        onClick={() => { rotatePairings(); }}
-                        className="flex-1 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider border border-[var(--color-border)] bg-[var(--color-bg)] active:scale-95 transition-all"
-                    >
-                        Rotar
-                    </button>
-                    <button
-                        onClick={onConfirm}
-                        className="flex-1 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-amber-500 text-black active:scale-95 transition-all"
-                    >
-                        Confirmar
-                    </button>
+                <div className="flex flex-col gap-2">
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => { rotatePairings(); }}
+                            className="flex-1 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider border border-[var(--color-border)] bg-[var(--color-bg)] active:scale-95 transition-all"
+                        >
+                            Rotar
+                        </button>
+                        <button
+                            onClick={onConfirm}
+                            className="flex-1 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-amber-500 text-black active:scale-95 transition-all"
+                        >
+                            Confirmar
+                        </button>
+                    </div>
+                    {onCancel && (
+                        <button
+                            onClick={() => {
+                                // Restore original pairing order before closing
+                                setPairingOrder(originalOrderRef.current);
+                                onCancel();
+                            }}
+                            className="w-full py-2 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] active:text-white transition-colors"
+                        >
+                            Cancelar
+                        </button>
+                    )}
                 </div>
             </div>
         </div>
