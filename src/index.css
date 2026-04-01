@@ -3,31 +3,30 @@
 @tailwind utilities;
 
 :root {
-  /* Club Social Theme (Dark Premium) */
-  --color-bg: #1c1c1e;
-  /* Charcoal Grey */
-  --color-surface: #2c2c2e;
-  /* Elevated Grey */
-  --color-surface-hover: #3a3a3c;
-  --color-border: #38383a;
+  /* Cancha Limpia Warm */
+  --color-bg: #181614;
+  --color-surface: #231f1c;
+  --color-surface-hover: #2e2926;
+  --color-border: #3a3430;
 
-  --color-text-primary: #f5f5f5;
-  /* Off White */
-  --color-text-secondary: #aeaeb2;
-  --color-text-muted: #636366;
+  --color-text-primary: #f0ebe5;
+  --color-text-secondary: #9a8e82;
+  --color-text-muted: #5c534a;
 
-  /* Accents */
+  /* Team Colors */
   --color-nosotros: #4ade80;
-  /* Emerald Green (Paño) */
   --color-ellos: #fbbf24;
-  /* Amber/Gold */
 
   --color-accent: #4ade80;
-  /* Main Action Color */
-  --color-danger: #ff453a;
-  --color-success: #32d74b;
+  --color-danger: #ef4444;
+  --color-success: #4ade80;
+
+  /* Tally marks — same color for both teams */
+  --color-tally: #f0ebe5;
 
   /* Radius & Spacing */
+  --radius-sm: 4px;
+  --radius-md: 8px;
   --radius-lg: 16px;
   --radius-full: 9999px;
 
@@ -39,16 +38,9 @@
 body {
   background-color: var(--color-bg);
   color: var(--color-text-primary);
-  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   overscroll-behavior: none;
   -webkit-tap-highlight-color: transparent;
-}
-
-button,
-input,
-select,
-textarea {
-  font: inherit;
 }
 
 .full-screen {
@@ -58,30 +50,43 @@ textarea {
   position: relative;
 }
 
-.scroll-safe {
-  scrollbar-gutter: stable both-edges;
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 3px;
-  height: 3px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.14);
-  border-radius: 9999px;
-}
-
-.custom-scrollbar:hover::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.24);
-}
-
-/* Glassmorphism Classes */
+/* Surface panel (replaces glassmorphism) */
 .glass-panel {
-  background: rgba(44, 44, 46, 0.8);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+/* Tally Mark Animations */
+@keyframes tally-draw-in {
+  from {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes tally-diagonal-draw {
+  from {
+    transform: scaleX(0) rotate(-30deg);
+    opacity: 0;
+  }
+  to {
+    transform: scaleX(1) rotate(-30deg);
+    opacity: 1;
+  }
+}
+
+.tally-stick-animate {
+  animation: tally-draw-in 150ms ease-out forwards;
+  transform-origin: bottom center;
+}
+
+.tally-diagonal-animate {
+  animation: tally-diagonal-draw 150ms ease-out forwards;
+  transform-origin: center center;
 }
 
 .score-square line {
@@ -152,8 +157,8 @@ textarea {
 
 /* Scrollbar */
 ::-webkit-scrollbar {
-  width: 3px;
-  height: 3px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -161,72 +166,10 @@ textarea {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.16);
-  border-radius: 9999px;
+  background: var(--color-surface);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.28);
-}
-
-* {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-}
-
-.safe-pt {
-  padding-top: max(16px, env(safe-area-inset-top));
-}
-
-.safe-pb {
-  padding-bottom: max(16px, env(safe-area-inset-bottom));
-}
-
-.safe-px {
-  padding-left: max(16px, env(safe-area-inset-left));
-  padding-right: max(16px, env(safe-area-inset-right));
-}
-
-.tab-content-enter {
-  animation: tabFadeSlide 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-@keyframes tabFadeSlide {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.card-smooth {
-  transition: transform 180ms ease, border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
-}
-
-.skeleton-block {
-  position: relative;
-  overflow: hidden;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.skeleton-block::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  transform: translateX(-100%);
-  background: linear-gradient(90deg,
-      transparent 0%,
-      rgba(255, 255, 255, 0.12) 45%,
-      transparent 100%);
-  animation: shimmer 1.2s ease-in-out infinite;
-}
-
-@keyframes shimmer {
-  to {
-    transform: translateX(100%);
-  }
+  background: var(--color-surface-hover);
 }

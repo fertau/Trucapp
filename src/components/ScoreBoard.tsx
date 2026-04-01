@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMatchStore } from '../store/useMatchStore';
 import { useUserStore } from '../store/useUserStore';
-import { ScoreSquare } from './ScoreSquare';
+import { TallyMarks } from './TallyMarks';
 import type { TeamId } from '../types';
 
 function useLongPress(callback: () => void, ms = 800, enabled = true) {
@@ -33,59 +33,22 @@ function useLongPress(callback: () => void, ms = 800, enabled = true) {
     return { start, clear, wasTriggered, resetTriggered };
 }
 
-const ShortcutButton = ({
-    label, points, teamId, onAction, onPressStart, onPressEnd
-}: {
-    label: string, points: string | number, teamId: TeamId, onAction: () => void, onPressStart?: () => void, onPressEnd?: () => void
-}) => {
-    return (
-        <button
-            className={`
-                px-1 py-2 rounded-xl flex flex-col items-center justify-center gap-1
-                border border-[var(--color-border)] active:scale-95 transition-all
-                min-h-[72px] relative overflow-hidden group
-                ${teamId === 'nosotros' ? 'bg-[var(--color-nosotros)]/10 text-[var(--color-nosotros)] border-[var(--color-nosotros)]/30 active:bg-[var(--color-nosotros)]/20 shadow-[0_0_15px_rgba(74,222,128,0.1)]' : 'bg-[var(--color-ellos)]/10 text-[var(--color-ellos)] border-[var(--color-ellos)]/30 active:bg-[var(--color-ellos)]/20 shadow-[0_0_15px_rgba(251,191,36,0.1)]'}
-            `}
-            onClick={(e) => {
-                e.stopPropagation();
-                onAction();
-            }}
-            onPointerDown={(e) => {
-                e.stopPropagation();
-                onPressStart?.();
-            }}
-            onPointerUp={(e) => {
-                e.stopPropagation();
-                onPressEnd?.();
-            }}
-            onPointerCancel={(e) => {
-                e.stopPropagation();
-                onPressEnd?.();
-            }}
-            onPointerLeave={(e) => {
-                e.stopPropagation();
-                onPressEnd?.();
-            }}
-        >
-            <div className="text-[10px] font-black uppercase tracking-[0.18em] leading-none text-center opacity-70 group-active:scale-90 transition-transform">{label}</div>
-            <div className="text-[20px] font-black leading-none tabular-nums">
-                {typeof points === 'number' ? `+${points}` : points}
-            </div>
-            {/* Visual feedback for interaction */}
-            <div className="absolute inset-0 bg-white/5 opacity-0 group-active:opacity-100 transition-opacity"></div>
-        </button>
-    )
-}
-
-const SquareGroup = ({ points }: { points: number }) => {
-    const squares = [];
-    const totalSquares = 3;
-    for (let i = 0; i < totalSquares; i++) {
-        const valueForSquare = Math.min(5, Math.max(0, points - (i * 5)));
-        squares.push(<ScoreSquare key={i} points={valueForSquare} />);
-    }
-    return <>{squares}</>;
-};
+const EyeIcon = ({ open }: { open: boolean }) => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        {open ? (
+            <>
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+            </>
+        ) : (
+            <>
+                <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" />
+                <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" />
+                <line x1="1" y1="1" x2="23" y2="23" />
+            </>
+        )}
+    </svg>
+);
 
 export const ScoreBoard = () => {
     const teams = useMatchStore(state => state.teams);
@@ -160,142 +123,163 @@ export const ScoreBoard = () => {
         addPoints(teamId, 1, 'score_tap');
     };
 
-    return (
-        <div className="flex w-full h-full relative bg-[var(--color-bg)] overflow-hidden select-none">
+    const [showNumbers, setShowNumbers] = useState(true);
 
-            {/* 1. Interaction Layer (Background Taps) */}
+    return (
+        <div className="flex flex-col w-full h-full relative bg-[var(--color-bg)] overflow-hidden select-none">
+
+            {/* Tap zones */}
             <div className="absolute inset-0 flex z-0">
                 <button
-                    className="flex-1 active:bg-[var(--color-nosotros)]/10 transition-colors outline-none touch-manipulation group/n relative"
+                    className="flex-1 active:bg-[#4ade80]/5 transition-colors outline-none touch-manipulation"
                     onClick={() => handleColumnClick('nosotros')}
                     onPointerDown={longPressNosotros.start}
                     onPointerUp={longPressNosotros.clear}
                     onPointerLeave={longPressNosotros.clear}
                     onPointerCancel={longPressNosotros.clear}
-                >
-                    <div className="absolute inset-0 bg-[var(--color-nosotros)]/5 scale-90 opacity-0 group-active/n:opacity-100 group-active/n:scale-100 transition-all duration-75"></div>
-                </button>
-                {/* Center visual divider for columns */}
-                <div className="w-[1px] bg-[var(--color-border)] opacity-30 h-full relative z-20"></div>
+                />
                 <button
-                    className="flex-1 active:bg-[var(--color-ellos)]/10 transition-colors outline-none touch-manipulation group/e relative"
+                    className="flex-1 active:bg-[#fbbf24]/5 transition-colors outline-none touch-manipulation"
                     onClick={() => handleColumnClick('ellos')}
                     onPointerDown={longPressEllos.start}
                     onPointerUp={longPressEllos.clear}
                     onPointerLeave={longPressEllos.clear}
                     onPointerCancel={longPressEllos.clear}
-                >
-                    <div className="absolute inset-0 bg-[var(--color-ellos)]/5 scale-90 opacity-0 group-active/e:opacity-100 group-active/e:scale-100 transition-all duration-75"></div>
-                </button>
+                />
             </div>
 
-            {/* 2. Visual Layer (Foreground Content) */}
-            <div className="absolute inset-0 flex flex-col pointer-events-none z-10 py-2 sm:py-4">
+            {/* Content */}
+            <div className="absolute inset-0 flex flex-col pointer-events-none z-10">
 
-                {/* Headers */}
-                <div className="flex w-full mb-2 sm:mb-4">
-                    <div className="flex-1 text-center px-2">
-                        <h2 className="text-xs sm:text-sm font-black uppercase tracking-[0.1em] text-[var(--color-nosotros)] truncate">
+                {/* Team headers */}
+                <div className="flex w-full pt-4 pb-2">
+                    <div className="flex-1 text-center">
+                        <h2 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[var(--color-nosotros)] truncate px-2">
                             {teams.nosotros.name}
                         </h2>
                     </div>
-                    <div className="w-[1px]"></div> {/* Spacer for grid alignment */}
-                    <div className="flex-1 text-center px-2">
-                        <h2 className="text-xs sm:text-sm font-black uppercase tracking-[0.1em] text-[var(--color-ellos)] truncate">
+                    <div className="w-[1px]" />
+                    <div className="flex-1 text-center">
+                        <h2 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[var(--color-ellos)] truncate px-2">
                             {teams.ellos.name}
                         </h2>
                     </div>
                 </div>
 
                 {isPicaConfigured && (
-                    <div className="mb-2 sm:mb-3 px-2.5 sm:px-3">
-                        <div className={`rounded-xl border px-3 py-2 text-center ${isPicaActive
+                    <div className="mb-2 px-3">
+                        <div className={`rounded-lg border px-3 py-2 text-center ${isPicaActive
                             ? 'bg-[var(--color-accent)]/10 border-[var(--color-accent)]/35'
                             : 'bg-[var(--color-surface)]/70 border-[var(--color-border)]'
                             }`}>
-                            <div className={`text-[9px] font-black uppercase tracking-[0.2em] ${isPicaActive ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-muted)]'}`}>
+                            <div className={`text-[9px] font-bold uppercase tracking-[0.2em] ${isPicaActive ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-muted)]'}`}>
                                 Pica pica {isPicaActive ? 'activo' : 'configurado'}
                             </div>
-                            <div className="text-[12px] font-black leading-tight mt-0.5">
+                            <div className="text-[12px] font-bold leading-tight mt-0.5">
                                 {isPicaActive && currentPairing
                                     ? `${currentNosName} vs ${currentEllName}`
                                     : `Se activa entre ${picaPica?.startAt} y ${picaPica?.endAt} puntos`}
                             </div>
-                            {isPicaActive && (
-                                <div className="text-[10px] text-white/60 mt-1">
-                                    Rotación mano de por medio
-                                </div>
-                            )}
                         </div>
                     </div>
                 )}
 
-                {/* Primera mitad */}
-                <div className="flex w-full items-start">
-                    <div className="flex-1 flex flex-col items-center gap-2">
-                        <SquareGroup points={Math.min(teams.nosotros.score, hasBuenasSection ? scoreSplit : targetScore)} />
+                {/* Malas label */}
+                <div className="flex items-center px-6 mb-1">
+                    <div className="h-[1px] flex-1 bg-[var(--color-border)]/40" />
+                    <span className="px-3 text-[9px] font-semibold text-[var(--color-text-muted)] uppercase tracking-[0.3em]">Malas</span>
+                    <div className="h-[1px] flex-1 bg-[var(--color-border)]/40" />
+                </div>
+
+                {/* Malas tally marks */}
+                <div className="flex w-full px-6 py-2">
+                    <div className="flex-1 flex justify-center">
+                        <TallyMarks points={Math.min(teams.nosotros.score, hasBuenasSection ? scoreSplit : targetScore)} />
                     </div>
-                    <div className="w-[1px]"></div>
-                    <div className="flex-1 flex flex-col items-center gap-2">
-                        <SquareGroup points={Math.min(teams.ellos.score, hasBuenasSection ? scoreSplit : targetScore)} />
+                    <div className="w-[1px] bg-[var(--color-border)]/20 mx-2" />
+                    <div className="flex-1 flex justify-center">
+                        <TallyMarks points={Math.min(teams.ellos.score, hasBuenasSection ? scoreSplit : targetScore)} />
                     </div>
                 </div>
 
                 {hasBuenasSection && (
                     <>
-                        {/* Dynamic Divider Row */}
-                        <div className="w-full flex items-center justify-center py-6 relative shrink-0">
-                            <div className="absolute w-full h-[1px] bg-[var(--color-border)] -z-10 opacity-30 dashed"></div>
-                            <div className="bg-[var(--color-bg)] px-3 py-0.5 text-[9px] font-black text-[var(--color-text-muted)] tracking-[0.3em] border border-[var(--color-border)] rounded-full shadow-lg uppercase z-20">
-                                Buenas
-                            </div>
+                        {/* Buenas label */}
+                        <div className="flex items-center px-6 mt-2 mb-1">
+                            <div className="h-[1px] flex-1 bg-[var(--color-border)]/40" />
+                            <span className="px-3 text-[9px] font-semibold text-[var(--color-text-muted)] uppercase tracking-[0.3em]">Buenas</span>
+                            <div className="h-[1px] flex-1 bg-[var(--color-border)]/40" />
                         </div>
 
-                        {/* Segunda mitad */}
-                        <div className="flex w-full items-start">
-                            <div className="flex-1 flex flex-col items-center gap-2">
-                                <SquareGroup points={Math.max(0, teams.nosotros.score - scoreSplit)} />
+                        {/* Buenas tally marks */}
+                        <div className="flex w-full px-6 py-2">
+                            <div className="flex-1 flex justify-center">
+                                <TallyMarks points={Math.max(0, teams.nosotros.score - scoreSplit)} />
                             </div>
-                            <div className="w-[1px]"></div>
-                            <div className="flex-1 flex flex-col items-center gap-2">
-                                <SquareGroup points={Math.max(0, teams.ellos.score - scoreSplit)} />
+                            <div className="w-[1px] bg-[var(--color-border)]/20 mx-2" />
+                            <div className="flex-1 flex justify-center">
+                                <TallyMarks points={Math.max(0, teams.ellos.score - scoreSplit)} />
                             </div>
                         </div>
                     </>
                 )}
 
-                {/* Big Score Numbers (Fills remaining space) */}
-                <div className={`flex-1 flex items-center w-full ${hasBuenasSection ? 'mt-4' : 'mt-8'}`}>
-                    <div className="flex-1 flex justify-center">
-                        <span className="text-[5.75rem] sm:text-[6.5rem] font-black opacity-25 tabular-nums tracking-[-0.04em] leading-none text-[var(--color-nosotros)]/80 drop-shadow-[0_0_18px_rgba(74,222,128,0.28)]">
-                            {teams.nosotros.score}
-                        </span>
+                {/* Ghost score numbers (toggleable) */}
+                <div className={`flex items-center justify-center gap-4 mt-4 transition-all duration-250 ${showNumbers ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>
+                    <span className="text-5xl font-black tabular-nums tracking-tighter leading-none opacity-10">{teams.nosotros.score}</span>
+                    <span className="text-lg opacity-10">—</span>
+                    <span className="text-5xl font-black tabular-nums tracking-tighter leading-none opacity-10">{teams.ellos.score}</span>
+                </div>
+                {showNumbers && (
+                    <div className="text-center mt-0.5">
+                        <span className="text-[10px] text-[var(--color-text-muted)] opacity-40">a {targetScore}</span>
                     </div>
-                    <div className="flex-1 flex justify-center">
-                        <span className="text-[5.75rem] sm:text-[6.5rem] font-black opacity-25 tabular-nums tracking-[-0.04em] leading-none text-[var(--color-ellos)]/80 drop-shadow-[0_0_18px_rgba(251,191,36,0.25)]">
-                            {teams.ellos.score}
-                        </span>
-                    </div>
+                )}
+
+                {/* Eye toggle */}
+                <div className="flex justify-center mt-2 pointer-events-auto">
+                    <button
+                        onClick={() => setShowNumbers(v => !v)}
+                        className="text-[var(--color-text-muted)] p-2 rounded-full active:bg-[var(--color-surface)] transition-colors"
+                    >
+                        <EyeIcon open={showNumbers} />
+                    </button>
                 </div>
 
-                {/* Controls - Pointer Events Enabed */}
-                <div className="mt-auto w-full px-2 pointer-events-auto z-30 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
-                    <div className="grid grid-cols-2 gap-4">
-                        {/* Nosotros Controls */}
-                        <div className="grid grid-cols-2 gap-2">
-                            <ShortcutButton label="Atajo" points={2} teamId="nosotros" onAction={() => addPoints('nosotros', 2, 'envido')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
-                            <ShortcutButton label="Atajo" points={3} teamId="nosotros" onAction={() => addPoints('nosotros', 3, 'real_envido')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
-                            <ShortcutButton label="Atajo" points={4} teamId="nosotros" onAction={() => addPoints('nosotros', 4, 'vale_cuatro')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
-                            <ShortcutButton label="Atajo" points={5} teamId="nosotros" onAction={() => addPoints('nosotros', 5, 'penalty')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
-                        </div>
+                {/* Spacer */}
+                <div className="flex-1" />
 
-                        {/* Ellos Controls */}
-                        <div className="grid grid-cols-2 gap-2">
-                            <ShortcutButton label="Atajo" points={2} teamId="ellos" onAction={() => addPoints('ellos', 2, 'envido')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
-                            <ShortcutButton label="Atajo" points={3} teamId="ellos" onAction={() => addPoints('ellos', 3, 'real_envido')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
-                            <ShortcutButton label="Atajo" points={4} teamId="ellos" onAction={() => addPoints('ellos', 4, 'vale_cuatro')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
-                            <ShortcutButton label="Atajo" points={5} teamId="ellos" onAction={() => addPoints('ellos', 5, 'penalty')} onPressStart={lockShortcutInteraction} onPressEnd={unlockShortcutInteraction} />
-                        </div>
+                {/* Point buttons: 2x2 per team */}
+                <div className="w-full px-4 grid grid-cols-2 gap-4 pointer-events-auto z-30 pb-[calc(env(safe-area-inset-bottom)+12px)]">
+                    <div className="grid grid-cols-2 gap-1.5">
+                        {[1, 2, 3, 4].map(n => (
+                            <button
+                                key={n}
+                                onClick={(e) => { e.stopPropagation(); addPoints('nosotros', n, 'score_tap'); }}
+                                onPointerDown={(e) => { e.stopPropagation(); lockShortcutInteraction(); }}
+                                onPointerUp={(e) => { e.stopPropagation(); unlockShortcutInteraction(); }}
+                                onPointerCancel={() => unlockShortcutInteraction()}
+                                onPointerLeave={() => unlockShortcutInteraction()}
+                                className="py-3.5 rounded-lg bg-[#4ade80]/8 border border-[#4ade80]/15 text-[#4ade80] font-black text-base active:scale-95 active:bg-[#4ade80]/20 transition-all"
+                            >
+                                +{n}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                        {[1, 2, 3, 4].map(n => (
+                            <button
+                                key={n}
+                                onClick={(e) => { e.stopPropagation(); addPoints('ellos', n, 'score_tap'); }}
+                                onPointerDown={(e) => { e.stopPropagation(); lockShortcutInteraction(); }}
+                                onPointerUp={(e) => { e.stopPropagation(); unlockShortcutInteraction(); }}
+                                onPointerCancel={() => unlockShortcutInteraction()}
+                                onPointerLeave={() => unlockShortcutInteraction()}
+                                className="py-3.5 rounded-lg bg-[#fbbf24]/8 border border-[#fbbf24]/15 text-[#fbbf24] font-black text-base active:scale-95 active:bg-[#fbbf24]/20 transition-all"
+                            >
+                                +{n}
+                            </button>
+                        ))}
                     </div>
                 </div>
             </div>
