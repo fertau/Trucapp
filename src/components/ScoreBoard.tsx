@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMatchStore } from '../store/useMatchStore';
+import { useHistoryStore } from '../store/useHistoryStore';
+import { useAuthStore } from '../store/useAuthStore';
 import { useUserStore } from '../store/useUserStore';
 import { TallyMarks } from './TallyMarks';
 import type { TeamId } from '../types';
@@ -75,6 +77,38 @@ export const ScoreBoard = () => {
     const currentEllName = currentPairing
         ? players.find((p) => p.id === currentPairing.ellosId)?.name ?? 'Jugador B'
         : '';
+    // La Mesa: live rivalry stakes during match
+    const series = useMatchStore(state => state.series);
+    const currentUserId = useAuthStore(state => state.currentUserId);
+    const historyMatches = useHistoryStore(state => state.matches);
+
+    const laMesaStakes = useMemo(() => {
+        if (!series || !currentUserId) return null;
+        // Find existing matches in this series to compute current series score
+        const seriesMatches = historyMatches.filter((m) => m.series?.id === series.id);
+        const winsNos = seriesMatches.filter((m) => m.winner === 'nosotros').length;
+        const winsEll = seriesMatches.filter((m) => m.winner === 'ellos').length;
+
+        // What happens if nosotros wins this match?
+        const nosWouldWin = winsNos + 1 >= series.targetWins;
+        const ellWouldWin = winsEll + 1 >= series.targetWins;
+        const wouldTie = winsNos + 1 === winsEll || winsEll + 1 === winsNos;
+
+        if (nosWouldWin && !ellWouldWin) {
+            return `Si ganan, ganan la serie ${winsNos + 1}-${winsEll}`;
+        }
+        if (ellWouldWin && !nosWouldWin) {
+            return `Si pierden, pierden la serie ${winsNos}-${winsEll + 1}`;
+        }
+        if (nosWouldWin && ellWouldWin) {
+            return 'Quien gane, gana la serie';
+        }
+        if (wouldTie) {
+            return 'Si pierden, empatan la serie';
+        }
+        return `Serie: ${winsNos}-${winsEll}`;
+    }, [series, currentUserId, historyMatches]);
+
     const [shortcutInteractionLock, setShortcutInteractionLock] = useState(false);
     const shortcutUnlockTimerRef = useRef<number | null>(null);
 
@@ -165,6 +199,19 @@ export const ScoreBoard = () => {
                         </h2>
                     </div>
                 </div>
+
+                {laMesaStakes && (
+                    <div className="mx-3 mb-2">
+                        <div className="rounded-lg border border-[var(--color-accent)]/25 bg-[var(--color-accent)]/8 px-3 py-2 text-center">
+                            <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-[var(--color-accent)]">
+                                La Mesa
+                            </div>
+                            <div className="text-[12px] font-bold leading-tight mt-0.5 text-white/80">
+                                {laMesaStakes}
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {isPicaConfigured && (
                     <div className="mb-2 px-3">

@@ -96,7 +96,8 @@ const getMatchData = (state: MatchStore) => ({
     pairs: state.pairs ?? null,
     series: state.series ?? null,
     picaPica: state.picaPica ?? null,
-    picaPicaScoringMode: state.picaPicaScoringMode ?? null
+    picaPicaScoringMode: state.picaPicaScoringMode ?? null,
+    handRecords: state.handRecords ?? []
 });
 
 export const useMatchStore = create<MatchStore>()(

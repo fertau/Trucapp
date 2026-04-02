@@ -43,3 +43,9 @@ export const getTeamRefKey = (match: MatchState, team: TeamId): string =>
 
 export const getTeamRefLabel = (match: MatchState, team: TeamId): string =>
     match.teamRefs?.[team]?.label ?? match.teams[team].name;
+
+export const getTeamIdForUser = (match: MatchState, userId: string): TeamId | null => {
+    if (match.teams.nosotros.players.includes(userId)) return 'nosotros';
+    if (match.teams.ellos.players.includes(userId)) return 'ellos';
+    return null;
+};

@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 import { getAuth, signInAnonymously } from "firebase/auth";
 
 const env = import.meta.env as Record<string, string | undefined>;
@@ -28,7 +28,15 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+
+// Initialize Firestore with offline persistence
+// Writes queue locally and sync when back online (important for asado connectivity)
+const db = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+    })
+});
+
 const auth = getAuth(app);
 
 let authBootstrapPromise: Promise<void> | null = null;

@@ -6,7 +6,7 @@ import type { MatchEditField, MatchMode, MatchState, TeamId } from '../types';
 import { formatDateDisplay, formatDateInputLocal, formatDateTimeDisplay, parseDateInputLocal } from '../utils/date';
 import { isSuperAdmin } from '../utils/authz';
 import { canUserDeleteMatch, canUserEditMatch } from '../utils/matchValidation';
-import { getMatchEffectiveDate, getTeamRefKey, getTeamRefLabel } from '../utils/matchIdentity';
+import { getMatchEffectiveDate, getTeamIdForUser, getTeamRefKey, getTeamRefLabel } from '../utils/matchIdentity';
 
 interface HistoryScreenProps {
     onBack: () => void;
@@ -45,12 +45,6 @@ const HISTORY_FOCUS_TABS: Array<{ key: HistoryFocus; label: string }> = [
     { key: 'MI_EQUIPO', label: 'Mi equipo' },
     { key: 'CLASICOS', label: 'Clasicos' }
 ];
-
-const getTeamIdForUser = (match: MatchState, userId: string): TeamId | null => {
-    if (match.teams.nosotros.players.includes(userId)) return 'nosotros';
-    if (match.teams.ellos.players.includes(userId)) return 'ellos';
-    return null;
-};
 
 const getOppositeTeam = (team: TeamId): TeamId => (team === 'nosotros' ? 'ellos' : 'nosotros');
 const isParticipant = (match: MatchState, userId: string | null): boolean => {

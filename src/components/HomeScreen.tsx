@@ -3,9 +3,11 @@ import { useUserStore } from '../store/useUserStore';
 import { useHistoryStore } from '../store/useHistoryStore';
 import { useMemo, useState } from 'react';
 import { AvatarBadge } from './AvatarBadge';
-import type { MatchState, TeamId } from '../types';
-import { getMatchEffectiveDate, getTeamRefLabel } from '../utils/matchIdentity';
+import type { MatchState } from '../types';
+import { getMatchEffectiveDate } from '../utils/matchIdentity';
 import { formatDateTimeDisplay } from '../utils/date';
+import { getActiveRivalry, getRivalryProfile, getGroupLeaderboard } from '../services/rivalryService';
+import { RivalryCard } from './RivalryCard';
 
 interface HomeScreenProps {
     onNewMatch: () => void;
@@ -15,13 +17,13 @@ interface HomeScreenProps {
 }
 
 export const HomeScreen = ({ onNewMatch, onQuickScore, onHistory, onProfile }: HomeScreenProps) => {
-    const HISTORY_SUMMARY_STORAGE_KEY = 'trucapp-history-summary-v2';
     const currentUserId = useAuthStore(state => state.currentUserId);
     const players = useUserStore(state => state.players);
     const matches = useHistoryStore(state => state.matches);
     const isHistoryLoading = useHistoryStore(state => state.isLoading);
     const [tab, setTab] = useState<'PARTIDO' | 'HISTORIAL'>('PARTIDO');
     const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('trucapp-onboarding-v1'));
+    const [showRivalryCard, setShowRivalryCard] = useState(false);
     const showHomeSkeleton = isHistoryLoading && matches.length === 0;
     const visibleMatches = useMemo(() => {
         if (!currentUserId) return [] as MatchState[];
@@ -37,105 +39,19 @@ export const HomeScreen = ({ onNewMatch, onQuickScore, onHistory, onProfile }: H
 
     const user = players.find(p => p.id === currentUserId);
 
-    const getTeamIdForUser = (match: MatchState, userId: string): TeamId | null => {
-        if (match.teams.nosotros.players.includes(userId)) return 'nosotros';
-        if (match.teams.ellos.players.includes(userId)) return 'ellos';
-        return null;
-    };
-
     const activeRivalry = useMemo(() => {
         if (!currentUserId) return null;
-        const playersKey = (ids: string[]) => [...ids].sort().join('|');
-        const buckets = new Map<string, {
-            key: string;
-            mode: MatchState['mode'];
-            label: string;
-            count: number;
-            wins: number;
-            losses: number;
-            lastPlayedAt: number;
-            seriesById: Record<string, { wins: number; losses: number; lastAt: number }>;
-        }>();
+        return getActiveRivalry(currentUserId, matches, players);
+    }, [matches, currentUserId, players]);
 
-        const mine = validFinishedMatches.filter((m) => getTeamIdForUser(m, currentUserId) !== null);
-        const sorted = [...mine].sort((a, b) => getMatchEffectiveDate(b) - getMatchEffectiveDate(a));
+    const leaderboard = useMemo(() => {
+        return getGroupLeaderboard(validFinishedMatches);
+    }, [validFinishedMatches]);
 
-        sorted.forEach((m) => {
-            const mySide = getTeamIdForUser(m, currentUserId);
-            if (!mySide) return;
-            const oppSide: TeamId = mySide === 'nosotros' ? 'ellos' : 'nosotros';
-            const myPlayersKey = playersKey(m.teams[mySide].players);
-            const oppPlayersKey = playersKey(m.teams[oppSide].players);
-            const key = `${m.mode}:${myPlayersKey}:${oppPlayersKey}`;
-            const label = m.mode === '1v1'
-                ? `1v1 vs ${m.teams[oppSide].players.map((id) => players.find((p) => p.id === id)?.name ?? id).join(' / ')}`
-                : `${m.mode} · ${getTeamRefLabel(m, mySide)} vs ${getTeamRefLabel(m, oppSide)}`;
-            const prev = buckets.get(key) ?? {
-                key,
-                mode: m.mode,
-                label,
-                count: 0,
-                wins: 0,
-                losses: 0,
-                lastPlayedAt: 0,
-                seriesById: {}
-            };
-            const result: 'G' | 'P' = m.winner === mySide ? 'G' : 'P';
-            const seriesId = m.series?.id ?? `single:${m.id}`;
-            const previousSeries = prev.seriesById[seriesId] ?? { wins: 0, losses: 0, lastAt: 0 };
-            const nextSeries = {
-                wins: previousSeries.wins + (result === 'G' ? 1 : 0),
-                losses: previousSeries.losses + (result === 'P' ? 1 : 0),
-                lastAt: Math.max(previousSeries.lastAt, getMatchEffectiveDate(m))
-            };
-            buckets.set(key, {
-                key,
-                mode: m.mode,
-                label,
-                count: prev.count + 1,
-                wins: prev.wins + (result === 'G' ? 1 : 0),
-                losses: prev.losses + (result === 'P' ? 1 : 0),
-                lastPlayedAt: Math.max(prev.lastPlayedAt, getMatchEffectiveDate(m)),
-                seriesById: {
-                    ...prev.seriesById,
-                    [seriesId]: nextSeries
-                }
-            });
-        });
-
-        const ranked = Array.from(buckets.values())
-            .map((bucket) => {
-                const seriesEntries = Object.values(bucket.seriesById).sort((a, b) => b.lastAt - a.lastAt);
-                let seriesWins = 0;
-                let seriesLosses = 0;
-                const seriesForm: Array<'G' | 'P'> = [];
-                seriesEntries.forEach((s) => {
-                    if (s.wins > s.losses) {
-                        seriesWins += 1;
-                        if (seriesForm.length < 10) seriesForm.push('G');
-                    } else if (s.losses > s.wins) {
-                        seriesLosses += 1;
-                        if (seriesForm.length < 10) seriesForm.push('P');
-                    }
-                });
-                const seriesLastPlayedAt = seriesEntries[0]?.lastAt ?? 0;
-                return {
-                    ...bucket,
-                    seriesWins,
-                    seriesLosses,
-                    seriesTotal: seriesWins + seriesLosses,
-                    seriesForm,
-                    seriesLastPlayedAt
-                };
-            })
-            .filter((x) => x.count >= 3)
-            .sort((a, b) =>
-                b.seriesLastPlayedAt - a.seriesLastPlayedAt ||
-                b.seriesTotal - a.seriesTotal ||
-                b.lastPlayedAt - a.lastPlayedAt
-            );
-        return ranked[0] ?? null;
-    }, [validFinishedMatches, currentUserId, players]);
+    const fullRivalryProfile = useMemo(() => {
+        if (!activeRivalry || !currentUserId) return null;
+        return getRivalryProfile(currentUserId, matches, players, activeRivalry.key);
+    }, [activeRivalry, currentUserId, matches, players]);
 
     return (
         <div className="full-screen bg-[var(--color-bg)] flex flex-col p-5" style={{ paddingTop: 'max(20px, env(safe-area-inset-top))' }}>
@@ -203,13 +119,7 @@ export const HomeScreen = ({ onNewMatch, onQuickScore, onHistory, onProfile }: H
 
                         {activeRivalry && (
                             <button
-                                onClick={() => {
-                                    localStorage.setItem(HISTORY_SUMMARY_STORAGE_KEY, JSON.stringify({
-                                        historyFocus: 'CLASICOS',
-                                        classicKey: activeRivalry.key
-                                    }));
-                                    onHistory();
-                                }}
+                                onClick={() => setShowRivalryCard(true)}
                                 className="w-full text-left bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl px-4 py-4 relative overflow-hidden card-smooth"
                             >
                                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(74,222,128,0.14),transparent_44%),radial-gradient(circle_at_100%_100%,rgba(255,255,255,0.04),transparent_40%)]" />
@@ -222,7 +132,7 @@ export const HomeScreen = ({ onNewMatch, onQuickScore, onHistory, onProfile }: H
                                 </div>
                                 <div className="text-sm font-black leading-tight mt-2">{activeRivalry.label.replace(`${activeRivalry.mode} · `, '')}</div>
                                 <div className="text-[22px] font-black leading-none mt-1 tabular-nums">
-                                    {activeRivalry.seriesTotal} <span className="text-[14px] text-white/65">series</span> <span className="text-[13px] text-white/50">({activeRivalry.count} PJ)</span>
+                                    {activeRivalry.seriesTotal} <span className="text-[14px] text-white/65">series</span> <span className="text-[13px] text-white/50">({activeRivalry.matchCount} PJ)</span>
                                 </div>
                                 <div className="w-full h-px bg-white/10 my-3" />
                                 <div className="text-[10px] uppercase tracking-[0.18em] text-white/45 font-black mb-2">Series ganadas</div>
@@ -265,19 +175,19 @@ export const HomeScreen = ({ onNewMatch, onQuickScore, onHistory, onProfile }: H
                                     <div className="h-3 w-full flex">
                                         <div
                                             className="h-full bg-[var(--color-nosotros)]"
-                                            style={{ width: `${activeRivalry.count ? (activeRivalry.wins / activeRivalry.count) * 100 : 0}%` }}
+                                            style={{ width: `${activeRivalry.matchCount ? (activeRivalry.matchWins / activeRivalry.matchCount) * 100 : 0}%` }}
                                         />
                                         <div
                                             className="h-full bg-[var(--color-danger)]"
-                                            style={{ width: `${activeRivalry.count ? (activeRivalry.losses / activeRivalry.count) * 100 : 0}%` }}
+                                            style={{ width: `${activeRivalry.matchCount ? (activeRivalry.matchLosses / activeRivalry.matchCount) * 100 : 0}%` }}
                                         />
                                     </div>
                                     <div className="px-3 py-2 flex items-center justify-between text-[11px] font-black">
                                         <span className="text-[var(--color-nosotros)]">
-                                            G {activeRivalry.wins} ({activeRivalry.count ? Math.round((activeRivalry.wins / activeRivalry.count) * 100) : 0}%)
+                                            G {activeRivalry.matchWins} ({activeRivalry.matchCount ? Math.round((activeRivalry.matchWins / activeRivalry.matchCount) * 100) : 0}%)
                                         </span>
                                         <span className="text-[var(--color-danger)]">
-                                            P {activeRivalry.losses} ({activeRivalry.count ? Math.round((activeRivalry.losses / activeRivalry.count) * 100) : 0}%)
+                                            P {activeRivalry.matchLosses} ({activeRivalry.matchCount ? Math.round((activeRivalry.matchLosses / activeRivalry.matchCount) * 100) : 0}%)
                                         </span>
                                     </div>
                                 </div>
@@ -309,6 +219,36 @@ export const HomeScreen = ({ onNewMatch, onQuickScore, onHistory, onProfile }: H
                             })}
                             {validFinishedMatches.length === 0 && <p className="text-[var(--color-text-muted)]">Sin novedades todavía.</p>}
                         </div>
+
+                        {leaderboard.length >= 2 && (
+                            <>
+                                <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mt-2 tracking-wider border-b border-[var(--color-border)] pb-2">
+                                    Tabla de posiciones
+                                </h3>
+                                <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl overflow-hidden card-smooth">
+                                    {leaderboard.slice(0, 6).map((entry, idx) => {
+                                        const player = players.find(p => p.id === entry.playerId);
+                                        const name = player?.nickname || player?.name || entry.playerId.slice(0, 8);
+                                        const isCurrentUser = entry.playerId === currentUserId;
+                                        return (
+                                            <div
+                                                key={entry.playerId}
+                                                className={`flex items-center px-4 py-2.5 gap-3 ${idx > 0 ? 'border-t border-[var(--color-border)]' : ''} ${isCurrentUser ? 'bg-[var(--color-accent)]/5' : ''}`}
+                                            >
+                                                <span className="text-[11px] font-black text-white/40 w-5 text-center">{idx + 1}</span>
+                                                <div className="flex-1 min-w-0">
+                                                    <span className={`text-sm font-bold truncate block ${isCurrentUser ? 'text-[var(--color-accent)]' : ''}`}>{name}</span>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="text-sm font-black tabular-nums">{Math.round(entry.winRate * 100)}%</span>
+                                                    <span className="text-[10px] text-white/40 ml-1">({entry.wins}G {entry.losses}P)</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </>
+                        )}
                             </>
                         )}
                     </div>
@@ -344,6 +284,13 @@ export const HomeScreen = ({ onNewMatch, onQuickScore, onHistory, onProfile }: H
                     </div>
                 </div>
             </nav>
+            {showRivalryCard && fullRivalryProfile && (
+                <RivalryCard
+                    rivalry={fullRivalryProfile}
+                    players={players}
+                    onClose={() => setShowRivalryCard(false)}
+                />
+            )}
         </div>
     );
 };

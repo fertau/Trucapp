@@ -166,4 +166,7 @@ export interface MatchState {
 
     // 3v3 Pica-pica hand system config
     picaPicaScoringMode?: PicaPicaScoringMode | null;
+
+    // Pica-pica hand records (persisted on match finish for rivalry stats)
+    handRecords?: HandRecord[];
 }

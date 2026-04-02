@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useMatchStore } from '../store/useMatchStore';
 import { useHistoryStore } from '../store/useHistoryStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { useUserStore } from '../store/useUserStore';
 import { usePicaPicaStore } from '../store/usePicaPicaStore';
 import { ScoreBoard } from './ScoreBoard';
 import { PicaPicaScoreBoard } from './PicaPicaScoreBoard';
@@ -9,6 +11,7 @@ import { CerrarManoButton } from './CerrarManoButton';
 import { PairingReorder } from './PairingReorder';
 import type { MatchState, TeamId } from '../types';
 import { formatDateInputLocal, parseDateInputLocal } from '../utils/date';
+import { getPostMatchRivalryDelta } from '../services/rivalryService';
 
 type MatchFinishAction = 'home' | 'rematch' | 'series-next' | 'direct-save' | 'direct-cancel' | 'cancel';
 
@@ -569,6 +572,8 @@ const WinnerCelebration = ({ winner, teams, onFinish }: { winner: TeamId, teams:
     const matchId = useMatchStore(state => state.id);
     const series = useMatchStore(state => state.series);
     const historyMatches = useHistoryStore(state => state.matches);
+    const currentUserId = useAuthStore(state => state.currentUserId);
+    const allPlayers = useUserStore(state => state.players);
     const [confettiPieces] = useState<ConfettiPiece[]>(() => createConfettiPieces(20));
 
     const seriesProgress = (() => {
@@ -583,6 +588,16 @@ const WinnerCelebration = ({ winner, teams, onFinish }: { winner: TeamId, teams:
         return { winsNos, winsEll, isFinished, targetWins: series.targetWins };
     })();
 
+    // Rivalry delta: what changed after this match
+    const rivalryDelta = (() => {
+        if (!currentUserId) return null;
+        try {
+            return getPostMatchRivalryDelta(matchId, currentUserId, historyMatches, allPlayers);
+        } catch {
+            return null;
+        }
+    })();
+
     const handleRematch = () => {
         onFinish('rematch');
     };
@@ -595,10 +610,27 @@ const WinnerCelebration = ({ winner, teams, onFinish }: { winner: TeamId, teams:
         onFinish('series-next');
     };
 
-    const copyShareLink = () => {
+    const copyShareLink = async () => {
         const url = `${window.location.origin}/?matchId=${matchId}`;
-        navigator.clipboard.writeText(url);
-        alert(`Link copiado: ${url}`);
+        const winnerName = winnerData.name;
+        const scoreText = `${teams.nosotros.name} ${teams.nosotros.score} - ${teams.ellos.score} ${teams.ellos.name}`;
+        const shareText = `${winnerName} ganó! ${scoreText}${rivalryDelta && !rivalryDelta.isFirstMeeting ? ` | ${rivalryDelta.headline}` : ''}`;
+
+        if (navigator.share) {
+            try {
+                await navigator.share({ title: 'Trucapp', text: shareText, url });
+                return;
+            } catch {
+                // User cancelled or share failed, fall through to clipboard
+            }
+        }
+
+        try {
+            await navigator.clipboard.writeText(`${shareText}\n${url}`);
+            alert('Copiado al portapapeles');
+        } catch {
+            alert(`Link: ${url}`);
+        }
     };
 
     return (
@@ -651,6 +683,32 @@ const WinnerCelebration = ({ winner, teams, onFinish }: { winner: TeamId, teams:
                         <div className="text-xl font-black">
                             {teams.nosotros.name} {seriesProgress.winsNos} - {seriesProgress.winsEll} {teams.ellos.name}
                         </div>
+                    </div>
+                )}
+
+                {/* Post-match rivalry delta */}
+                {rivalryDelta && (
+                    <div className="mb-8 text-center bg-white/5 border border-white/10 rounded-2xl px-6 py-4 w-full">
+                        <div className="text-[10px] uppercase tracking-widest text-[var(--color-accent)] font-black mb-2">
+                            {rivalryDelta.isFirstMeeting ? 'Rivalidad' : 'Rivalidad actualizada'}
+                        </div>
+                        <div className="text-2xl font-black tracking-tight">
+                            {rivalryDelta.headline}
+                        </div>
+                        {!rivalryDelta.isFirstMeeting && (
+                            <div className="mt-2 text-sm text-white/60">
+                                <span className="text-white/40">Antes: </span>
+                                <span className="font-black">{rivalryDelta.before.matchWins}-{rivalryDelta.before.matchLosses}</span>
+                                <span className="text-white/40 mx-2">→</span>
+                                <span className="text-white/40">Ahora: </span>
+                                <span className="font-black text-white">{rivalryDelta.after.matchWins}-{rivalryDelta.after.matchLosses}</span>
+                            </div>
+                        )}
+                        {!rivalryDelta.isFirstMeeting && rivalryDelta.before.seriesWins + rivalryDelta.before.seriesLosses > 0 && (
+                            <div className="mt-1 text-xs text-white/40">
+                                Series: {rivalryDelta.after.seriesWins}-{rivalryDelta.after.seriesLosses}
+                            </div>
+                        )}
                     </div>
                 )}
 

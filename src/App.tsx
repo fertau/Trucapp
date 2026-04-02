@@ -296,6 +296,10 @@ function App() {
 
       const mustPersist = !isDirectScorerMode || next === 'direct-save';
       if (mustPersist) {
+        // Capture pica-pica hand records before they're reset
+        const picaPicaState = usePicaPicaStore.getState();
+        const handRecords = picaPicaState.isActive ? [...picaPicaState.closedHands] : [];
+
         const snapshot: MatchState = {
           id: matchState.id,
           mode: matchState.mode,
@@ -317,7 +321,9 @@ function App() {
           isFinished: matchState.isFinished,
           winner: matchState.winner ?? null,
           editedFlags: matchState.editedFlags,
-          edits: matchState.edits
+          edits: matchState.edits,
+          picaPicaScoringMode: matchState.picaPicaScoringMode ?? null,
+          handRecords: handRecords.length > 0 ? handRecords : undefined
         };
 
         const persistable = next === 'direct-save'
